@@ -17,6 +17,7 @@ import { ALL as STRINGS, detectLang, type Lang } from './i18n.ts' // [agent:ui] 
 import { toolWord, type Row } from './fold.ts'
 import { afterConnect as nativeAfterConnect, appState } from './native.ts' // [agent:ios]
 import { loadPrefs } from './prefs.ts'
+import { SampleBot, SAMPLE_ORIGIN, SAMPLE_THREAD } from './try.ts'
 
 export interface Me { device: { id: string; name: string }; assistant: { name: string }; mainSessionId: string | null; connected: boolean; /** absent on a bot older than the Computer section of Settings */ computer?: { name: string; version: string } }
 /** [compliance] Who messages go to and whether the person agreed (src/compliance.ts on the bot); absent on a bot older than the consent gate. */
@@ -73,13 +74,31 @@ const cacheKey = (id: string) => `thread:${id}`
 let cacheTimer: ReturnType<typeof setTimeout> | undefined
 /** Keeps the last rows the bot sent for the next launch; only what the bot confirmed (not the phone's unsent words). */
 function saveThread() {
-  const id = sessionId(); if (!id || !threadLoaded()) return
+  const id = sessionId(); if (!id || !threadLoaded() || isSample()) return
   const kept = thread.rows.filter((r) => !outbox.includes(r)).slice(-CACHED_ROWS).map((r) => (r.kind === 'step' ? { ...r, output: r.output?.slice(0, 400) } : r.kind === 'them' && r.streaming ? { ...r, streaming: false } : r))
   if (cacheTimer) clearTimeout(cacheTimer)
-  cacheTimer = setTimeout(() => { Storage.setItem(cacheKey(id), JSON.stringify(kept)).catch(() => {}) }, 400)
+  cacheTimer = setTimeout(() => { Storage.setItem(cacheKey(id), JSON.stringify(kept)).catch(() => {}); void noteCached(id) }, 400)
 }
 async function cachedRows(id: string): Promise<Row[]> {
-  try { const v = JSON.parse((await Storage.getItem(cacheKey(id))) ?? '[]'); return Array.isArray(v) ? (v as Row[]) : [] } catch { return [] }
+  try {
+    const raw = await Storage.getItem(cacheKey(id)); if (raw === null || raw === undefined) return []
+    void noteCached(id)
+    const v = JSON.parse(raw); return Array.isArray(v) ? (v as Row[]) : []
+  } catch { return [] }
+}
+/** Which threads this phone holds rows of. Storage cannot list its keys, and unpairing has to remove them all. */
+const CACHE_LIST = 'threadCaches'
+let cacheList: Promise<string[]> | null = null
+const cachedIds = () => (cacheList ??= Storage.getItem(CACHE_LIST).then((v) => { const l = JSON.parse(v ?? '[]'); return Array.isArray(l) ? (l as string[]) : [] }).catch(() => []))
+async function noteCached(id: string) {
+  const ids = await cachedIds(); if (ids.includes(id)) return
+  ids.push(id); await Storage.setItem(CACHE_LIST, JSON.stringify(ids)).catch(() => {})
+}
+async function forgetCaches(current: string | null) {
+  if (cacheTimer) clearTimeout(cacheTimer)
+  const ids = await cachedIds()
+  await Promise.all([...new Set(current ? [...ids, current] : ids)].map((id) => Storage.removeItem(cacheKey(id)).catch(() => {})))
+  await Storage.removeItem(CACHE_LIST).catch(() => {}); cacheList = null
 }
 let pending = false
 /** Publishes at most once a frame while text streams in. */
@@ -153,14 +172,26 @@ export async function connect(s: Session, via?: { hostedBy: string | null }) {
   if (me()!.assistant.name && aiReady()) await openMain()
 }
 
+/** The sample is showing (src/try.ts): nothing goes out, nothing is kept. */
+export const isSample = () => session()?.origin === SAMPLE_ORIGIN
+
+/** Try it: the app on made-up data. No question comes first, as nothing reaches a model; disconnect() leaves it. */
+export async function startSample() {
+  const sample = new SampleBot(lang(), str('nameSuggestion'), (f) => apply(f as unknown as ThreadFrame))
+  bot = sample; stopped = true; hostedBy.set(null); session.set(sample.s)
+  me.set(sample.me()); connection.set('online'); mainOpened = true
+  asks.set(sample.asks())
+  await follow(SAMPLE_THREAD)
+}
+
 /** Sets `me` and keeps a copy for the next launch. */
-function putMe(m: Me) { me.set(m); Storage.setItem('me', JSON.stringify(m)).catch(() => {}) }
+function putMe(m: Me) { me.set(m); if (!isSample()) Storage.setItem('me', JSON.stringify(m)).catch(() => {}) }
 
 export async function disconnect() {
   stopped = true
   if (viaPocket()) await forgetPocket()
   followId = null; mainOpened = false; wantedThread = null; eventsWs?.close(); eventsWs = null
-  const kept = sessionId(); if (kept) await Storage.removeItem(cacheKey(kept)).catch(() => {}); sessionId.set(null); threadLoaded.set(false); thread.rows = []
+  await forgetCaches(sessionId()); sessionId.set(null); threadLoaded.set(false); thread.rows = []
   bot = null; await saveSession(null); await Storage.removeItem('hostedBy'); hostedBy.set(null); session.set(null); me.set(null); await Storage.removeItem('me'); rows.set([]); asks.set([]); connection.set('offline')
 }
 
@@ -213,6 +244,7 @@ function sendPresence() {
 effect(() => { appState(); sendPresence() })
 
 function sendFollow() {
+  if (bot instanceof SampleBot && followId) { apply(bot.snapshot(followId) as unknown as ThreadFrame); return }
   if (!followId || !eventsWs || eventsWs.readyState !== 1) return
   eventsWs.send(JSON.stringify({ type: 'follow', sessionId: followId, lang: lang() }))
 }

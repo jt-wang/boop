@@ -19,7 +19,7 @@ settings:
     MARKETING_VERSION: 0.1.0
     DEEPSEEK_BOT_HOST_URL: ""   # the host for hosted accounts (docs/hosting.md); empty = self-hosting only
     DEEPSEEK_BOT_LINK_DOMAIN: "deepseek-bot.example"   # [compliance] the host's domain for universal links (applinks:); set it with DEEPSEEK_BOT_HOST_URL
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     IPHONEOS_DEPLOYMENT_TARGET: "15.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SWIFT_STRICT_CONCURRENCY: minimal
@@ -49,10 +49,11 @@ targets:
       - package: TailPocketNSH
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.jingtao.boop
+        # Both come from Config/Signing.shared.xcconfig, and a builder's own values from Signing.local.xcconfig (docs/ios.md).
+        PRODUCT_BUNDLE_IDENTIFIER: $(BOOP_BUNDLE_ID)
         PRODUCT_NAME: DeepSeekBot
         INFOPLIST_FILE: DeepSeekBot/Info.plist
-        CODE_SIGN_ENTITLEMENTS: DeepSeekBot/DeepSeekBot.entitlements
+        CODE_SIGN_ENTITLEMENTS: $(BOOP_ENTITLEMENTS)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         OTHER_LDFLAGS: ["-ObjC"]
@@ -65,7 +66,7 @@ targets:
       - target: DeepSeekBot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.jingtao.boop.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: $(BOOP_BUNDLE_ID).uitests
         TEST_TARGET_NAME: DeepSeekBot
         GENERATE_INFOPLIST_FILE: YES
 schemes:

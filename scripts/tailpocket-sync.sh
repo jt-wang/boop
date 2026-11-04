@@ -22,12 +22,13 @@ cp "$T/sdk/js/client.ts" "$T/sdk/js/nsh.ts" "$ROOT/mobile/src/tailpocket/"
 for target in "$@"; do
   case "$target" in
     android)
+      export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
       export JAVA_HOME="${JAVA_HOME:-/Applications/Android Studio.app/Contents/jbr/Contents/Home}"
       [ -f "$T/build/android/tailpocket-mobile.aar" ] || (cd "$T" && ./scripts/build-mobile.sh android)
-      (cd "$T/sdk/android" && ./gradlew --offline -q publish :tailpocket-nsh:assembleRelease)
-      mkdir -p "$ROOT/android/app/libs" "$ROOT/android/tailpocket-m2/io/github/jtwang"
+      (cd "$T/sdk/android" && ./gradlew -q publish :tailpocket-nsh:assembleRelease)
+      mkdir -p "$ROOT/android/app/libs" "$ROOT/android/tailpocket-m2/io/jingtao"
       cp "$T/sdk/android/tailpocket-nsh/build/outputs/aar/tailpocket-nsh-release.aar" "$ROOT/android/app/libs/tailpocket-nsh.aar"
-      cp -R "$T/build/android/m2/io/github/jtwang/tailpocket" "$ROOT/android/tailpocket-m2/io/github/jtwang/"
+      cp -R "$T/build/android/m2/io/jingtao/tailpocket" "$ROOT/android/tailpocket-m2/io/jingtao/"
       echo "android: android/app/libs/tailpocket-nsh.aar, android/tailpocket-m2"
       ;;
     ios)

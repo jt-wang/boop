@@ -328,7 +328,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.jingtao.boop.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BOOP_BUNDLE_ID).uitests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = DeepSeekBot;
@@ -339,7 +339,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = DeepSeekBot/DeepSeekBot.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "$(BOOP_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = DeepSeekBot/Info.plist;
@@ -350,7 +350,7 @@
 				OTHER_LDFLAGS = (
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.jingtao.boop;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BOOP_BUNDLE_ID)";
 				PRODUCT_NAME = DeepSeekBot;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -393,7 +393,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEEPSEEK_BOT_HOST_URL = "";
 				DEEPSEEK_BOT_LINK_DOMAIN = "deepseek-bot.example";
@@ -457,7 +457,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEEPSEEK_BOT_HOST_URL = "";
 				DEEPSEEK_BOT_LINK_DOMAIN = "deepseek-bot.example";
@@ -502,7 +502,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.jingtao.boop.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BOOP_BUNDLE_ID).uitests";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = DeepSeekBot;
@@ -513,7 +513,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = DeepSeekBot/DeepSeekBot.entitlements;
+				CODE_SIGN_ENTITLEMENTS = "$(BOOP_ENTITLEMENTS)";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = DeepSeekBot/Info.plist;
@@ -524,7 +524,7 @@
 				OTHER_LDFLAGS = (
 					"-ObjC",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.jingtao.boop;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(BOOP_BUNDLE_ID)";
 				PRODUCT_NAME = DeepSeekBot;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

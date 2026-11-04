@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.1
+
+- Build Boop for your own iPhone and sign it with your own Apple account: `docs/ios.md`, "Build it for your own iPhone".
+- "Try it without a computer" on the pairing screen opens the app on made-up data, with no pairing and no network.
+- On a computer you run, a report from the app stays on that computer. The app says so and links to GitHub issues.
+- Terms and privacy links open the public pages when the phone has no hosted account.
+- Unpairing removes the copy of every conversation the phone kept.
+- The Android app builds from a clean checkout next to public TailPocket.
+
+No new downloads: the links still give the v0.1.0 files.
+
 ## v0.1.0
 
 The first public release of Boop: an AI assistant that runs on your own computer or server and that you talk to from your phone.

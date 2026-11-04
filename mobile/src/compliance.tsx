@@ -27,9 +27,12 @@ export interface InterfaceItem { id: string; title: string; at: number; answered
 export const pendingReport = signal<ReportTarget | null>(null)
 export const pendingInterface = signal<string | null>(null)
 
-/** Where the public pages live: the host this build signs in to, else the computer the phone is paired with. */
-export function legalBase(): string | null { return hostedBy() ?? hostUrl() ?? session()?.origin ?? null }
-export const openLegal = (page: 'privacy' | 'terms') => { const b = legalBase(); if (b) openUrl(`${b}/${page}?lang=${lang()}`).catch(() => {}) }
+/** The pages for a computer the person runs. A computer's own pages are no use: through TailPocket its address only works inside this app, and the browser opens the link. */
+export const PUBLIC_SITE = 'https://boop.jingtao.io'
+export const ISSUES_URL = 'https://github.com/jt-wang/boop/issues'
+/** The host this build signs in to has its own pages (they name its operator); anyone else reads the public ones. */
+export const legalUrl = (page: 'privacy' | 'terms') => { const h = hostedBy() ?? hostUrl(); return h ? `${h}/${page}?lang=${lang()}` : `${PUBLIC_SITE}/${page}/` }
+export const openLegal = (page: 'privacy' | 'terms') => { openUrl(legalUrl(page)).catch(() => {}) }
 
 export const permissionWord = (p: Permission) => str(p === 'openUrl' ? 'permOpenUrl' : p === 'clipboard' ? 'permClipboard' : 'permPicker')
 
@@ -177,6 +180,8 @@ export async function interfaceMenu(i: { moduleId: string; title: string }) {
  * host this build knows directly. Then a plain acknowledgement with the promised response time.
  */
 export function ReportPage(props: { target: ReportTarget; onDone: () => void }) {
+  // no host: nobody but the person ever reads it (src/compliance.ts keeps it on the computer), so it promises no answer
+  const local = () => !hostedBy() && !hostUrl()
   const reason = signal<(typeof REASONS)[number] | null>(null)
   const note = signal('')
   const hide = signal(true)
@@ -199,8 +204,9 @@ export function ReportPage(props: { target: ReportTarget; onDone: () => void }) 
       <Page page="ReportSentPage">
         <View class="items-center px-8 pt-10 gap-4" testID="report-sent">
           <View class="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 items-center justify-center"><Text class="text-primary text-[28px]">✓</Text></View>
-          <Text class="text-foreground text-[17px] font-semibold leading-7 text-center">{str('reportSent')}</Text>
-          <Text class="text-muted-foreground text-[17px] leading-6 text-center">{str('reportSentBody')}</Text>
+          <Text class="text-foreground text-[17px] font-semibold leading-7 text-center">{str(local() ? 'reportLocalSent' : 'reportSent')}</Text>
+          <Text class="text-muted-foreground text-[17px] leading-6 text-center">{str(local() ? 'reportLocalSentBody' : 'reportSentBody')}</Text>
+          <If when={local()}><View class="pt-2 self-stretch"><Btn kind="soft" testID="report-issue" label={str('reportOpenIssue')} onPress={() => { openUrl(ISSUES_URL).catch(() => {}) }} /></View></If>
           <View class="pt-2 self-stretch"><Btn kind="primary" testID="report-done" label={str('done')} onPress={props.onDone} /></View>
         </View>
       </Page>
@@ -209,7 +215,7 @@ export function ReportPage(props: { target: ReportTarget; onDone: () => void }) 
         <If when={props.target.kind === 'reply'}>
           <View class="px-8"><Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={4} testID="report-excerpt">{props.target.kind === 'reply' ? props.target.excerpt : ''}</Text></View>
         </If>
-        <Group footer={props.target.kind === 'reply' ? str('reportReplyHint') : str('reportInterfaceHint')}>
+        <Group footer={local() ? str('reportLocalHint') : props.target.kind === 'reply' ? str('reportReplyHint') : str('reportInterfaceHint')}>
           {REASONS.map((r) => <Cell title={reasonWord(r)} testID={`reason-${r}`} onPress={() => reason.set(r)} right={reason() === r ? <Text class="text-primary text-[17px] font-semibold">✓</Text> : undefined} />)}
         </Group>
         <Group>

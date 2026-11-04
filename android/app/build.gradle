@@ -72,8 +72,8 @@ dependencies {
     implementation files('libs/nsh.aar')
     // TailPocket: how a phone reaches a computer running Boop (docs/connection.md). scripts/tailpocket-sync.sh android puts these in place.
     implementation files('libs/tailpocket-nsh.aar')
-    implementation 'io.github.jtwang.tailpocket:tailpocket:0.1.0'
-    implementation 'io.github.jtwang.tailpocket:tailpocket-ui:0.1.0'
+    implementation 'io.jingtao.tailpocket:tailpocket:0.2.0'
+    implementation 'io.jingtao.tailpocket:tailpocket-ui:0.2.0'
     // [push] FCM (PushService, PushBridge). Compiled into every build; it starts only with google-services.json.
     implementation 'com.google.firebase:firebase-messaging:24.1.0'
 

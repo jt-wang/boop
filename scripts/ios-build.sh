@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds the iOS app.
 #   scripts/ios-build.sh simulator   build for the simulator → ios/build/sim/DeepSeekBot.app
+#   scripts/ios-build.sh device [id] build for an iPhone with your own Apple account; with a device id, install on it
 #   scripts/ios-build.sh archive     archive + export an App Store .ipa → ios/build/export/DeepSeekBot.ipa
 # Signing is automatic for the team in ios/Config/Signing.local.xcconfig (docs/ios.md). Without an Apple ID signed in to
 # Xcode, give xcodebuild an App Store Connect API key so it can make the
@@ -11,6 +12,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="${1:-simulator}"
 PROJECT="$ROOT/ios/DeepSeekBot.xcodeproj"
 BUILD="$ROOT/ios/build"
+
+if [ "$MODE" = device ] && ! sed -n 's/^DEVELOPMENT_TEAM *= *//p' "$ROOT/ios/Config/Signing.local.xcconfig" 2>/dev/null | grep -q .; then
+  echo "set DEVELOPMENT_TEAM in ios/Config/Signing.local.xcconfig: copy Signing.local.xcconfig.example and fill it in (docs/ios.md)" >&2
+  exit 2
+fi
 
 "$ROOT/scripts/ios-bundle.sh"
 
@@ -35,15 +41,24 @@ case "$MODE" in
     echo "→ $BUILD/sim/DeepSeekBot.app"
     echo "install: xcrun simctl install booted $BUILD/sim/DeepSeekBot.app && xcrun simctl launch booted io.jingtao.boop"
     ;;
+  device)
+    DEVICE="${2:-}"
+    xcodebuild -project "$PROJECT" -scheme DeepSeekBot -configuration Debug \
+      -destination "$( [ -n "$DEVICE" ] && echo "id=$DEVICE" || echo 'generic/platform=iOS' )" -derivedDataPath "$BUILD/derived" "${AUTH[@]}" build | tail -5
+    APP="$BUILD/derived/Build/Products/Debug-iphoneos/DeepSeekBot.app"
+    if [ -n "$DEVICE" ]; then xcrun devicectl device install app --device "$DEVICE" "$APP"; else echo "→ $APP"; fi
+    ;;
   archive)
     ARCHIVE="$BUILD/DeepSeekBot.xcarchive"
     rm -rf "$ARCHIVE" "$BUILD/export"
     xcodebuild -project "$PROJECT" -scheme DeepSeekBot -configuration Release \
       -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" "${AUTH[@]}" archive | tail -5
+    # NSH's framework, built on this Mac, holds its home folder and checkout in panic locations; testers get this binary. The export signs it again.
+    "$ROOT/scripts/android-scrub-home.sh" "$HOME" "$ARCHIVE/Products/Applications/DeepSeekBot.app/DeepSeekBot"
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$ROOT/ios/ExportOptions.plist" \
       -exportPath "$BUILD/export" "${AUTH[@]}" | tail -5
     echo "→ $BUILD/export/DeepSeekBot.ipa"
     echo "upload: scripts/ios-upload.sh"
     ;;
-  *) echo "usage: $0 [simulator|archive]" >&2; exit 2 ;;
+  *) echo "usage: $0 [simulator|device [id]|archive]" >&2; exit 2 ;;
 esac

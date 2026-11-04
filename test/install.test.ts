@@ -174,12 +174,26 @@ test('a developer finds TailPocket at ../tailpocket, the name a clone of the pub
   assert.match(readFileSync(join(ROOT, 'ios/DeepSeekBot.xcodeproj/project.pbxproj'), 'utf8'), /relativePath = "?\.\.\/\.\.\/tailpocket\/sdk\/apple\/NSH/)
 })
 
+test('Android asks for TailPocket under the group and version public TailPocket publishes', () => {
+  const read = (f: string) => readFileSync(join(ROOT, f), 'utf8')
+  const gradle = read('android/app/build.gradle')
+  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket:0\.2\.0'/)
+  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket-ui:0\.2\.0'/)
+  assert.match(read('scripts/tailpocket-sync.sh'), /build\/android\/m2\/io\/jingtao\/tailpocket/)
+  // A clean machine has no Gradle cache and no local.properties in a fresh TailPocket clone.
+  assert.match(read('scripts/tailpocket-sync.sh'), /export ANDROID_HOME="\$\{ANDROID_HOME:-\$HOME\/Library\/Android\/sdk\}"/)
+  assert.doesNotMatch(read('scripts/tailpocket-sync.sh'), /gradlew --offline/)
+  assert.match(read('android/app/src/main/java/dev/deepseekbot/app/MainActivity.java'), /io\.jingtao\.tailpocket\.nsh/)
+})
+
 test('the app is io.jingtao.boop everywhere the OS or a store reads its id', () => {
   const read = (f: string) => readFileSync(join(ROOT, f), 'utf8')
   assert.equal(JSON.parse(read('mobile/nsh.json')).id, 'io.jingtao.boop')
   assert.equal(JSON.parse(read('mac/nsh.json')).id, 'io.jingtao.boop.mac')
-  assert.match(read('ios/project.yml'), /PRODUCT_BUNDLE_IDENTIFIER: io\.jingtao\.boop\n/)
-  assert.match(read('ios/DeepSeekBot.xcodeproj/project.pbxproj'), /PRODUCT_BUNDLE_IDENTIFIER = io\.jingtao\.boop;/)
+  // The iOS id comes from one setting, so someone signing with their own account changes only ios/Config/Signing.local.xcconfig.
+  assert.match(read('ios/Config/Signing.shared.xcconfig'), /^BOOP_BUNDLE_ID = io\.jingtao\.boop$/m)
+  assert.match(read('ios/project.yml'), /PRODUCT_BUNDLE_IDENTIFIER: \$\(BOOP_BUNDLE_ID\)\n/)
+  assert.match(read('ios/DeepSeekBot.xcodeproj/project.pbxproj'), /PRODUCT_BUNDLE_IDENTIFIER = "\$\(BOOP_BUNDLE_ID\)";/)
   for (const f of ['ios/project.yml', 'ios/DeepSeekBot.xcodeproj/project.pbxproj', 'ios/DeepSeekBot/Info.plist', 'src/host-main.ts', 'mobile/nsh.json', 'mac/nsh.json']) {
     assert.doesNotMatch(read(f), /dev\.deepseekbot\.(app|mac)/, f)
   }

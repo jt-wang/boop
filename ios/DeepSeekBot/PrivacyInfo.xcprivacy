@@ -4,9 +4,10 @@
   The app's privacy manifest. No tracking, no tracking domains.
   Collected: what a hosted account keeps (email, user ID, the conversation and what the assistant makes), and
   the push token, all for app functionality and linked to the account. Required-reason APIs: the ones the linked
-  binary (the shell plus NativeShell.xcframework, statically linked) calls, found by `nm -u` on the simulator build
-  on 2026-10-27: NSUserDefaults (PushBridge.swift's push.asked flag) → CA92.1; stat, fstat, fstatat on the app's own files → C617.1.
-  No systemUptime / mach_absolute_time, no statfs / volume capacity, no activeInputModes.
+  binary (the shell plus NativeShell and TailPocketMobile, statically linked) calls, found by `nm -u` on the release
+  archive on 2026-11-05: NSUserDefaults (PushBridge.swift's push.asked flag) → CA92.1; stat, lstat, fstat, fstatat on the app's
+  own files → C617.1; mach_absolute_time, for elapsed time and timers in the app → 35F9.1.
+  No systemUptime, no statfs / volume capacity, no activeInputModes.
 -->
 <plist version="1.0">
 <dict>
@@ -81,6 +82,14 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>C617.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
 			</array>
 		</dict>
 	</array>

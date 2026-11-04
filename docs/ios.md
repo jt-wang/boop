@@ -8,6 +8,37 @@ What the shell adds:
 - **A link to pair.** `deepseekbot://pair?invite=<a TailPocket code>`, `deepseekbot://pair?url=<the pairing link>` (or `?origin=http://host:3850&code=123456`) opens the app with the address and code filled in.
 - **Interfaces the assistant writes.** When the assistant builds a module with its `ui` tool, the thread shows a card with Open. The shell downloads the signed `.nshpkg` from the bot with the device token, verifies it against the bot's root key (`GET /me` → `uiRootPublicKey`; one `NshTrust` store per bot under Application Support, so a package signed by another bot is refused) and runs it in a sheet: a second `NshAppView` with its own VM and limits, a title bar and Done. The module reads `{ token, origin, moduleId }` from `host.call('launch.params')` (also set as `host.params`), posts its result to the bot itself and asks the shell to `ui.close`.
 
+## Build it for your own iPhone
+
+Using a coding agent? Tell it: follow "Build it for your own iPhone" in `docs/ios.md`.
+
+Needs a Mac with Xcode and Go, the [`nsh` CLI](https://nsh.dev/docs/installation), and your Apple Account added in Xcode → Settings → Accounts. Measured 2026-11-05 from a clean checkout with public TailPocket and stock `nsh` 0.3.0: the app compiles and signs with a paid team and a new bundle id, with and without the entitlements. A free account and an install on a physical iPhone have not been tried yet; so far the app has run only on the simulator.
+
+1. Get both repositories, side by side:
+
+```sh
+git clone https://github.com/jt-wang/boop
+git clone https://github.com/jt-wang/tailpocket
+cd boop
+cp ios/Config/Signing.local.xcconfig.example ios/Config/Signing.local.xcconfig
+```
+
+2. In `ios/Config/Signing.local.xcconfig` set `DEVELOPMENT_TEAM` to your Team ID and `BOOP_BUNDLE_ID` to an id of your own. With a free account, also remove the slashes before `BOOP_ENTITLEMENTS =`: the build then has no notifications or universal links, and [Apple's limits](https://developer.apple.com/support/compare-memberships/) apply (the app stops opening after 7 days until you build again, 3 apps per device).
+3. On the iPhone turn on Developer Mode (Settings → Privacy & Security → Developer Mode, then restart), connect it with a cable and tap Trust.
+4. Build and install. The device id comes from `xcrun devicectl list devices`.
+
+```sh
+scripts/tailpocket-sync.sh ios
+scripts/ios-build.sh device <device id>
+```
+
+5. If iOS will not open the app, trust your developer profile under Settings → General → VPN & Device Management.
+6. Pair: open Boop on your computer, then tap Scan the code in the app. No computer yet? Tap "Try it without a computer" to see the app on made-up data.
+
+For notifications on your own build you need a paid Apple Developer Program team and an APNs key on your computer ([below](#2-tell-the-bot-about-apns)).
+
+Stock `nsh` 0.3.0 cannot open `wss://`. Pairing by scanning the code goes through TailPocket on `127.0.0.1` and does not need it; a computer you reach at an `https://` address needs [the patched framework](#nsh-030-cannot-open-wss-fixed-with-a-patched-framework).
+
 ## Build and run on the simulator
 
 Needs Xcode, the `nsh` CLI and the NSH distribution (`~/.nsh`, which `nsh` installs) and `xcodegen` (`brew install xcodegen`, only when you change `ios/project.yml`).
@@ -56,34 +87,9 @@ cargo xtask ios-embed --no-catalyst --no-dev   # → dist/nsh/embed/ios/NativeSh
 
 To go back, move each `.orig` over its file. The Mac Catalyst host and `NativeShellDev.xcframework` stay stock; this app uses neither. `scripts/ios-bundle.sh` warns when the framework it links has no `ring` symbols, which is the stock one. Once an NSH release contains #530, the stock install is enough.
 
-## Install on your own iPhone
-
-This path has not been run on a physical iPhone yet; the app has only run on the simulator. Compiling for a device passes.
-
-Needs a Mac with Xcode, this repository, a TailPocket checkout next to it (`git clone https://github.com/jt-wang/tailpocket ../tailpocket`), and your Apple Account added in Xcode → Settings → Accounts. Your Team ID is shown there. A bundle id must be yours: `io.jingtao.boop` belongs to another team.
-
-1. On the iPhone, turn on Developer Mode: Settings → Privacy & Security → Developer Mode, then restart it. Connect it with a cable and tap Trust.
-2. Build and install. `<device>` comes from `xcrun devicectl list devices`.
-
-```sh
-scripts/tailpocket-sync.sh ios
-scripts/ios-bundle.sh
-xcodebuild -project ios/DeepSeekBot.xcodeproj -scheme DeepSeekBot -configuration Debug \
-  -destination 'id=<device>' -derivedDataPath ios/build/derived -allowProvisioningUpdates \
-  DEVELOPMENT_TEAM=<your team id> PRODUCT_BUNDLE_IDENTIFIER=<com.you.boop> CODE_SIGN_ENTITLEMENTS= build
-xcrun devicectl device install app --device <device> ios/build/derived/Build/Products/Debug-iphoneos/DeepSeekBot.app
-```
-
-3. If iOS will not open the app, trust your developer profile under Settings → General → VPN & Device Management.
-4. Open Boop on your computer, then tap Scan the code in the app.
-
-`CODE_SIGN_ENTITLEMENTS=` leaves notifications and universal links out of this build. For notifications, drop it and use a paid Apple Developer Program team (the steps below).
-
-Without a paid membership, Xcode uses a Personal Team. [Apple's limits](https://developer.apple.com/support/compare-memberships/): the provisioning profile expires after 7 days, so rebuild and reinstall then; up to 3 devices and 3 apps per device.
-
 ## Ship through TestFlight
 
-Everything below needs your Apple Developer account. Copy `ios/Config/Signing.local.xcconfig.example` to `ios/Config/Signing.local.xcconfig` and set your team there; that file is not committed.
+Everything below needs your Apple Developer account. Copy `ios/Config/Signing.local.xcconfig.example` to `ios/Config/Signing.local.xcconfig` and set your team and bundle id there; that file is not committed. Where this section says `io.jingtao.boop`, use your own id.
 
 ### 1. Once: the app record and keys
 
@@ -118,7 +124,7 @@ scripts/ios-build.sh archive     # nsh build → xcodebuild archive → ios/buil
 scripts/ios-upload.sh            # validates, then uploads to App Store Connect
 ```
 
-With the API key, `xcodebuild` creates the App Store provisioning profile for `io.jingtao.boop` itself (`-allowProvisioningUpdates`). Without it, sign in to Xcode once with the Apple ID of the team (Xcode → Settings → Accounts) and run the same commands without the `ASC_*` variables.
+With the API key, `xcodebuild` creates the App Store provisioning profile for `io.jingtao.boop` itself (`-allowProvisioningUpdates`; measured with Xcode 27.0 on 2026-11-05: archive and export both succeeded with a team key). `scripts/ios-build.sh archive` also overwrites this Mac's home folder and NSH checkout inside the app binary, the same way the Android build does, before the export signs it. The export leaves symbols out (`uploadSymbols` is false in `ios/ExportOptions.plist`) because they name folders on this Mac, so crash reports symbolicate from `ios/build/DeepSeekBot.xcarchive`, which the next archive replaces. The upload needs the app record from step 1: App Store Connect's API answers `The resource 'apps' does not allow 'CREATE'`, and `altool` stops with `Unable to find Apple ID for Bundle ID` until the record exists. Without it, sign in to Xcode once with the Apple ID of the team (Xcode → Settings → Accounts) and run the same commands without the `ASC_*` variables.
 
 After the upload, App Store Connect processes the build (5–15 minutes), then [TestFlight](https://appstoreconnect.apple.com/apps) → the app → TestFlight → add yourself as an internal tester, install TestFlight on the phone, install the app from it.
 

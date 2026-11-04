@@ -7,7 +7,7 @@ import { APP_VERSION } from './version.ts'
 import { LANGS, LANG_NAMES, formatDateTime, formatNumber } from './locale.ts'
 import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type YNode } from 'nsh'
 import { AlertDialog, Input } from 'nsh/base'
-import { api, connection, joined, connect, deviceName, disconnect, follow, hostedBy, lang, me, sessionId, setAssistantName, setLang, showToast, str, t, type ThreadSummary } from './state.ts'
+import { api, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
 import { activityText } from './plain.ts'
 import { pair, parseAddress, type Session } from './api.ts'
 import { signIn, hostConfig, hostUrl, isHostedOrigin, waitForSandbox } from './hosted.ts'
@@ -15,7 +15,7 @@ import { setShowWork, showWork } from './prefs.ts'
 import { Image } from 'nsh'
 import { Progress } from 'nsh/base'
 import mark from '../assets/mark.png'
-import { AboutGroup } from './compliance.tsx' // [compliance]
+import { AboutGroup, openLegal } from './compliance.tsx' // [compliance]
 import { pairLink } from './native.ts'
 import { canScan, isInvite, pairInvite, pocketPath, refreshPath, scanInvite, viaPocket } from './pocket.ts'
 import { ago } from './library.tsx'
@@ -81,6 +81,8 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
         </If>
       </View>
       <Btn kind={canScan() ? 'soft' : 'primary'} testID="connect" label={busy() ? str('connecting') : str('connect')} disabled={busy()} onPress={go} />
+      <View role="button" testID="try-it" onPress={() => { startSample().catch(() => {}) }} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-primary text-[17px]">{str('tryIt')}</Text></View>
+      <View role="button" testID="connect-privacy" onPress={() => openLegal('privacy')} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-muted-foreground text-[13px]">{str('privacyPolicy')}</Text></View>
     </Scroll>
   )
 }
@@ -388,9 +390,15 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
   return (
     <Page page="SettingsPage" class={`${pageClass} pb-[env(keyboard-inset-height)]`} keyboardShouldPersistTaps="handled">
       <ComputerSection origin={origin()} hosted={hosted()} />
-      <Group footer={unpairBody()}>
-        <Cell title={str('unpair')} destructive centered onPress={unpair} testID="unpair" />
-      </Group>
+      <If when={isSample()} else={
+        <Group footer={unpairBody()}>
+          <Cell title={str('unpair')} destructive centered onPress={unpair} testID="unpair" />
+        </Group>
+      }>
+        <Group footer={str('sampleLeaveHint')}>
+          <Cell title={str('sampleLeave')} centered onPress={() => { disconnect().catch(() => {}) }} testID="demo-leave" />
+        </Group>
+      </If>
       <Group header={str('assistant')}>
         <View class="pl-4"><View class="flex-row items-center min-h-[44px] pr-4 gap-3">
           <Text class="text-foreground text-[17px]">{str('name')}</Text>

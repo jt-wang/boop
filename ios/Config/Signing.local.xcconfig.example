@@ -1,2 +1,6 @@
 // Copy to Signing.local.xcconfig (not committed). Your Team ID is in Xcode → Settings → Accounts.
 DEVELOPMENT_TEAM = 
+// Any id that is yours; one can belong to one team only.
+BOOP_BUNDLE_ID = com.example.boop
+// A free Apple account (Personal Team) cannot sign notifications or universal links: remove the slashes to leave them out.
+// BOOP_ENTITLEMENTS =

@@ -13,7 +13,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowInsetsController;
 import com.longbridge.nsh.NshView;
-import io.github.jtwang.tailpocket.nsh.TailPocketNsh;
+import io.jingtao.tailpocket.nsh.TailPocketNsh;
 import kotlinx.coroutines.CoroutineScopeKt;
 import java.util.HashMap;
 import java.util.Map;

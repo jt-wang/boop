@@ -103,14 +103,14 @@ test('Settings → AI provider shows who and since when; Stop sharing asks first
   expect(b.puts).toEqual([{ ai: false }])
 })
 
-test('the privacy policy and terms open from Settings on the computer the phone knows', async () => {
+test('the privacy policy and terms open from Settings on the public pages: a browser cannot reach a paired computer through TailPocket', async () => {
   const b = bot({ age: 'adult', consent: true })
   const app = await open('./App.tsx', { storage: storage(), network: b.network as never })
   await app.waitFor('id:composer')
   await app.press('label:Settings')
   await app.press('id:privacy-row')
   await app.press('id:terms-row')
-  expect(app.openedUrls()).toEqual([`${O}/privacy?lang=en`, `${O}/terms?lang=en`])
+  expect(app.openedUrls()).toEqual(['https://boop.jingtao.io/privacy/', 'https://boop.jingtao.io/terms/'])
 })
 
 test('report a reply: long-press → Report → a reason and a note → sent to the computer, and the host when it did not forward → thanks with the response time', async () => {
@@ -175,7 +175,7 @@ test('Menu → Interfaces: newest first with their state; one interface: permiss
   expect(patches).toEqual([{ grants: ['openUrl', 'clipboard'] }, { hidden: true }])
   await app.press('id:if-report')
   await app.waitFor('id:report-hide')
-  expect(app.shows('text:/its code and your note/')).toBe(true)
+  expect(app.shows('text:/stays on your computer/')).toBe(true)
 })
 
 test('opening an interface that asks for more than its screen asks first, by name; Allow is kept and passed to the shell, Don\'t allow is not', async () => {

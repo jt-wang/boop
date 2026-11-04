@@ -46,6 +46,20 @@ test('a tap that launched the app: it opens on that thread, not the main one', a
   expect(app.shows('text:Words in the main thread.')).toBe(false)
 })
 
+test('unpairing removes what this phone kept of every thread it opened, and nothing comes back afterwards', async () => {
+  const app = await open('./App.tsx', { storage, network: { ...network, [`DELETE ${ORIGIN}/devices/d1`]: { body: { ok: true } } }, host: { handlers: { 'push.request': { granted: false } } } })
+  await app.waitFor('text:Words in the main thread.')
+  await app.host.send('notification', { url: '/threads/side-1' })
+  await app.waitFor('text:Words in the side thread.')
+  await app.press('label:Settings')
+  await app.waitFor('id:unpair')
+  app.onDialog((d) => d.buttons.find((b) => b === 'Unpair this phone') ?? null)
+  await app.press('id:unpair')
+  await app.waitFor('text:Boop')
+  await app.wait(600) // a save still waiting on its timer must not write the thread back
+  expect(Object.keys(app.storage()).filter((k) => k.startsWith('thread'))).toEqual([])
+})
+
 test('the morning ideas open Discover', async () => {
   const app = await open('./App.tsx', { storage, network, host: { handlers: { 'push.request': { granted: false } } } })
   await app.waitFor('id:composer')

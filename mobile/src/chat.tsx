@@ -18,7 +18,7 @@ import { Input, TextView } from 'nsh/base'
 import { BackHandler } from 'nsh/mobile'
 import { connectorOf, serviceName, toolWord, type CardRow, type FileRow, type ModuleRow, type Row } from './fold.ts'
 import { FileView, isRemote, LibraryImage, splitImages } from './files.tsx'
-import { asks, awaiting, threadLoaded, connection, follow, lang, me, memoryNoted, reflecting, rowKey, rows, running, sessionId, copiedToast, showToast, statusText, str, t, trySend, type Ask } from './state.ts'
+import { asks, awaiting, threadLoaded, connection, follow, lang, me, memoryNoted, reflecting, rowKey, rows, running, sessionId, copiedToast, showToast, statusText, str, t, trySend, type Ask, isSample } from './state.ts'
 import { showWork } from './prefs.ts'
 import { openStop, StopControl } from './stop.tsx'
 import { AskCard } from './asks.tsx'
@@ -150,6 +150,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   let askCount = 0
   effect(() => { const n = asks().filter((a) => !a.sessionId || a.sessionId === sessionId()).length; if (n > askCount) Keyboard.dismiss(); askCount = n })
   const status = computed(() => {
+    if (isSample() && !running()) return str('sampleStatus')
     if (waiting()) return str('waitingYou')
     if (running()) return statusText() || str('working')
     if (reflecting()) return str('updatingMemory')

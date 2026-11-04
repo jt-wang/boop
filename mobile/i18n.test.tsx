@@ -6,6 +6,7 @@ import { expect, open, test } from 'nsh/test'
 import { LANGS, LANG_NAMES, formatDate, formatDateTime, formatNumber, formatTime, labelSeparator, listOf, listSeparator, normalizeLang, pluralRu, type Lang } from './src/locale.ts'
 import { ALL, STRINGS, STOP_STRINGS, MAIN_STRINGS, CARD_STRINGS, CHAT_STRINGS, MODULE_STRINGS } from './src/i18n.ts'
 import { COMPLIANCE_STRINGS } from './src/i18n-compliance.ts'
+import { TRY_STRINGS } from './src/i18n-try.ts'
 import { CM, SERVICES, serviceFor } from './src/i18n-cm.ts'
 import { PLAIN, activityText } from './src/plain.ts'
 import { TOOL_WORDS, toolWord } from './src/fold.ts'
@@ -37,7 +38,7 @@ function compare(a: unknown, b: unknown, path: string, out: string[]) {
     for (const k of Object.keys(b)) if (!(k in (a as object))) out.push(`${path}.${k}: not in English`)
   } else if (typeof a === 'string' && (typeof b !== 'string' || (a && !b))) out.push(`${path}: missing`)
 }
-const TABLES: [string, Record<string, unknown>][] = [['base', STRINGS], ['stop', STOP_STRINGS], ['main', MAIN_STRINGS], ['card', CARD_STRINGS], ['chat', CHAT_STRINGS], ['module', MODULE_STRINGS], ['compliance', COMPLIANCE_STRINGS], ['cm', CM], ['services', SERVICES], ['plain', PLAIN], ['tools', TOOL_WORDS]]
+const TABLES: [string, Record<string, unknown>][] = [['try', TRY_STRINGS], ['base', STRINGS], ['stop', STOP_STRINGS], ['main', MAIN_STRINGS], ['card', CARD_STRINGS], ['chat', CHAT_STRINGS], ['module', MODULE_STRINGS], ['compliance', COMPLIANCE_STRINGS], ['cm', CM], ['services', SERVICES], ['plain', PLAIN], ['tools', TOOL_WORDS]]
 
 test('every string in all seven, the same blanks, no list shorter', () => {
   expect([...LANGS]).toEqual([...SEVEN])

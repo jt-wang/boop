@@ -1,6 +1,7 @@
 // Interface copy. English and Chinese here, the other five in src/locales/; the person's choice is kept in Storage.
 import { locale } from 'nsh'
 import { COMPLIANCE_STRINGS } from './i18n-compliance.ts' // [compliance]
+import { TRY_STRINGS } from './i18n-try.ts'
 import { normalizeLang, type Lang } from './locale.ts'
 import { es as esLocale } from './locales/es.ts'
 import { ja as jaLocale } from './locales/ja.ts'
@@ -219,5 +220,5 @@ export const MODULE_STRINGS: Record<Lang, ModuleWords> = {
 }
 
 // [agent:ui] One table for `str()` / `t()` in state.ts: the base strings plus every module's own table (later tables win on a shared key).
-const merged = (l: Lang) => ({ ...STRINGS[l], ...STOP_STRINGS[l], ...MAIN_STRINGS[l], ...CARD_STRINGS[l], ...CHAT_STRINGS[l], ...MODULE_STRINGS[l], ...COMPLIANCE_STRINGS[l] })
+const merged = (l: Lang) => ({ ...STRINGS[l], ...STOP_STRINGS[l], ...MAIN_STRINGS[l], ...CARD_STRINGS[l], ...CHAT_STRINGS[l], ...MODULE_STRINGS[l], ...COMPLIANCE_STRINGS[l], ...TRY_STRINGS[l] })
 export const ALL: Record<Lang, ReturnType<typeof merged>> = { en: merged('en'), zh: merged('zh'), 'zh-Hant': merged('zh-Hant'), es: merged('es'), ko: merged('ko'), ja: merged('ja'), ru: merged('ru') }

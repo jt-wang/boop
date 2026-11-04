@@ -17,11 +17,7 @@ export function openStop() { if (running()) { Keyboard.dismiss(); stopOpen.set(t
 
 /** POST the cancel; returns the HTTP status. Replaceable for headless tests. */
 export type StopPoster = (path: string) => Promise<number>
-const defaultPost: StopPoster = async (path) => {
-  const { origin, token } = api().s
-  const r = await fetch(origin + path, { method: 'POST', headers: { authorization: `Bearer ${token}` } })
-  return r.status
-}
+const defaultPost: StopPoster = (path) => api().cancel(path)
 
 export async function stopTask(post: StopPoster = defaultPost) {
   stopOpen.set(false)

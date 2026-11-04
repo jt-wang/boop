@@ -73,6 +73,9 @@ export class Bot {
     return r.json()
   }
 
+  /** POST with no body; the status. */
+  async cancel(path: string): Promise<number> { return (await fetch(this.s.origin + path, { method: 'POST', headers: { authorization: `Bearer ${this.s.token}` } })).status }
+
   async ticket(): Promise<string> { return (await this.send<{ ticket: string }>('POST', '/ws-ticket')).ticket }
   wsUrl(path: string, ticket: string) { return `${this.s.origin.replace(/^http/, 'ws')}${path}?ticket=${ticket}` }
 }
