@@ -75,17 +75,17 @@ To change the code, run it on your own server, or get the iPhone app: [docs/BUIL
 | Approvals | Anything hard to undo stops and asks: allow once, allow for this task, always allow, decline. The card says exactly what will happen. |
 | Cards | When the answer is a choice, a form, a table or a plan, it shows one — native controls, one tap to answer — instead of prose. |
 | Memory with a shape | About you, things it is tracking, decisions, people. Forget one line with a tap. Export and import as one file. |
-| Reminders and checks | "Remind me Thursday at 9" — it confirms the time, and the reminder arrives as a message plus a notification, with the app closed. |
+| Reminders and checks | "Remind me Thursday at 9" — it confirms the time, and the reminder arrives as a message in the chat, whether or not the app is open. |
 | Goals | A goal becomes a plan it follows up on; progress shows on the Discover tab. |
 | Discover | What it is tracking for you: needs you, goals and waits, ideas for you (new each day, or tap New ideas), recently done. |
 | Its own computer | A sandboxed shell, files, web search and a real browser with persistent logins — on your Mac or on a VPS. |
 | Library | Everything it wrote or produced, viewable from the phone. |
 | Connectors | Add any MCP server (GitHub, Notion, Google Calendar, your own); keys stay in environment variables on the computer. |
-| Notifications that earn their place | Only when it needs you, finished something, a reminder fired, or you asked it to watch something. |
+| Notifications | Only when it needs you, finished something, a reminder fired, or you asked it to watch something. The phone apps need your own Firebase or APNs setup: [docs/push.md](docs/push.md). |
 | Stop | Long-press the status line. |
 | Usage | Tokens per day and per thread. |
 
-Measured on a Mac with DeepSeek V4.1 Flash: first reply 5 s after sending; a reminder asked for in chat fires, is answered, and pushes in 78 s; "remember that I take oat milk" lands in memory in 11 s; opening a web page through its browser and reading it back in 28 s.
+Measured on a Mac with DeepSeek V4.1 Flash: first reply 5 s after sending; a reminder asked for in chat fires and is answered in 78 s; "remember that I take oat milk" lands in memory in 11 s; opening a web page through its browser and reading it back in 28 s.
 
 ## How it works
 

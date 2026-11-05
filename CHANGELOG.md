@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.2
+
+- The README says what the downloads do: a reminder arrives as a message in the chat, and notifications in the phone apps need your own Firebase or APNs setup (`docs/push.md`).
+
+No new downloads: the links still give the v0.1.0 files.
+
 ## v0.1.1
 
 - Build Boop for your own iPhone and sign it with your own Apple account: `docs/ios.md`, "Build it for your own iPhone".
