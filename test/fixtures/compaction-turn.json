@@ -1,0 +1,2379 @@
+[
+{
+"type": "turn/start",
+"seq": 127,
+"time": 0,
+"data": {
+"turn": 6
+}
+},
+{
+"type": "agent/inbox/spliced",
+"seq": 128,
+"time": 1,
+"data": {}
+},
+{
+"type": "step/start",
+"seq": 129,
+"time": 26,
+"data": {
+"turn": 6,
+"step": 1
+}
+},
+{
+"type": "user/message",
+"seq": 130,
+"time": 27,
+"data": {
+"id": "25eb0997-df31-43d2-8170-065525629c31",
+"role": "user",
+"source": {
+"kind": "user"
+},
+"content": [
+{
+"type": "text",
+"text": "person message"
+}
+]
+}
+},
+{
+"type": "assistant/message",
+"seq": 131,
+"time": 6913,
+"data": {
+"turn": 6,
+"step": 1,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0dd1013935535efb4f686945ff",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 132,
+"time": 6914,
+"data": {
+"turn": 6,
+"step": 1,
+"callId": "01a17c0dd1013935535efb4f686945ff",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 133,
+"time": 6950,
+"data": {
+"turn": 6,
+"step": 1,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0dd1013935535efb4f686945ff",
+"source": {
+"kind": "tool",
+"callId": "01a17c0dd1013935535efb4f686945ff"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 134,
+"time": 6951,
+"data": {
+"turn": 6,
+"step": 1
+}
+},
+{
+"type": "step/start",
+"seq": 135,
+"time": 6960,
+"data": {
+"turn": 6,
+"step": 2
+}
+},
+{
+"type": "assistant/message",
+"seq": 136,
+"time": 9824,
+"data": {
+"turn": 6,
+"step": 2,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0df3043ba09c0dc0e9d92b1817",
+"name": "read",
+"arguments": "{\"description\": \"step\"}"
+},
+{
+"type": "tool-call",
+"id": "01a17c0df3d99d6c48643e9660f8a42e",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 137,
+"time": 9825,
+"data": {
+"turn": 6,
+"step": 2,
+"callId": "01a17c0df3043ba09c0dc0e9d92b1817",
+"name": "read"
+}
+},
+{
+"type": "tool/result",
+"seq": 138,
+"time": 9833,
+"data": {
+"turn": 6,
+"step": 2,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0df3043ba09c0dc0e9d92b1817",
+"source": {
+"kind": "tool",
+"callId": "01a17c0df3043ba09c0dc0e9d92b1817"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 139,
+"time": 9835,
+"data": {
+"turn": 6,
+"step": 2,
+"callId": "01a17c0df3d99d6c48643e9660f8a42e",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 140,
+"time": 9860,
+"data": {
+"turn": 6,
+"step": 2,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0df3d99d6c48643e9660f8a42e",
+"source": {
+"kind": "tool",
+"callId": "01a17c0df3d99d6c48643e9660f8a42e"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 141,
+"time": 9860,
+"data": {
+"turn": 6,
+"step": 2
+}
+},
+{
+"type": "step/start",
+"seq": 142,
+"time": 9872,
+"data": {
+"turn": 6,
+"step": 3
+}
+},
+{
+"type": "assistant/message",
+"seq": 143,
+"time": 26881,
+"data": {
+"turn": 6,
+"step": 3,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0e300330dad469cd27eeb92af2",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 144,
+"time": 26883,
+"data": {
+"turn": 6,
+"step": 3,
+"callId": "01a17c0e300330dad469cd27eeb92af2",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 145,
+"time": 26913,
+"data": {
+"turn": 6,
+"step": 3,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0e300330dad469cd27eeb92af2",
+"source": {
+"kind": "tool",
+"callId": "01a17c0e300330dad469cd27eeb92af2"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 146,
+"time": 26913,
+"data": {
+"turn": 6,
+"step": 3
+}
+},
+{
+"type": "step/start",
+"seq": 147,
+"time": 26924,
+"data": {
+"turn": 6,
+"step": 4
+}
+},
+{
+"type": "assistant/message",
+"seq": 148,
+"time": 40037,
+"data": {
+"turn": 6,
+"step": 4,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0e539868bdb3cf985ff446466c",
+"name": "read",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 149,
+"time": 40039,
+"data": {
+"turn": 6,
+"step": 4,
+"callId": "01a17c0e539868bdb3cf985ff446466c",
+"name": "read"
+}
+},
+{
+"type": "tool/result",
+"seq": 150,
+"time": 40050,
+"data": {
+"turn": 6,
+"step": 4,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0e539868bdb3cf985ff446466c",
+"source": {
+"kind": "tool",
+"callId": "01a17c0e539868bdb3cf985ff446466c"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 151,
+"time": 40050,
+"data": {
+"turn": 6,
+"step": 4
+}
+},
+{
+"type": "step/start",
+"seq": 152,
+"time": 40062,
+"data": {
+"turn": 6,
+"step": 5
+}
+},
+{
+"type": "assistant/message",
+"seq": 153,
+"time": 42922,
+"data": {
+"turn": 6,
+"step": 5,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0e5b6ff57a71c2193bda52f86d",
+"name": "edit",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 154,
+"time": 42922,
+"data": {
+"turn": 6,
+"step": 5,
+"callId": "01a17c0e5b6ff57a71c2193bda52f86d",
+"name": "edit"
+}
+},
+{
+"type": "approval/asked",
+"seq": 155,
+"time": 42931,
+"data": {
+"id": "831f42ec-5694-4ef2-8cbc-a4d034e0cd99"
+}
+},
+{
+"type": "approval/decided",
+"seq": 156,
+"time": 49904,
+"data": {
+"id": "831f42ec-5694-4ef2-8cbc-a4d034e0cd99"
+}
+},
+{
+"type": "tool/result",
+"seq": 157,
+"time": 49919,
+"data": {
+"turn": 6,
+"step": 5,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0e5b6ff57a71c2193bda52f86d",
+"source": {
+"kind": "tool",
+"callId": "01a17c0e5b6ff57a71c2193bda52f86d"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 158,
+"time": 49919,
+"data": {
+"turn": 6,
+"step": 5
+}
+},
+{
+"type": "agent/inbox/spliced",
+"seq": 159,
+"time": 49933,
+"data": {}
+},
+{
+"type": "agent/inbox/spliced",
+"seq": 160,
+"time": 49935,
+"data": {}
+},
+{
+"type": "step/start",
+"seq": 161,
+"time": 49936,
+"data": {
+"turn": 6,
+"step": 6
+}
+},
+{
+"type": "user/message",
+"seq": 162,
+"time": 49937,
+"data": {
+"id": "7005f0c4-68da-47d6-be37-f300e47e06db",
+"role": "user",
+"source": {
+"kind": "agent-instructions"
+},
+"content": [
+{
+"type": "text",
+"text": "context"
+}
+]
+}
+},
+{
+"type": "assistant/message",
+"seq": 163,
+"time": 55321,
+"data": {
+"turn": 6,
+"step": 6,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "text",
+"text": "reply"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 164,
+"time": 55322,
+"data": {
+"turn": 6,
+"step": 6
+}
+},
+{
+"type": "workspace/changes",
+"seq": 165,
+"time": 55327,
+"data": {
+"turn": 6
+}
+},
+{
+"type": "turn/end",
+"seq": 166,
+"time": 55328,
+"data": {
+"turn": 6,
+"reason": {
+"kind": "completed"
+}
+}
+},
+{
+"type": "agent/inbox/spliced",
+"seq": 167,
+"time": 72676,
+"data": {}
+},
+{
+"type": "turn/start",
+"seq": 168,
+"time": 72677,
+"data": {
+"turn": 7
+}
+},
+{
+"type": "agent/inbox/spliced",
+"seq": 169,
+"time": 72678,
+"data": {}
+},
+{
+"type": "step/start",
+"seq": 170,
+"time": 72703,
+"data": {
+"turn": 7,
+"step": 1
+}
+},
+{
+"type": "user/message",
+"seq": 171,
+"time": 72705,
+"data": {
+"id": "c4bbf405-7b24-4b7c-a637-28811a38dd68",
+"role": "user",
+"source": {
+"kind": "user"
+},
+"content": [
+{
+"type": "text",
+"text": "person message"
+}
+]
+}
+},
+{
+"type": "assistant/message",
+"seq": 172,
+"time": 79356,
+"data": {
+"turn": 7,
+"step": 1,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0effc4682b2cde78c51e0cd2d7",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+},
+{
+"type": "tool-call",
+"id": "01a17c0f02b2f87961f568d83c3d65ec",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 173,
+"time": 79357,
+"data": {
+"turn": 7,
+"step": 1,
+"callId": "01a17c0effc4682b2cde78c51e0cd2d7",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 174,
+"time": 79399,
+"data": {
+"turn": 7,
+"step": 1,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0effc4682b2cde78c51e0cd2d7",
+"source": {
+"kind": "tool",
+"callId": "01a17c0effc4682b2cde78c51e0cd2d7"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 175,
+"time": 79400,
+"data": {
+"turn": 7,
+"step": 1,
+"callId": "01a17c0f02b2f87961f568d83c3d65ec",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 176,
+"time": 79447,
+"data": {
+"turn": 7,
+"step": 1,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0f02b2f87961f568d83c3d65ec",
+"source": {
+"kind": "tool",
+"callId": "01a17c0f02b2f87961f568d83c3d65ec"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 177,
+"time": 79447,
+"data": {
+"turn": 7,
+"step": 1
+}
+},
+{
+"type": "step/start",
+"seq": 178,
+"time": 79458,
+"data": {
+"turn": 7,
+"step": 2
+}
+},
+{
+"type": "assistant/message",
+"seq": 179,
+"time": 81693,
+"data": {
+"turn": 7,
+"step": 2,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0f0c830ff52a9944d37174060d",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 180,
+"time": 81694,
+"data": {
+"turn": 7,
+"step": 2,
+"callId": "01a17c0f0c830ff52a9944d37174060d",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 181,
+"time": 81724,
+"data": {
+"turn": 7,
+"step": 2,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0f0c830ff52a9944d37174060d",
+"source": {
+"kind": "tool",
+"callId": "01a17c0f0c830ff52a9944d37174060d"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 182,
+"time": 81725,
+"data": {
+"turn": 7,
+"step": 2
+}
+},
+{
+"type": "step/start",
+"seq": 183,
+"time": 81735,
+"data": {
+"turn": 7,
+"step": 3
+}
+},
+{
+"type": "assistant/message",
+"seq": 184,
+"time": 85870,
+"data": {
+"turn": 7,
+"step": 3,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0f04661faeebec4ef6b7791552",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 185,
+"time": 85871,
+"data": {
+"turn": 7,
+"step": 3,
+"callId": "01a17c0f04661faeebec4ef6b7791552",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 186,
+"time": 85900,
+"data": {
+"turn": 7,
+"step": 3,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0f04661faeebec4ef6b7791552",
+"source": {
+"kind": "tool",
+"callId": "01a17c0f04661faeebec4ef6b7791552"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 187,
+"time": 85901,
+"data": {
+"turn": 7,
+"step": 3
+}
+},
+{
+"type": "compaction/start",
+"seq": 188,
+"time": 85911,
+"data": {
+"compactionId": "51468024-0677-4a85-a24f-cb7a33aea33f"
+}
+},
+{
+"type": "compaction/summary",
+"seq": 189,
+"time": 110629,
+"data": {
+"compactionId": "51468024-0677-4a85-a24f-cb7a33aea33f"
+}
+},
+{
+"type": "user/message",
+"seq": 190,
+"time": 110630,
+"data": {
+"id": "c23be4b2-0854-4476-a290-d0acb0e8b4b5",
+"role": "user",
+"source": {
+"kind": "compact-checkpoint"
+},
+"content": [
+{
+"type": "text",
+"text": "This is an automatically generated checkpoint condensing an earlier span of the conversation."
+}
+]
+}
+},
+{
+"type": "compaction/end",
+"seq": 191,
+"time": 110630,
+"data": {
+"compactionId": "51468024-0677-4a85-a24f-cb7a33aea33f"
+}
+},
+{
+"type": "step/start",
+"seq": 192,
+"time": 110639,
+"data": {
+"turn": 7,
+"step": 4
+}
+},
+{
+"type": "user/message",
+"seq": 193,
+"time": 110640,
+"data": {
+"id": "80cdc2e7-d5a2-490d-b970-812094e26c7c",
+"role": "user",
+"source": {
+"kind": "agent-instructions"
+},
+"content": [
+{
+"type": "text",
+"text": "context"
+}
+]
+}
+},
+{
+"type": "request/header",
+"seq": 194,
+"time": 110642,
+"data": {}
+},
+{
+"type": "assistant/message",
+"seq": 195,
+"time": 113026,
+"data": {
+"turn": 7,
+"step": 4,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0f7160e70577e32fcd50129182",
+"name": "read",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 196,
+"time": 113027,
+"data": {
+"turn": 7,
+"step": 4,
+"callId": "01a17c0f7160e70577e32fcd50129182",
+"name": "read"
+}
+},
+{
+"type": "tool/result",
+"seq": 197,
+"time": 113038,
+"data": {
+"turn": 7,
+"step": 4,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0f7160e70577e32fcd50129182",
+"source": {
+"kind": "tool",
+"callId": "01a17c0f7160e70577e32fcd50129182"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 198,
+"time": 113039,
+"data": {
+"turn": 7,
+"step": 4
+}
+},
+{
+"type": "step/start",
+"seq": 199,
+"time": 113053,
+"data": {
+"turn": 7,
+"step": 5
+}
+},
+{
+"type": "user/message",
+"seq": 200,
+"time": 113055,
+"data": {
+"id": "5dcaf0a2-01c6-4747-90c1-ca4332997fac",
+"role": "user",
+"source": {
+"kind": "runtime-context"
+},
+"content": [
+{
+"type": "text",
+"text": "context"
+}
+]
+}
+},
+{
+"type": "assistant/message",
+"seq": 201,
+"time": 117796,
+"data": {
+"turn": 7,
+"step": 5,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0f803d654fa10e0cc5c39bdf1e",
+"name": "edit",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 202,
+"time": 117797,
+"data": {
+"turn": 7,
+"step": 5,
+"callId": "01a17c0f803d654fa10e0cc5c39bdf1e",
+"name": "edit"
+}
+},
+{
+"type": "approval/asked",
+"seq": 203,
+"time": 117804,
+"data": {
+"id": "bbb11345-0d5e-4224-8fab-1a88247fe232"
+}
+},
+{
+"type": "approval/decided",
+"seq": 204,
+"time": 119535,
+"data": {
+"id": "bbb11345-0d5e-4224-8fab-1a88247fe232"
+}
+},
+{
+"type": "tool/result",
+"seq": 205,
+"time": 119542,
+"data": {
+"turn": 7,
+"step": 5,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0f803d654fa10e0cc5c39bdf1e",
+"source": {
+"kind": "tool",
+"callId": "01a17c0f803d654fa10e0cc5c39bdf1e"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 206,
+"time": 119542,
+"data": {
+"turn": 7,
+"step": 5
+}
+},
+{
+"type": "step/start",
+"seq": 207,
+"time": 119553,
+"data": {
+"turn": 7,
+"step": 6
+}
+},
+{
+"type": "assistant/message",
+"seq": 208,
+"time": 125185,
+"data": {
+"turn": 7,
+"step": 6,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0fb5cb683a9a17bf042d990a9d",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 209,
+"time": 125186,
+"data": {
+"turn": 7,
+"step": 6,
+"callId": "01a17c0fb5cb683a9a17bf042d990a9d",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 210,
+"time": 125217,
+"data": {
+"turn": 7,
+"step": 6,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0fb5cb683a9a17bf042d990a9d",
+"source": {
+"kind": "tool",
+"callId": "01a17c0fb5cb683a9a17bf042d990a9d"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 211,
+"time": 125217,
+"data": {
+"turn": 7,
+"step": 6
+}
+},
+{
+"type": "step/start",
+"seq": 212,
+"time": 125227,
+"data": {
+"turn": 7,
+"step": 7
+}
+},
+{
+"type": "assistant/message",
+"seq": 213,
+"time": 130428,
+"data": {
+"turn": 7,
+"step": 7,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0fc92fb3f3ed461f50c47ce345",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 214,
+"time": 130429,
+"data": {
+"turn": 7,
+"step": 7,
+"callId": "01a17c0fc92fb3f3ed461f50c47ce345",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 215,
+"time": 130455,
+"data": {
+"turn": 7,
+"step": 7,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0fc92fb3f3ed461f50c47ce345",
+"source": {
+"kind": "tool",
+"callId": "01a17c0fc92fb3f3ed461f50c47ce345"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 216,
+"time": 130455,
+"data": {
+"turn": 7,
+"step": 7
+}
+},
+{
+"type": "step/start",
+"seq": 217,
+"time": 130469,
+"data": {
+"turn": 7,
+"step": 8
+}
+},
+{
+"type": "assistant/message",
+"seq": 218,
+"time": 137441,
+"data": {
+"turn": 7,
+"step": 8,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c0fce1a08508742abf30d9f7bdb",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 219,
+"time": 137442,
+"data": {
+"turn": 7,
+"step": 8,
+"callId": "01a17c0fce1a08508742abf30d9f7bdb",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 220,
+"time": 137474,
+"data": {
+"turn": 7,
+"step": 8,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0fce1a08508742abf30d9f7bdb",
+"source": {
+"kind": "tool",
+"callId": "01a17c0fce1a08508742abf30d9f7bdb"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 221,
+"time": 137474,
+"data": {
+"turn": 7,
+"step": 8
+}
+},
+{
+"type": "compaction/prune",
+"seq": 222,
+"time": 137482,
+"data": {}
+},
+{
+"type": "tool/result",
+"seq": 223,
+"time": 137482,
+"data": {
+"turn": 7,
+"step": 7,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c0fc92fb3f3ed461f50c47ce345",
+"source": {
+"kind": "tool",
+"callId": "01a17c0fc92fb3f3ed461f50c47ce345"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "compaction/start",
+"seq": 224,
+"time": 137484,
+"data": {
+"compactionId": "fa871236-4c72-4c9d-8f3c-6d1bac637402"
+}
+},
+{
+"type": "compaction/summary",
+"seq": 225,
+"time": 154058,
+"data": {
+"compactionId": "fa871236-4c72-4c9d-8f3c-6d1bac637402"
+}
+},
+{
+"type": "user/message",
+"seq": 226,
+"time": 154058,
+"data": {
+"id": "8109f545-6202-41ea-a1e1-f042bcf03af9",
+"role": "user",
+"source": {
+"kind": "compact-checkpoint"
+},
+"content": [
+{
+"type": "text",
+"text": "This is an automatically generated checkpoint condensing an earlier span of the conversation."
+}
+]
+}
+},
+{
+"type": "compaction/end",
+"seq": 227,
+"time": 154058,
+"data": {
+"compactionId": "fa871236-4c72-4c9d-8f3c-6d1bac637402"
+}
+},
+{
+"type": "step/start",
+"seq": 228,
+"time": 154064,
+"data": {
+"turn": 7,
+"step": 9
+}
+},
+{
+"type": "request/header",
+"seq": 229,
+"time": 154067,
+"data": {}
+},
+{
+"type": "assistant/message",
+"seq": 230,
+"time": 162090,
+"data": {
+"turn": 7,
+"step": 9,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c102e3abd8a5151a2235ba93ab0",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 231,
+"time": 162092,
+"data": {
+"turn": 7,
+"step": 9,
+"callId": "01a17c102e3abd8a5151a2235ba93ab0",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 232,
+"time": 162125,
+"data": {
+"turn": 7,
+"step": 9,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c102e3abd8a5151a2235ba93ab0",
+"source": {
+"kind": "tool",
+"callId": "01a17c102e3abd8a5151a2235ba93ab0"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 233,
+"time": 162126,
+"data": {
+"turn": 7,
+"step": 9
+}
+},
+{
+"type": "step/start",
+"seq": 234,
+"time": 162135,
+"data": {
+"turn": 7,
+"step": 10
+}
+},
+{
+"type": "assistant/message",
+"seq": 235,
+"time": 168168,
+"data": {
+"turn": 7,
+"step": 10,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c1046be3bacd12f5cfa14799064",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 236,
+"time": 168169,
+"data": {
+"turn": 7,
+"step": 10,
+"callId": "01a17c1046be3bacd12f5cfa14799064",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 237,
+"time": 168200,
+"data": {
+"turn": 7,
+"step": 10,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c1046be3bacd12f5cfa14799064",
+"source": {
+"kind": "tool",
+"callId": "01a17c1046be3bacd12f5cfa14799064"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 238,
+"time": 168200,
+"data": {
+"turn": 7,
+"step": 10
+}
+},
+{
+"type": "step/start",
+"seq": 239,
+"time": 168211,
+"data": {
+"turn": 7,
+"step": 11
+}
+},
+{
+"type": "assistant/message",
+"seq": 240,
+"time": 179051,
+"data": {
+"turn": 7,
+"step": 11,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c1072471b979cf050375549880e",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 241,
+"time": 179052,
+"data": {
+"turn": 7,
+"step": 11,
+"callId": "01a17c1072471b979cf050375549880e",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 242,
+"time": 179079,
+"data": {
+"turn": 7,
+"step": 11,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c1072471b979cf050375549880e",
+"source": {
+"kind": "tool",
+"callId": "01a17c1072471b979cf050375549880e"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 243,
+"time": 179080,
+"data": {
+"turn": 7,
+"step": 11
+}
+},
+{
+"type": "step/start",
+"seq": 244,
+"time": 179089,
+"data": {
+"turn": 7,
+"step": 12
+}
+},
+{
+"type": "assistant/message",
+"seq": 245,
+"time": 187157,
+"data": {
+"turn": 7,
+"step": 12,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c10a9361affc0ca4562810bc6c9",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 246,
+"time": 187158,
+"data": {
+"turn": 7,
+"step": 12,
+"callId": "01a17c10a9361affc0ca4562810bc6c9",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 247,
+"time": 187192,
+"data": {
+"turn": 7,
+"step": 12,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c10a9361affc0ca4562810bc6c9",
+"source": {
+"kind": "tool",
+"callId": "01a17c10a9361affc0ca4562810bc6c9"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 248,
+"time": 187192,
+"data": {
+"turn": 7,
+"step": 12
+}
+},
+{
+"type": "step/start",
+"seq": 249,
+"time": 187202,
+"data": {
+"turn": 7,
+"step": 13
+}
+},
+{
+"type": "assistant/message",
+"seq": 250,
+"time": 190846,
+"data": {
+"turn": 7,
+"step": 13,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c1101a0e973ffe2cae401855a0f",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 251,
+"time": 190847,
+"data": {
+"turn": 7,
+"step": 13,
+"callId": "01a17c1101a0e973ffe2cae401855a0f",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 252,
+"time": 190874,
+"data": {
+"turn": 7,
+"step": 13,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c1101a0e973ffe2cae401855a0f",
+"source": {
+"kind": "tool",
+"callId": "01a17c1101a0e973ffe2cae401855a0f"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 253,
+"time": 190874,
+"data": {
+"turn": 7,
+"step": 13
+}
+},
+{
+"type": "step/start",
+"seq": 254,
+"time": 190886,
+"data": {
+"turn": 7,
+"step": 14
+}
+},
+{
+"type": "assistant/message",
+"seq": 255,
+"time": 194519,
+"data": {
+"turn": 7,
+"step": 14,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c10c56f38ace53c5fe28eeab006",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 256,
+"time": 194520,
+"data": {
+"turn": 7,
+"step": 14,
+"callId": "01a17c10c56f38ace53c5fe28eeab006",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 257,
+"time": 194548,
+"data": {
+"turn": 7,
+"step": 14,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c10c56f38ace53c5fe28eeab006",
+"source": {
+"kind": "tool",
+"callId": "01a17c10c56f38ace53c5fe28eeab006"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 258,
+"time": 194550,
+"data": {
+"turn": 7,
+"step": 14
+}
+},
+{
+"type": "step/start",
+"seq": 259,
+"time": 194562,
+"data": {
+"turn": 7,
+"step": 15
+}
+},
+{
+"type": "assistant/message",
+"seq": 260,
+"time": 198387,
+"data": {
+"turn": 7,
+"step": 15,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c10bdc7cad5dc2b855caa439ea7",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 261,
+"time": 198389,
+"data": {
+"turn": 7,
+"step": 15,
+"callId": "01a17c10bdc7cad5dc2b855caa439ea7",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 262,
+"time": 198430,
+"data": {
+"turn": 7,
+"step": 15,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c10bdc7cad5dc2b855caa439ea7",
+"source": {
+"kind": "tool",
+"callId": "01a17c10bdc7cad5dc2b855caa439ea7"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 263,
+"time": 198430,
+"data": {
+"turn": 7,
+"step": 15
+}
+},
+{
+"type": "step/start",
+"seq": 264,
+"time": 198443,
+"data": {
+"turn": 7,
+"step": 16
+}
+},
+{
+"type": "assistant/message",
+"seq": 265,
+"time": 201777,
+"data": {
+"turn": 7,
+"step": 16,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c10e33be462dd4e9434038d929a",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 266,
+"time": 201777,
+"data": {
+"turn": 7,
+"step": 16,
+"callId": "01a17c10e33be462dd4e9434038d929a",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 267,
+"time": 201813,
+"data": {
+"turn": 7,
+"step": 16,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c10e33be462dd4e9434038d929a",
+"source": {
+"kind": "tool",
+"callId": "01a17c10e33be462dd4e9434038d929a"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 268,
+"time": 201814,
+"data": {
+"turn": 7,
+"step": 16
+}
+},
+{
+"type": "step/start",
+"seq": 269,
+"time": 201826,
+"data": {
+"turn": 7,
+"step": 17
+}
+},
+{
+"type": "assistant/message",
+"seq": 270,
+"time": 203863,
+"data": {
+"turn": 7,
+"step": 17,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c10d3e06a0498a7a8f66ae8b610",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 271,
+"time": 203864,
+"data": {
+"turn": 7,
+"step": 17,
+"callId": "01a17c10d3e06a0498a7a8f66ae8b610",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 272,
+"time": 203889,
+"data": {
+"turn": 7,
+"step": 17,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c10d3e06a0498a7a8f66ae8b610",
+"source": {
+"kind": "tool",
+"callId": "01a17c10d3e06a0498a7a8f66ae8b610"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 273,
+"time": 203891,
+"data": {
+"turn": 7,
+"step": 17
+}
+},
+{
+"type": "step/start",
+"seq": 274,
+"time": 203904,
+"data": {
+"turn": 7,
+"step": 18
+}
+},
+{
+"type": "assistant/message",
+"seq": 275,
+"time": 213729,
+"data": {
+"turn": 7,
+"step": 18,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c1176e8ba5c0737214314fc17f5",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 276,
+"time": 213730,
+"data": {
+"turn": 7,
+"step": 18,
+"callId": "01a17c1176e8ba5c0737214314fc17f5",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 277,
+"time": 213762,
+"data": {
+"turn": 7,
+"step": 18,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c1176e8ba5c0737214314fc17f5",
+"source": {
+"kind": "tool",
+"callId": "01a17c1176e8ba5c0737214314fc17f5"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 278,
+"time": 213762,
+"data": {
+"turn": 7,
+"step": 18
+}
+},
+{
+"type": "step/start",
+"seq": 279,
+"time": 213773,
+"data": {
+"turn": 7,
+"step": 19
+}
+},
+{
+"type": "assistant/message",
+"seq": 280,
+"time": 216169,
+"data": {
+"turn": 7,
+"step": 19,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c111b929fa1040d1ee701e269b7",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 281,
+"time": 216169,
+"data": {
+"turn": 7,
+"step": 19,
+"callId": "01a17c111b929fa1040d1ee701e269b7",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 282,
+"time": 216191,
+"data": {
+"turn": 7,
+"step": 19,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c111b929fa1040d1ee701e269b7",
+"source": {
+"kind": "tool",
+"callId": "01a17c111b929fa1040d1ee701e269b7"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 283,
+"time": 216192,
+"data": {
+"turn": 7,
+"step": 19
+}
+},
+{
+"type": "compaction/start",
+"seq": 284,
+"time": 216199,
+"data": {
+"compactionId": "87175dd4-5777-4f49-bb7a-56756511383d"
+}
+},
+{
+"type": "compaction/summary",
+"seq": 285,
+"time": 255673,
+"data": {
+"compactionId": "87175dd4-5777-4f49-bb7a-56756511383d"
+}
+},
+{
+"type": "user/message",
+"seq": 286,
+"time": 255674,
+"data": {
+"id": "a139b7ca-c7e0-4c21-b154-43875e330df2",
+"role": "user",
+"source": {
+"kind": "compact-checkpoint"
+},
+"content": [
+{
+"type": "text",
+"text": "This is an automatically generated checkpoint condensing an earlier span of the conversation."
+}
+]
+}
+},
+{
+"type": "compaction/end",
+"seq": 287,
+"time": 255674,
+"data": {
+"compactionId": "87175dd4-5777-4f49-bb7a-56756511383d"
+}
+},
+{
+"type": "step/start",
+"seq": 288,
+"time": 255685,
+"data": {
+"turn": 7,
+"step": 20
+}
+},
+{
+"type": "request/header",
+"seq": 289,
+"time": 255695,
+"data": {}
+},
+{
+"type": "assistant/message",
+"seq": 290,
+"time": 267554,
+"data": {
+"turn": 7,
+"step": 20,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c11ca569abbaa876f1d9d615f3e",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 291,
+"time": 267556,
+"data": {
+"turn": 7,
+"step": 20,
+"callId": "01a17c11ca569abbaa876f1d9d615f3e",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 292,
+"time": 267665,
+"data": {
+"turn": 7,
+"step": 20,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c11ca569abbaa876f1d9d615f3e",
+"source": {
+"kind": "tool",
+"callId": "01a17c11ca569abbaa876f1d9d615f3e"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 293,
+"time": 267665,
+"data": {
+"turn": 7,
+"step": 20
+}
+},
+{
+"type": "step/start",
+"seq": 294,
+"time": 267678,
+"data": {
+"turn": 7,
+"step": 21
+}
+},
+{
+"type": "assistant/message",
+"seq": 295,
+"time": 272536,
+"data": {
+"turn": 7,
+"step": 21,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c11df1c68a6d9f9eb6bd915902d",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+},
+{
+"type": "tool/call",
+"seq": 296,
+"time": 272539,
+"data": {
+"turn": 7,
+"step": 21,
+"callId": "01a17c11df1c68a6d9f9eb6bd915902d",
+"name": "bash"
+}
+},
+{
+"type": "tool/result",
+"seq": 297,
+"time": 272565,
+"data": {
+"turn": 7,
+"step": 21,
+"message": {
+"role": "tool",
+"toolCallId": "01a17c11df1c68a6d9f9eb6bd915902d",
+"source": {
+"kind": "tool",
+"callId": "01a17c11df1c68a6d9f9eb6bd915902d"
+},
+"content": [
+{
+"type": "text",
+"text": "output"
+}
+]
+}
+}
+},
+{
+"type": "step/end",
+"seq": 298,
+"time": 272566,
+"data": {
+"turn": 7,
+"step": 21
+}
+},
+{
+"type": "step/start",
+"seq": 299,
+"time": 272576,
+"data": {
+"turn": 7,
+"step": 22
+}
+},
+{
+"type": "assistant/message",
+"seq": 300,
+"time": 279948,
+"data": {
+"turn": 7,
+"step": 22,
+"message": {
+"role": "assistant",
+"content": [
+{
+"type": "tool-call",
+"id": "01a17c121266962092843f8416b25d2d",
+"name": "bash",
+"arguments": "{\"description\": \"step\"}"
+}
+]
+}
+}
+}
+]

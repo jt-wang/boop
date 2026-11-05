@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">完成</string>
+    <string name="notification_channel">你的助理</string>
+    <string name="notification_channel_hint">它需要你同意、有問題、做完一件事或提醒時間到了，就會通知你。</string>
+</resources>

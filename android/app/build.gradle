@@ -1,0 +1,86 @@
+plugins {
+    id 'com.android.application'
+}
+// [push] Notifications through FCM need the owner's Firebase project: android/app/google-services.json (Firebase console →
+// Project settings → Your apps → Android, package io.jingtao.boop). Without it the app builds the same; Firebase never
+// starts, push.token says so, and the phone gets no notifications (docs/push.md).
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+} else {
+    logger.lifecycle('[push] no app/google-services.json: this build cannot receive notifications (docs/push.md)')
+}
+
+// Name, id and version come from the app's own nsh.json, as `nsh package` took them.
+def app = new groovy.json.JsonSlurper().parse(rootProject.file('../mobile/nsh.json'))
+// The host whose accounts get a computer: scripts/android-build.sh --host; the app reads it
+// as `host.params.hostUrl`. Empty: self-hosting only. Same role as DEEPSEEK_BOT_HOST_URL in ios/project.yml.
+def hostUrl = (project.findProperty('hostUrl') ?: '').toString()
+// [compliance] The host's domain for App Links to interfaces: -PlinkHost=…, else the host's.
+def linkHost = (project.findProperty('linkHost') ?: (hostUrl ? new URI(hostUrl).host : 'deepseek-bot.example')).toString()
+
+android {
+    namespace 'dev.deepseekbot.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId app.id
+        minSdk 28            // nsh's runtime (nsh-cli/src/android.rs MIN_SDK)
+        targetSdk 36         // Google Play: new apps and updates target API 36 from 2026-08-31
+        versionCode app.build as int
+        versionName app.version
+        manifestPlaceholders = [appName: app.name, hostUrl: hostUrl, linkHost: linkHost]
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        // A store keystore when given (-Pkeystore=… -PkeyAlias=… -PkeystorePassword=…), else the debug key, as `nsh package` does.
+        release {
+            if (project.hasProperty('keystore')) {
+                storeFile file(project.property('keystore'))
+                storePassword project.findProperty('keystorePassword') ?: ''
+                keyAlias project.property('keyAlias')
+                keyPassword project.findProperty('keystorePassword') ?: ''
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig project.hasProperty('keystore') ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Signed packages for ModuleOpenTest, written by scripts/android-test.sh.
+    sourceSets {
+        androidTest { assets.srcDirs += 'build/generated/uiFixtures' }
+    }
+
+    packaging {
+        // Native libraries stored, mapped in place (as `nsh package` stores them).
+        jniLibs { useLegacyPackaging false }
+    }
+}
+
+dependencies {
+    // ~/.nsh/embed/android/nsh.aar with the TLS-fixed libnsh.so (scripts/android-build.sh writes libs/nsh.aar).
+    implementation files('libs/nsh.aar')
+    // TailPocket: how a phone reaches a computer running Boop (docs/connection.md). scripts/tailpocket-sync.sh android puts these in place.
+    implementation files('libs/tailpocket-nsh.aar')
+    implementation 'io.github.jtwang.tailpocket:tailpocket:0.1.0'
+    implementation 'io.github.jtwang.tailpocket:tailpocket-ui:0.1.0'
+    // [push] FCM (PushService, PushBridge). Compiled into every build; it starts only with google-services.json.
+    implementation 'com.google.firebase:firebase-messaging:24.1.0'
+
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
+}

@@ -1,0 +1,72 @@
+# A host for several people: one assistant computer (container) per account.
+#
+#   docker build -t deepseek-bot:slim .                       # the sandbox image
+#   docker build -t deepseek-bot:host -f deploy/host.Dockerfile .
+#   cd deploy && DOMAIN=host.example.com DEEPSEEK_API_KEY=sk-… docker compose -f host.compose.yml up -d
+#
+# The host needs the Docker socket (/var/run/docker.sock). That means: whoever
+# controls the host process controls every container on this machine, so this
+# box should run nothing else, and only you should be able to reach the socket
+# or the host's /host-data volume (it holds accounts.json with sandbox tokens
+# and the host secret). Sandboxes join the `sandboxes` network and are reached
+# by name; nothing of theirs is published on the machine.
+#
+# `hostname: host` is what sandboxes use to send notifications back
+# (DEEPSEEK_BOT_PUSH_RELAY=http://host:3860); keep it fixed, it is baked into
+# each sandbox's environment when it is created.
+#
+# Sign-in: this file enables --dev-sign-in (any email, nothing verified) so you
+# can try it. For real users, replace it with --apple-bundle-id <your app's
+# bundle id> and ship the iOS app signed with that id. APNs: put the key file
+# under ./host-data and {"apns": {...}} in ./host-data/config.json (docs/ios.md).
+services:
+  host:
+    image: deepseek-bot:host
+    restart: unless-stopped
+    hostname: host
+    command: >
+      node src/host-main.ts --host 0.0.0.0 --port 3860
+      --public-url https://${DOMAIN}
+      --provider docker --image deepseek-bot:slim --docker-network deploy_sandboxes --docker-seccomp ${PWD}/seccomp-bwrap.json
+      --idle-minutes ${IDLE_MINUTES:-30}
+      --dev-sign-in
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BOT_MODEL_KEY: ${DEEPSEEK_BOT_MODEL_KEY:-}
+      # optional: hand every sandbox a different model, e.g. a gateway
+      # DEEPSEEK_BOT_MODEL / --model are read by the sandbox; pass them as flags above (--model … --base-url … --api-key-env …)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - host-data:/host-data
+    networks:
+      - sandboxes
+      - default
+    expose:
+      - "3860"
+
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    depends_on:
+      - host
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN to your hostname, e.g. host.example.com}
+    volumes:
+      - ./host.Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - default
+
+networks:
+  # compose prefixes the project name: with `cd deploy` the network is `deploy_sandboxes` (used in the command above)
+  sandboxes:
+  default:
+
+volumes:
+  host-data:
+  caddy-data:
+  caddy-config:

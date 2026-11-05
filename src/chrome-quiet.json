@@ -1,0 +1,12 @@
+{
+  "browser": {
+    "launchOptions": {
+      "args": [
+        "--no-pings",
+        "--gaia-url=http://127.0.0.1:9",
+        "--host-resolver-rules=MAP update.googleapis.com ~NOTFOUND, MAP *.gvt1.com ~NOTFOUND",
+        "--disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,BlockOriginHeaderModificationOnRedirect,Translate,AutoDeElevate,OptimizationHints,NetworkTimeServiceQuerying,AimEnabled,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion,SafeBrowsingHashPrefixRealTimeLookups,AutofillServerCommunication,PreconnectToSearch"
+      ]
+    }
+  }
+}

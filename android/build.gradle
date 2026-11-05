@@ -1,0 +1,5 @@
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+    // [push] FCM: applied by app/build.gradle only when the owner's app/google-services.json is there (docs/push.md)
+    id 'com.google.gms.google-services' version '4.4.2' apply false
+}

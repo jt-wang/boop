@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">Done</string>
+    <!-- [push] The notification channel, as Settings → Notifications shows it. -->
+    <string name="notification_channel">Your assistant</string>
+    <string name="notification_channel_hint">When it needs a yes, has a question, finishes something, or a reminder is due.</string>
+</resources>

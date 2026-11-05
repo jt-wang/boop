@@ -1,0 +1,45 @@
+# One-click host on Fly.io: `fly launch --copy-config --yes` in a clone, then
+# `fly secrets set` (below), then `fly deploy --image-label slim`.
+#
+# One Fly app holds both roles. The `host` process group is this service
+# (src/host-main.ts), reachable at https://<app>.fly.dev; every account's
+# computer is a Firecracker machine the host creates through the Machines API
+# in the same app (no process group, one 1 GB volume each) from the same
+# image, so one `fly deploy --image-label slim` updates both. Idle sandboxes
+# are suspended; the host resumes one on the next request. `fly launch`
+# rewrites this file with your app name: commit that.
+#
+# Secrets (`fly secrets set NAME=value`):
+#   FLY_API_TOKEN       `fly tokens create deploy` for this app: lets the host create machines and volumes
+#   DEEPSEEK_BOT_HOST_ACCESS_CODE  the code a person must give to sign in (without it email sign-in is off)
+#   DEEPSEEK_BOT_MODEL_KEY  the model key every sandbox gets (here SiliconFlow; any OpenAI-compatible provider via --model and --base-url)
+# Who gets in: email sign-in needs DEEPSEEK_BOT_HOST_ACCESS_CODE (a secret only the owner gives out);
+# five wrong codes from one client in ten minutes are refused; --max-accounts caps new accounts.
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DEEPSEEK_BOT_HOST_HOME = "/host-data"
+
+[processes]
+  # `::` = IPv4 and IPv6: Fly's proxy and the sandboxes reach this machine over its private IPv6
+  host = "node src/host-main.ts --host :: --port 3860 --provider fly --idle-minutes 30 --warm 1 --max-accounts 5 --model siliconflow/deepseek-ai/DeepSeek-V4.1-Flash --base-url https://api.siliconflow.cn/v1 --api-key-env DEEPSEEK_BOT_MODEL_KEY"
+
+[http_service]
+  internal_port = 3860
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["host"]
+
+[[mounts]]
+  source = "host_data"
+  destination = "/host-data"
+  processes = ["host"]
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  processes = ["host"]

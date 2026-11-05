@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">完了</string>
+    <string name="notification_channel">アシスタント</string>
+    <string name="notification_channel_hint">承認が必要なとき、質問があるとき、作業が終わったとき、リマインダーの時刻になったときにお知らせします。</string>
+</resources>

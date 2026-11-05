@@ -1,0 +1,2 @@
+// Copy to Signing.local.xcconfig (not committed). Your Team ID is in Xcode → Settings → Accounts.
+DEVELOPMENT_TEAM = 

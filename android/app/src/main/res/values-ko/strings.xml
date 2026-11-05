@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">완료</string>
+    <string name="notification_channel">내 비서</string>
+    <string name="notification_channel_hint">승인이 필요하거나, 질문이 있거나, 일을 마쳤거나, 리마인더 시간이 되면 알려 줘요.</string>
+</resources>

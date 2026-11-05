@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- For Developer ID signing with the hardened runtime (scripts/mac-build.sh with MAC_SIGN_IDENTITY).
+     Node's JIT needs the two memory entitlements; its own release binary ships with the same pair.
+     Not yet verified end to end: that needs the owner's Apple Developer account. -->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+</dict>
+</plist>

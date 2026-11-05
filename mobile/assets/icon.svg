@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0F1115"/>
+  <!-- a speech mark that is also a presence dot: the assistant is here -->
+  <path d="M136 168c0-26 21-48 48-48h144c27 0 48 22 48 48v108c0 26-21 48-48 48H236l-62 54c-7 6-18 1-18-8v-46h-20c-27 0-48-22-48-48V168z" fill="#F9FAFB"/>
+  <circle cx="256" cy="222" r="26" fill="#0F1115"/>
+</svg>

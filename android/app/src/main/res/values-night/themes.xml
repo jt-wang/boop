@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="DeepSeekBot" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+    <style name="DeepSeekBot.Module" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+    <color name="background">#14120B</color>
+    <color name="foreground">#EDECEC</color>
+    <color name="muted">#8E8D88</color>
+</resources>

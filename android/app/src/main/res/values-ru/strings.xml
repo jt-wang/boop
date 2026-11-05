@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">Готово</string>
+    <string name="notification_channel">Ваш помощник</string>
+    <string name="notification_channel_hint">Когда нужно ваше согласие, есть вопрос, что-то готово или пришло время напоминания.</string>
+</resources>

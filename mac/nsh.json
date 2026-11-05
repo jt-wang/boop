@@ -1,0 +1,59 @@
+{
+  "name": "Boop",
+  "id": "io.jingtao.boop.mac",
+  "version": "0.1.0",
+  "build": 1,
+  "icon": "assets/icon.png",
+  "appearance": "system",
+  "theme": {
+    "cssVars": {
+      "light": {
+        "background": "#FFFFFF",
+        "foreground": "#0F1115",
+        "card": "#F5F6F7",
+        "card-foreground": "#0F1115",
+        "popover": "#FFFFFF",
+        "popover-foreground": "#0F1115",
+        "primary": "#0F1115",
+        "primary-foreground": "#FFFFFF",
+        "secondary": "#EBEEF2",
+        "secondary-foreground": "#0F1115",
+        "muted": "#F1F3F5",
+        "muted-foreground": "#81858C",
+        "accent": "#F1F3F5",
+        "accent-foreground": "#0F1115",
+        "destructive": "#EC1313",
+        "border": "#E1E5EE",
+        "input": "#E1E5EE",
+        "ring": "#0F1115",
+        "link": "#4176E6"
+      },
+      "dark": {
+        "background": "#151517",
+        "foreground": "#F9FAFB",
+        "card": "#232324",
+        "card-foreground": "#F9FAFB",
+        "popover": "#232324",
+        "popover-foreground": "#F9FAFB",
+        "primary": "#F9FAFB",
+        "primary-foreground": "#0F1115",
+        "secondary": "#2C2C2E",
+        "secondary-foreground": "#F9FAFB",
+        "muted": "#232324",
+        "muted-foreground": "#979DA6",
+        "accent": "#353638",
+        "accent-foreground": "#F9FAFB",
+        "destructive": "#F25A5A",
+        "border": "#353638",
+        "input": "#353638",
+        "ring": "#F9FAFB",
+        "link": "#7AAAFF"
+      }
+    }
+  },
+  "capabilities": {
+    "process": { "execute": ["/bin/sh"], "exit": true },
+    "fs": { "read": ["${dataDir}"], "write": ["${dataDir}"] },
+    "clipboard": true
+  }
+}

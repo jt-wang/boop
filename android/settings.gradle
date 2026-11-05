@@ -1,0 +1,20 @@
+// The native Android shell: one full-screen NshView running the app built from mobile/, plus modules
+// (UiBridge) and the deepseekbot:// link. scripts/android-build.sh puts the bundle and nsh.aar in place and builds it.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // TailPocket's libraries, put here by scripts/tailpocket-sync.sh android until it publishes a release
+        maven { url = uri('tailpocket-m2') }
+    }
+}
+rootProject.name = 'DeepSeekBot'
+include ':app'

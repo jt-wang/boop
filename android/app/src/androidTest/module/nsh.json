@@ -1,0 +1,8 @@
+{
+  "name": "Tip calculator",
+  "id": "dev.deepseekbot.ui.mtest000001",
+  "version": "1.0.0",
+  "build": 1,
+  "appearance": "system",
+  "capabilities": { "network": { "hosts": ["127.0.0.1"] }, "host": true }
+}

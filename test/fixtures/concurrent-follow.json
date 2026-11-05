@@ -1,0 +1,493 @@
+{
+"note": "Real /events frames for one of three threads sent at once (bot at 244efa9, magpie/group/auto-deepseek-flash, 2026-10-27). ms = since the message was posted. Status frames for the other two sessions arrive on this socket; session ...5c114ec4 ends at ~12.9 s while this one runs until ~35.4 s.",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"frames": [
+{
+"type": "hello",
+"asks": [],
+"connected": true,
+"ms": -502
+},
+{
+"type": "snapshot",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [],
+"running": false,
+"statusText": "",
+"title": "",
+"ms": -496
+},
+{
+"type": "status",
+"sessionId": "session-32b94014-0afa-4828-82d6-cf8f5c114ec4",
+"running": true,
+"ms": 15
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"ms": 22
+},
+{
+"type": "status",
+"sessionId": "session-f5ab5adb-6a00-49f0-9e57-406beeeb9323",
+"running": true,
+"ms": 28
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "you",
+"id": "f3c57f46-743e-4c47-8f77-8e741c66c607",
+"text": "give me a 5-question quiz on world capitals"
+}
+],
+"ms": 352
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Working…",
+"ms": 353
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Thinking…",
+"ms": 2942
+},
+{
+"type": "status",
+"sessionId": "session-32b94014-0afa-4828-82d6-cf8f5c114ec4",
+"running": false,
+"ms": 12853
+},
+{
+"type": "status",
+"sessionId": "session-f5ab5adb-6a00-49f0-9e57-406beeeb9323",
+"running": false,
+"ms": 14201
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Building an interface…",
+"ms": 18511
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "step",
+"id": "call_00_wnhd9m0fp0lxsyspe1fkv6r6",
+"name": "mcp__bot__ui"
+}
+],
+"ms": 23722
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "step",
+"id": "call_00_wnhd9m0fp0lxsyspe1fkv6r6",
+"name": "mcp__bot__ui"
+}
+],
+"ms": 23835
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Reading results…",
+"ms": 23835
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Working…",
+"ms": 23848
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Thinking…",
+"ms": 26048
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Building an interface…",
+"ms": 26642
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "step",
+"id": "call_00_f1dit5hx8gd9v231uzt255p0",
+"name": "mcp__bot__ui"
+}
+],
+"ms": 31706
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "module",
+"id": "call_00_f1dit5hx8gd9v231uzt255p0",
+"moduleId": "m659adaf907",
+"title": "World Capitals Quiz"
+}
+],
+"ms": 31840
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Reading results…",
+"ms": 31840
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": true,
+"statusText": "Working…",
+"ms": 31851
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "them",
+"id": "rmvq5khrb3",
+"text": "Quiz",
+"streaming": true
+}
+],
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " card is up",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " — 5 questions,",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " hard to",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " easy",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": ": pre",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "fecture count, largest",
+"ms": 34079
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " by",
+"ms": 34080
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " area, smallest",
+"ms": 34080
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " population, Mats",
+"ms": 34080
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "uy",
+"ms": 34080
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "ama's capital, san",
+"ms": 34122
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "uki udon.",
+"ms": 34123
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " It",
+"ms": 34124
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " scores",
+"ms": 34124
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " you and",
+"ms": 34210
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " shows a",
+"ms": 34214
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " one-line explanation",
+"ms": 34215
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " after",
+"ms": 34215
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " each answer",
+"ms": 34309
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": ".\n\nZero pressure",
+"ms": 34309
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " if",
+"ms": 34309
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " it's",
+"ms": 34309
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " a warm",
+"ms": 34367
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "-up: say",
+"ms": 34367
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " the word and I'll do",
+"ms": 34367
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " a harder",
+"ms": 34367
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " round",
+"ms": 34435
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " (",
+"ms": 34435
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "pre",
+"ms": 34437
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "fectural",
+"ms": 34437
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " capitals",
+"ms": 34528
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": ", which",
+"ms": 34528
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " pre",
+"ms": 34528
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "fecture borders",
+"ms": 34528
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " which, the",
+"ms": 34935
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": " 201",
+"ms": 35109
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "1",
+"ms": 35265
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "-mer",
+"ms": 35265
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": "ger trivia",
+"ms": 35271
+},
+{
+"type": "delta",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rowId": "rmvq5khrb3",
+"text": ").",
+"ms": 35271
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": false,
+"ms": 35393
+},
+{
+"type": "rows",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"rows": [
+{
+"kind": "them",
+"id": "rmvq5khrb3",
+"text": "Quiz card is up — 5 questions, hard to easy: prefecture count, largest by area, smallest population, Matsuyama's capital, sanuki udon. It scores you and shows a one-line explanation after each answer.\n\nZero pressure if it's a warm-up: say the word and I'll do a harder round (prefectural capitals, which prefecture borders which, the 2011-merger trivia)."
+}
+],
+"ms": 35394
+},
+{
+"type": "status",
+"sessionId": "session-a42bc81f-54d7-4c9a-a8aa-db414d3702e2",
+"running": false,
+"statusText": "",
+"ms": 35394
+}
+]
+}

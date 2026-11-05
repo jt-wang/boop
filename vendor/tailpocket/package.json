@@ -1,0 +1,13 @@
+{
+  "name": "tailpocket",
+  "version": "0.1.0",
+  "description": "Let a phone reach your Node app from anywhere: QR or same-Wi-Fi pairing, no port forwarding, no VPN app, no server of your own.",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": { ".": { "types": "./index.d.ts", "default": "./index.js" } },
+  "files": ["index.js", "index.d.ts", "bin/"],
+  "engines": { "node": ">=20" },
+  "scripts": { "test": "node --test test/*.test.js" },
+  "license": "MIT"
+}

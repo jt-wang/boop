@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+# Put in place by scripts/android-build.sh: the app's bundle (`nsh build mobile`) and nsh.aar with the patched libnsh.so.
+app/src/main/assets/nsh/
+app/libs/
+# `nsh publish` of the test module writes its type declarations here.
+app/src/androidTest/module/.nsh/
+# [push] the owner's Firebase config (docs/push.md); kept out of the repository
+app/google-services.json
+tailpocket-m2/

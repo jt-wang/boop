@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- [push] Android 13+ asks the person before an app may show notifications (PushBridge push.request). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- usesCleartextTraffic: the bot usually runs on the LAN over plain http (the iOS shell's NSAllowsArbitraryLoads). -->
+    <application android:label="${appName}" android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true"
+        android:extractNativeLibs="false"
+        android:enableOnBackInvokedCallback="true"
+        android:supportsRtl="true"
+        android:theme="@style/DeepSeekBot">
+        <meta-data android:name="dev.deepseekbot.HOST_URL" android:value="${hostUrl}" />
+        <activity android:name=".MainActivity" android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density|fontScale|locale|layoutDirection">
+            <!-- deepseekbot://pair?url=… : the app starts on the connect screen with it filled in (PairLink). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="deepseekbot" android:host="pair" />
+            </intent-filter>
+            <!-- [compliance] Links to an interface (App Review 4.7.4): deepseekbot://ui/<id>?origin=…, and the
+                 host's https://<linkHost>/open/<sandbox>/ui/<id>, verified by its /.well-known/assetlinks.json. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="deepseekbot" android:host="ui" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="${linkHost}" />
+                <data android:pathPrefix="/open/" />
+            </intent-filter>
+        </activity>
+        <!-- [push] FCM data messages from the bot (src/push-fcm.ts); the app draws the notification (PushBridge.show). -->
+        <service android:name=".PushService" android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <!-- The launcher entry keeps the component name of the APK `nsh package` made, so home-screen icons placed
+             before this shell still open the app after an update (and `am start -n …/com.longbridge.nsh.AppActivity` works). -->
+        <activity-alias android:name="com.longbridge.nsh.AppActivity" android:targetActivity=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+    </application>
+</manifest>

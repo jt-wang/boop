@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="done">Listo</string>
+    <string name="notification_channel">Tu asistente</string>
+    <string name="notification_channel_hint">Cuando necesita tu permiso, tiene una pregunta, termina algo o llega la hora de un recordatorio.</string>
+</resources>

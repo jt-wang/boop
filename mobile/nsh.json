@@ -1,0 +1,76 @@
+{
+  "name": "Boop",
+  "id": "io.jingtao.boop",
+  "version": "0.1.0",
+  "build": 1,
+  "icon": "assets/icon.png",
+  "appearance": "system",
+  "theme": {
+    "cssVars": {
+      "light": {
+        "background": "#FCFCFA",
+        "foreground": "#26251E",
+        "card": "#F7F7F4",
+        "card-foreground": "#26251E",
+        "popover": "#FCFCFA",
+        "popover-foreground": "#26251E",
+        "primary": "#26251E",
+        "primary-foreground": "#F7F7F4",
+        "secondary": "#EFEEEA",
+        "secondary-foreground": "#26251E",
+        "muted": "#F2F1ED",
+        "muted-foreground": "#85847E",
+        "accent": "#EFEEEA",
+        "accent-foreground": "#26251E",
+        "destructive": "#CF2D56",
+        "border": "#E5E4DF",
+        "input": "#DCDBD6",
+        "ring": "#26251E",
+        "link": "#F54E00"
+      },
+      "dark": {
+        "background": "#14120B",
+        "foreground": "#EDECEC",
+        "card": "#1C1A14",
+        "card-foreground": "#EDECEC",
+        "popover": "#1C1A14",
+        "popover-foreground": "#EDECEC",
+        "primary": "#EDECEC",
+        "primary-foreground": "#14120B",
+        "secondary": "#27251F",
+        "secondary-foreground": "#EDECEC",
+        "muted": "#1C1A14",
+        "muted-foreground": "#8E8D88",
+        "accent": "#27251F",
+        "accent-foreground": "#EDECEC",
+        "destructive": "#CF2D56",
+        "border": "#2B2923",
+        "input": "#36342E",
+        "ring": "#EDECEC",
+        "link": "#F54E00"
+      }
+    }
+  },
+  "statusBar": {
+    "foreground": "auto"
+  },
+  "capabilities": {
+    "webview": {
+      "hosts": [
+        "*"
+      ]
+    },
+    "network": {
+      "hosts": [
+        "*"
+      ]
+    },
+    "host": true,
+    "openUrl": true,
+    "clipboard": true,
+    "statusBar": true
+  },
+  "web": {
+    "host": "./web/host.js"
+  }
+}

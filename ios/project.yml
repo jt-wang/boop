@@ -1,0 +1,82 @@
+# The native iOS shell: one full-screen NshAppView running the app built from
+# mobile/, plus push notifications and the deepseekbot:// link.
+# `xcodegen generate` (in this directory) rewrites DeepSeekBot.xcodeproj from
+# this file; scripts/ios-bundle.sh puts the NSH bundle and framework in place.
+name: DeepSeekBot
+options:
+  minimumXcodeGenVersion: 2.40.0
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+configFiles:
+  Debug: Config/Signing.shared.xcconfig
+  Release: Config/Signing.shared.xcconfig
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: 0.1.0
+    DEEPSEEK_BOT_HOST_URL: ""   # the host for hosted accounts (docs/hosting.md); empty = self-hosting only
+    DEEPSEEK_BOT_LINK_DOMAIN: "deepseek-bot.example"   # [compliance] the host's domain for universal links (applinks:); set it with DEEPSEEK_BOT_HOST_URL
+    CURRENT_PROJECT_VERSION: 1
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SWIFT_STRICT_CONCURRENCY: minimal
+packages:
+  # TailPocket: how a phone reaches a computer running Boop (docs/connection.md). A checkout next to this repository until it
+  # publishes a release; scripts/tailpocket-sync.sh ios builds what the package links.
+  TailPocketNSH:
+    path: ../../tailpocket/sdk/apple/NSH
+targets:
+  DeepSeekBot:
+    type: application
+    platform: iOS
+    sources:
+      - path: DeepSeekBot
+        excludes:
+          - "nsh/**"
+          - "Info.plist"
+          - "DeepSeekBot.entitlements"
+      # The NSH bundle (`nsh build mobile`), copied as a folder so the app finds nsh/bundle.nshc and nsh/assets.
+      - path: DeepSeekBot/nsh
+        type: folder
+        buildPhase: resources
+    dependencies:
+      # NativeShell, a static framework from the NSH distribution (~/.nsh/embed/ios), arrives through this package.
+      # The package links NativeShell for this target too: naming the framework here as well is a "Multiple commands
+      # produce" build error (Xcode, measured 2026-11-03).
+      - package: TailPocketNSH
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.jingtao.boop
+        PRODUCT_NAME: DeepSeekBot
+        INFOPLIST_FILE: DeepSeekBot/Info.plist
+        CODE_SIGN_ENTITLEMENTS: DeepSeekBot/DeepSeekBot.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        OTHER_LDFLAGS: ["-ObjC"]
+  DeepSeekBotUITests:
+    # Drives the shell on a simulator: a deepseekbot://pair link, Connect, the notification permission alert, the token reaching the bot.
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [DeepSeekBotUITests]
+    dependencies:
+      - target: DeepSeekBot
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.jingtao.boop.uitests
+        TEST_TARGET_NAME: DeepSeekBot
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  DeepSeekBot:
+    build:
+      targets:
+        DeepSeekBot: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets: [DeepSeekBotUITests]
+    archive:
+      config: Release

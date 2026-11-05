@@ -1,0 +1,7 @@
+# Built by scripts/ios-bundle.sh
+Frameworks/
+DeepSeekBot/nsh/
+build/
+xcuserdata/
+*.xcuserstate
+Config/Signing.local.xcconfig

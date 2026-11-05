@@ -1,0 +1,6 @@
+node_modules
+mobile/.nsh
+mobile/node_modules
+test/screenshots
+.git
+ios/build

@@ -1,0 +1,38 @@
+# One command on a VPS: `DOMAIN=bot.example.com DEEPSEEK_API_KEY=sk-… docker compose up -d`
+# Caddy gets a certificate for DOMAIN and proxies to the bot. Pair your phone at
+# https://DOMAIN/pair?code=… (the code is in `docker compose logs bot`).
+# The image ships without a browser; the assistant installs Chromium on first use
+# (scripts/install-browser.sh) and restarts itself — hence `restart: unless-stopped`.
+# Several people on one machine: deploy/host.compose.yml and docs/hosting.md.
+services:
+  bot:
+    build: ..
+    restart: unless-stopped
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BOT_MODEL_KEY: ${DEEPSEEK_BOT_MODEL_KEY:-}
+      DEEPSEEK_BOT_HOME: /data
+    volumes:
+      - bot-data:/data
+    expose:
+      - "3850"
+
+  caddy:
+    image: caddy:2.9-alpine
+    restart: unless-stopped
+    depends_on:
+      - bot
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN to your hostname, e.g. bot.example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  bot-data:
+  caddy-data:
+  caddy-config:

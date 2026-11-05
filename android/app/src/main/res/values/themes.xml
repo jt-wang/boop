@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window before the first frame: the app's background (mobile/nsh.json theme), light here, dark in values-night. -->
+    <style name="DeepSeekBot" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+    <!-- A module (UiBridge): full screen over the app, the same background. -->
+    <style name="DeepSeekBot.Module" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowIsFloating">false</item>
+    </style>
+    <color name="background">#FCFCFA</color>
+    <color name="foreground">#26251E</color>
+    <color name="muted">#85847E</color>
+</resources>

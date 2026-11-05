@@ -1,0 +1,4 @@
+// Signing for a device build or an App Store archive. Simulator builds need none of this.
+// Don't edit here: copy Signing.local.xcconfig.example to Signing.local.xcconfig (not committed) and set your team there.
+DEVELOPMENT_TEAM =
+#include? "Signing.local.xcconfig"
