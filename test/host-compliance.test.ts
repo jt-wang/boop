@@ -36,7 +36,7 @@ class FakeProvider implements SandboxProvider {
   async create(id: string, opts: CreateOptions): Promise<Sandbox> {
     const root = mkdtempSync(join(tmpdir(), `sb-${id}-`))
     mkdirSync(join(root, 'ui'), { recursive: true })
-    writeFileSync(join(root, 'ui', 'modules.json'), JSON.stringify([{ id: 'm0000000009', title: 'Quiz', token: 'tok-9-abcdefghijklmnopqrstuvw', at: 1 }]))
+    writeFileSync(join(root, 'ui', 'modules.json'), JSON.stringify([{ id: 'm0000000009', title: 'Quiz', token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa', at: 1 }]))
     this.rows.set(id, { status: 'creating', env: opts.env, devices: new MemoryDeviceStore(), bot: null, root })
     await this.boot(id)
     return { id, origin: this.rows.get(id)!.bot!.origin }

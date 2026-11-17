@@ -32,17 +32,17 @@ test('a custom OpenAI-compatible endpoint keeps its key under DEEPSEEK_BOT_MODEL
   const config = await ConfigFile.open(join(dir, 'config.json'))
   const exits: number[] = []
   const sw = new ModelSwitch({ home: dir, config, supervised: true, exit: (c) => { exits.push(c) }, exitDelayMs: 0 })
-  const r = await sw.set({ provider: 'openrouter', model: 'deepseek/deepseek-chat', baseURL: 'https://openrouter.ai/api/v1', apiKey: 'or-key-123456' })
+  const r = await sw.set({ provider: 'openrouter', model: 'deepseek/deepseek-chat', baseURL: 'https://openrouter.ai/api/v1', apiKey: 'aaaaaaaaaaaaa' })
   assert.deepEqual(r, { restarting: true })
   await new Promise((x) => setTimeout(x, 20))
   assert.deepEqual(exits, [0])
   const m = config.get().model
   assert.equal(m.provider, 'openrouter'); assert.equal(m.baseURL, 'https://openrouter.ai/api/v1'); assert.equal(m.apiKeyEnv, 'DEEPSEEK_BOT_MODEL_KEY')
-  assert.match(readFileSync(join(dir, 'secrets.env'), 'utf8'), /^DEEPSEEK_BOT_MODEL_KEY=or-key-123456$/m)
+  assert.match(readFileSync(join(dir, 'secrets.env'), 'utf8'), /^DEEPSEEK_BOT_MODEL_KEY=aaaaaaaaaaaaa$/m)
   // loadSecrets puts the file into an env object without clobbering what is already set
   const env: Record<string, string | undefined> = { DEEPSEEK_API_KEY: 'from-shell' }
   await loadSecrets(dir, env)
-  assert.equal(env.DEEPSEEK_BOT_MODEL_KEY, 'or-key-123456'); assert.equal(env.DEEPSEEK_API_KEY, 'from-shell')
+  assert.equal(env.DEEPSEEK_BOT_MODEL_KEY, 'aaaaaaaaaaaaa'); assert.equal(env.DEEPSEEK_API_KEY, 'from-shell')
 })
 
 test('bad input is refused: a key with whitespace, an unknown provider without baseURL', async () => {

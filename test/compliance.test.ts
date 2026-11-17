@@ -19,8 +19,8 @@ async function boot(o: { settings?: Partial<Settings>; relay?: string; publicUrl
   mkdirSync(join(root, 'ui'), { recursive: true })
   const now = Date.UTC(2026, 9, 27)
   writeFileSync(join(root, 'ui', 'modules.json'), JSON.stringify([
-    { id: 'm0000000001', title: 'Tip calculator', token: 'tok-1-abcdefghijklmnopqrstuvw', at: now - 2000 },
-    { id: 'm0000000002', title: 'Packing list', token: 'tok-2-abcdefghijklmnopqrstuvw', at: now - 1000, permissions: ['openUrl', 'clipboard'] },
+    { id: 'm0000000001', title: 'Tip calculator', token: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa', at: now - 2000 },
+    { id: 'm0000000002', title: 'Packing list', token: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbb', at: now - 1000, permissions: ['openUrl', 'clipboard'] },
   ]))
   mkdirSync(join(root, 'ui', 'm0000000002'), { recursive: true })
   writeFileSync(join(root, 'ui', 'm0000000002', 'App.tsx'), 'export default "packing list source"')
@@ -109,7 +109,7 @@ test('someone who says they are under 18 cannot send even after agreeing; bad va
 test('a module result is the person\'s message too: refused without consent', async () => {
   const b = await boot()
   try {
-    const r = await fetch(`${b.bot.origin}/ui/m0000000001/result`, { method: 'POST', headers: { authorization: 'Bearer tok-1-abcdefghijklmnopqrstuvw', 'content-type': 'application/json' }, body: JSON.stringify({ text: '15%' }) })
+    const r = await fetch(`${b.bot.origin}/ui/m0000000001/result`, { method: 'POST', headers: { authorization: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'content-type': 'application/json' }, body: JSON.stringify({ text: '15%' }) })
     assert.equal(r.status, 403)
     assert.equal(b.prompts.length, 0)
   } finally { await b.close() }

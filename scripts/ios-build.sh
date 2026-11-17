@@ -21,7 +21,14 @@ fi
 "$ROOT/scripts/ios-bundle.sh"
 
 AUTH=()
-if [ -n "${ASC_KEY_ID:-}" ]; then
+SIGNING=()
+if [ "$MODE" = archive ] && [ "${IOS_SIGNING_STYLE:-}" = Manual ]; then
+  : "${IOS_TEAM_ID:?IOS_TEAM_ID}" "${IOS_PROFILE_UUID:?IOS_PROFILE_UUID}" "${IOS_SIGNING_IDENTITY:?IOS_SIGNING_IDENTITY}"
+  : "${IOS_KEYCHAIN_PATH:?IOS_KEYCHAIN_PATH}" "${IOS_VERSION:?IOS_VERSION}" "${IOS_BUILD:?IOS_BUILD}" "${IOS_EXPORT_OPTIONS:?IOS_EXPORT_OPTIONS}"
+  SIGNING=(CODE_SIGN_STYLE=Manual "DEVELOPMENT_TEAM=$IOS_TEAM_ID" "BOOP_BUNDLE_ID=io.jingtao.boop"
+    "CODE_SIGN_IDENTITY=$IOS_SIGNING_IDENTITY" "PROVISIONING_PROFILE_SPECIFIER=$IOS_PROFILE_UUID"
+    "OTHER_CODE_SIGN_FLAGS=--keychain \"$IOS_KEYCHAIN_PATH\"" "MARKETING_VERSION=$IOS_VERSION" "CURRENT_PROJECT_VERSION=$IOS_BUILD")
+elif [ -n "${ASC_KEY_ID:-}" ]; then
   AUTH=(-allowProvisioningUpdates -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "${ASC_ISSUER_ID:?ASC_ISSUER_ID}" -authenticationKeyPath "${ASC_KEY_PATH:?ASC_KEY_PATH}")
 else
   AUTH=(-allowProvisioningUpdates)
@@ -44,19 +51,21 @@ case "$MODE" in
   device)
     DEVICE="${2:-}"
     xcodebuild -project "$PROJECT" -scheme DeepSeekBot -configuration Debug \
-      -destination "$( [ -n "$DEVICE" ] && echo "id=$DEVICE" || echo 'generic/platform=iOS' )" -derivedDataPath "$BUILD/derived" "${AUTH[@]}" build | tail -5
+      -destination "$( [ -n "$DEVICE" ] && echo "id=$DEVICE" || echo 'generic/platform=iOS' )" -derivedDataPath "$BUILD/derived" ${AUTH[@]+"${AUTH[@]}"} build | tail -5
     APP="$BUILD/derived/Build/Products/Debug-iphoneos/DeepSeekBot.app"
     if [ -n "$DEVICE" ]; then xcrun devicectl device install app --device "$DEVICE" "$APP"; else echo "→ $APP"; fi
     ;;
   archive)
+    # Derived data and package caches stay in ios/build, on the checkout's disk, instead of ~/Library.
     ARCHIVE="$BUILD/DeepSeekBot.xcarchive"
     rm -rf "$ARCHIVE" "$BUILD/export"
     xcodebuild -project "$PROJECT" -scheme DeepSeekBot -configuration Release \
-      -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" "${AUTH[@]}" archive | tail -5
-    # NSH's framework, built on this Mac, holds its home folder and checkout in panic locations; testers get this binary. The export signs it again.
+      -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" -derivedDataPath "$BUILD/derived" \
+      -clonedSourcePackagesDirPath "$BUILD/packages" -packageCachePath "$BUILD/package-cache" ${AUTH[@]+"${AUTH[@]}"} ${SIGNING[@]+"${SIGNING[@]}"} archive | tail -5
+    # Whatever was compiled on this Mac must not carry its home folder to testers. The export signs the binary again.
     "$ROOT/scripts/android-scrub-home.sh" "$HOME" "$ARCHIVE/Products/Applications/DeepSeekBot.app/DeepSeekBot"
-    xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "$ROOT/ios/ExportOptions.plist" \
-      -exportPath "$BUILD/export" "${AUTH[@]}" | tail -5
+    xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "${IOS_EXPORT_OPTIONS:-$ROOT/ios/ExportOptions.plist}" \
+      -exportPath "$BUILD/export" ${AUTH[@]+"${AUTH[@]}"} | tail -5
     echo "→ $BUILD/export/DeepSeekBot.ipa"
     echo "upload: scripts/ios-upload.sh"
     ;;

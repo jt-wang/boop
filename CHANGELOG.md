@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.2-testflight-ci.1
+
+- Add a manual GitHub Actions workflow for signing iOS builds and optional TestFlight upload. Cloud agents use GitHub permissions; Apple credentials stay in the protected environment.
+- Setup and dispatch instructions are in docs/testflight-ci.md.
+
 ## v0.1.2
 
 - The README says what the downloads do: a reminder arrives as a message in the chat, and notifications in the phone apps need your own Firebase or APNs setup (`docs/push.md`).

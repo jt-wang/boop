@@ -1,0 +1,90 @@
+name: TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full SHA of the default branch to build (must equal this run's github.sha)
+        type: string
+        required: true
+      version:
+        description: App version already recorded in mobile/nsh.json
+        type: string
+        required: true
+      build:
+        description: Unused Apple build number (1-9999)
+        type: string
+        required: true
+      upload:
+        description: Validate with Apple and upload to TestFlight after local checks
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+concurrency:
+  group: boop-testflight
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'jt-wang/boop' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    # GitHub's standard macos-15 label is arm64 (runner-images README).
+    runs-on: macos-15
+    timeout-minutes: 90
+    environment: testflight
+    defaults:
+      run:
+        shell: bash
+        working-directory: boop
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      TF_SOURCE_SHA: ${{ inputs.source_sha }}
+      TF_VERSION: ${{ inputs.version }}
+      TF_BUILD: ${{ inputs.build }}
+      TF_UPLOAD: ${{ inputs.upload }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          path: boop
+          persist-credentials: false
+      - name: Check trusted source and required configuration
+        run: python3 -B scripts/testflight-ci.py --check-config
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          ASC_KEY_ID: ${{ inputs.upload && secrets.ASC_KEY_ID || '' }}
+          ASC_ISSUER_ID: ${{ inputs.upload && secrets.ASC_ISSUER_ID || '' }}
+          ASC_PRIVATE_KEY_P8: ${{ inputs.upload && secrets.ASC_PRIVATE_KEY_P8 || '' }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jt-wang/tailpocket
+          ref: 0caf44948f2fe4053995b9b42b762e79d912d555
+          path: tailpocket
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tailpocket/go.mod
+          cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Prepare pinned build dependencies
+        run: python3 -B scripts/testflight-deps.py
+      - name: Build signed IPA and check locally; optionally upload
+        run: python3 -B scripts/testflight-ci.py
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
+          IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
+          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          ASC_KEY_ID: ${{ inputs.upload && secrets.ASC_KEY_ID || '' }}
+          ASC_ISSUER_ID: ${{ inputs.upload && secrets.ASC_ISSUER_ID || '' }}
+          ASC_PRIVATE_KEY_P8: ${{ inputs.upload && secrets.ASC_PRIVATE_KEY_P8 || '' }}
+      - name: Remove temporary signing material after failure or cancellation
+        if: always()
+        run: python3 -B scripts/testflight-ci.py --cleanup

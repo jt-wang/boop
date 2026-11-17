@@ -50,7 +50,7 @@ async function appleSiteAssociation(env: Record<string, string>): Promise<{ stat
   const child = spawn(process.execPath, ['src/host-main.ts', '--host', '127.0.0.1', '--port', String(port), '--public-url', `http://127.0.0.1:${port}`,
     '--provider', 'docker', '--image', 'unused', '--dev-sign-in', '--port-range', '39990-39991', '--id-prefix', 'signing-test-', '--home', home], {
     cwd: ROOT,
-    env: { ...process.env, DEEPSEEK_BOT_APPLE_APP_ID: undefined, DEEPSEEK_BOT_HOST_SECRET: 'signing-test-secret-0123456789abcdef', DEEPSEEK_API_KEY: 'sk-test-dummy', ...env },
+    env: { ...process.env, DEEPSEEK_BOT_APPLE_APP_ID: undefined, DEEPSEEK_BOT_HOST_SECRET: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', DEEPSEEK_API_KEY: 'sk-test-dummy', ...env },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   try {
