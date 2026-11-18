@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.4-release.1
+
+- Update the bundled Mac app to 0.1.4 (4), using the existing DMG build and ad hoc signing process with stock NSH 0.4 and the matching TailPocket helper. Remove build-home paths before signing.
+- Record the successful iOS 0.1.4 (4) TestFlight upload in the download guide. APK, DMG, computer packages and their notices are distributed together in the v0.1.4 release.
+
 ## v0.1.4-android.2
 
 - Install the Android SDK and pinned NDK explicitly on GitHub runners before building the signed APK.

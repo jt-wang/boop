@@ -78,6 +78,8 @@ cp "$ROOT/mac/bot/run.sh" "$ROOT/mac/bot/qr.mjs" "$RES/"
 chmod +x "$RES/run.sh" "$RES/node"
 
 say "5/6 signing"
+# Stock NSH's runtime contains its build home's Rust source paths; remove them before sealing the bundle.
+"$ROOT/scripts/scrub-home.sh" "$HOME" "$APP/Contents/MacOS/Boop"
 if [ -n "${MAC_SIGN_IDENTITY:-}" ]; then
   # Developer ID + hardened runtime (Gatekeeper lets a download open after notarization). Untested without an account.
   codesign --force --deep --options runtime --timestamp --entitlements "$ROOT/mac/entitlements.plist" --sign "$MAC_SIGN_IDENTITY" "$APP"

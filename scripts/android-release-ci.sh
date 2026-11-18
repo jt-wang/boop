@@ -33,7 +33,7 @@ root = pathlib.Path(sys.argv[1])
 temp = pathlib.Path(os.environ['RUNNER_TEMP'])
 old = (temp / 'boop-old-manifest.txt').read_text().splitlines()[0]
 new = (temp / 'boop-new-manifest.txt').read_text().splitlines()[0]
-fields = lambda line: dict(re.findall(r"(name|versionCode|versionName)='([^']*)'", line))
+fields = lambda line: dict(re.findall(r"\b(name|versionCode|versionName)='([^']*)'", line))
 before, after = fields(old), fields(new)
 app = json.loads((root / 'mobile/nsh.json').read_text())
 assert before['name'] == after['name'] == app['id'] == 'io.jingtao.boop', 'application ID differs'

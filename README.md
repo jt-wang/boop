@@ -4,7 +4,7 @@ An AI assistant on your own DeepSeek Harness: on your Mac, or on a server of you
 
 On your Mac it shows a code. Open Boop on your phone, tap Scan the code, and you're connected. No account.
 
-The phone app: **Android**, [download boop.apk](https://github.com/jt-wang/boop/releases/latest/download/boop.apk); **iPhone**, no download yet: build it yourself with Xcode ([docs/ios.md](docs/ios.md)); so far it has run on the simulator only.
+The phone app: **Android**, [download boop.apk](https://github.com/jt-wang/boop/releases/latest/download/boop.apk); **iPhone**, version 0.1.4 (4) has been uploaded to TestFlight. The public invite link will be announced on [X](https://x.com/thejingtao). You can also [build it with Xcode](docs/ios.md).
 
 Run it on your computer:
 
@@ -25,7 +25,7 @@ Fully open source (MIT). Change anything you like. By Jingtao Wang, [@thejingtao
 ### The phone app
 
 - **Android**: download [boop.apk](https://github.com/jt-wang/boop/releases/latest/download/boop.apk) on the phone and open it to install.
-- **iPhone**: there is no download yet. Build the app from `ios/` with Xcode ([docs/ios.md](docs/ios.md)). It has run on the simulator; a physical iPhone is not tested yet.
+- **iPhone**: version 0.1.4 (4) has been uploaded to TestFlight; the public invite link will be announced on [X](https://x.com/thejingtao). Building from `ios/` with Xcode remains an option ([docs/ios.md](docs/ios.md)).
 
 ### On your Mac
 
