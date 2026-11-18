@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.4-android.1
+
+- Add a manual Android release build using the existing GitHub signing secrets. Verify the APK signature against v0.1.0 and require an increased version code before publishing the artifact.
+- Align Android's TailPocket dependencies with the pinned 0.2.4 native libraries. App version remains 0.1.4, build 4; the existing v0.1.4 tag and iOS upload are unchanged.
+
 ## v0.1.4
 
 - Boop now builds on stock NSH 0.4. No patched framework: a phone reaches an `https` computer with the release as it comes.
