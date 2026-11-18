@@ -63,7 +63,8 @@ if ($Reuse) {
     Write-Host 'reusing node_modules (package-lock.json unchanged)'
 } else {
     if (Test-Path (Join-Path $Stage 'node_modules')) { Remove-Item (Join-Path $Stage 'node_modules') -Recurse -Force }
-    Copy-Item (Join-Path $Root 'package.json') (Join-Path $Root 'package-lock.json') $Stage -Force
+    Copy-Item (Join-Path $Root 'package.json') $Stage -Force
+    Copy-Item (Join-Path $Root 'package-lock.json') $Stage -Force
     Push-Location $Stage
     try { npm ci --omit=dev --no-audit --no-fund } finally { Pop-Location }
     if ($LASTEXITCODE -ne 0) { Fail "npm ci failed ($LASTEXITCODE)" }
