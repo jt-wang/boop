@@ -52,9 +52,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
       - name: Prepare pinned Android dependencies
         run: |
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
           curl --fail --location --silent --show-error https://github.com/longbridge/nsh/releases/download/v0.4.0/nsh-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nsh.tar.gz"
           echo "8806121aebf40bb51f8fb6aa703722fbb01253f9a435759c18d53beece1ec976  $RUNNER_TEMP/nsh.tar.gz" | sha256sum --check
           tar xzf "$RUNNER_TEMP/nsh.tar.gz" -C "$RUNNER_TEMP"

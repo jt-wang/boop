@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.4-android.2
+
+- Install the Android SDK and pinned NDK explicitly on GitHub runners before building the signed APK.
+
 ## v0.1.4-android.1
 
 - Add a manual Android release build using the existing GitHub signing secrets. Verify the APK signature against v0.1.0 and require an increased version code before publishing the artifact.
