@@ -96,7 +96,7 @@ if (-not ((Test-Path $NodeExe) -and (Test-Path $NodeLicense) -and (Test-Path $No
     $Want = (Select-String -LiteralPath $Sums -Pattern " $NodeZip$").Line.Split(' ')[0]
     if (-not $Want) { Fail "$NodeZip is not in SHASUMS256.txt" }
     $Got = (Get-FileHash -LiteralPath $Archive -Algorithm SHA256).Hash
-    if ($Got -ne $Want.ToUpperInvariant()) { Fail "checksum mismatch for $NodeZip: got $Got, want $Want" }
+    if ($Got -ne $Want.ToUpperInvariant()) { Fail "checksum mismatch for ${NodeZip}: got $Got, want $Want" }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $z = [IO.Compression.ZipFile]::OpenRead($Archive)
     try {
