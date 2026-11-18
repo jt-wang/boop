@@ -2,9 +2,9 @@
 // pairing link, and stops the bot on Quit. `locate` returns the bundle's Resources
 // directory (App.tsx: the bundle this process runs from; a local test: a built one).
 import { signal } from 'nsh'
-import { Window as DesktopWindow } from 'nsh/desktop'
 import process from 'process'
 import { writeFile } from 'fs/promises'
+import mark from '../assets/mark.png'
 import { Window } from './window.tsx'
 import { parseMatrix } from './qr.tsx'
 import { createSupervisor, type BotState } from './supervisor.ts'
@@ -37,6 +37,8 @@ export function App(props: { locate: () => Promise<string> }) {
 
   const sup = createSupervisor({
     locate: async () => (resources = await props.locate()),
+    // The one executable the app declares is /bin/sh; run.sh sets the home, runs node and watches this app.
+    launch: (res, port) => ({ command: '/bin/sh', args: [`${res}/bot/run.sh`, 'bot', '--port', String(port)] }),
     spawn: (command, args) => process.spawn(command, args, { lines: true }),
     onChange: (s) => {
       state.set(s)
@@ -45,9 +47,7 @@ export function App(props: { locate: () => Promise<string> }) {
   })
   sup.start().catch(() => {})
 
-  DesktopWindow.setTitle('Boop')
-  // The content is about 800 pt tall at 520 wide (measured 2026-10-27: at 760 the mark and Quit were cut off).
-  DesktopWindow.setFrame({ size: { width: 520, height: 860 } })
-
-  return <Window state={state} matrix={matrix} onQuit={() => { sup.stop(); process.exit(0) }} />
+  // The title and the 520 × 860 frame come from nsh.json's `window` (NSH 0.5 removed
+  // Window.setTitle/setFrame; measured 0.5.1, 2026-11-18).
+  return <Window mark={mark} state={state} matrix={matrix} onQuit={() => { sup.stop(); process.exit(0) }} />
 }

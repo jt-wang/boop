@@ -22,7 +22,7 @@ Without `--host`, Start opens the connect screen.
 
 The script builds the app (`nsh build mobile --release` into `android/app/src/main/assets/nsh`), puts NSH's `nsh.aar` in `android/app/libs` (both gitignored), and runs Gradle (`./gradlew assembleRelease`; `--debug` for a debuggable build). `--host` is the host Start signs in to; the shell passes it to the app as `host.params.hostUrl`, as `DEEPSEEK_BOT_HOST_URL` does on iOS. For a store release add `-Pkeystore=… -PkeyAlias=… -PkeystorePassword=…` to the Gradle call and raise `build` in `mobile/nsh.json` (name, id and version come from there).
 
-What it needs: `ANDROID_HOME` (default `~/Library/Android/sdk`) with `platforms;android-36`, a JDK 17 or newer (Android Studio's is used when `JAVA_HOME` is unset), and `nsh` 0.4 (the scripts stop on any other version; `embed/android/nsh.aar` comes from the same install). Gradle 8.14.3 and the Android Gradle plugin 8.13.0 come through the wrapper; set `GRADLE_USER_HOME` to keep their cache off a full system disk.
+What it needs: `ANDROID_HOME` (default `~/Library/Android/sdk`) with `platforms;android-36`, a JDK 17 or newer (Android Studio's is used when `JAVA_HOME` is unset), and `nsh` 0.5 (the scripts stop on any other version; `embed/android/nsh.aar` comes from the same install). Gradle 8.14.3 and the Android Gradle plugin 8.13.0 come through the wrapper; set `GRADLE_USER_HOME` to keep their cache off a full system disk.
 
 ## What the shell does
 

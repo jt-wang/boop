@@ -1,8 +1,10 @@
-// Keeps the bot running under the Mac window: starts it from the app bundle,
+// Keeps the bot running under the desktop window: starts it from the app's files,
 // reads the pairing link off its stdout, starts it again when it dies, steps to
 // the next port when the one it wants is taken. No NSH imports: the tests
-// (mac/supervisor.test.ts) inject `spawn`, since headless `nsh test` has no
-// `process` module (measured 2026-10-27: "process is available on desktop hosts").
+// (mac/supervisor.test.ts) inject `spawn` and `launch`, since headless `nsh test`
+// has no `process` module (measured 2026-10-27: "process is available on desktop
+// hosts"). The launch command is the app's: the Mac app runs `bot/run.sh` through
+// /bin/sh, the Windows app runs `bot\node.exe` directly.
 
 export type Phase = 'starting' | 'running' | 'restarting' | 'failed' | 'stopped'
 
@@ -28,9 +30,16 @@ export interface ChildLike {
   kill(): void
 }
 
+export interface Command {
+  command: string
+  args: string[]
+}
+
 export interface Deps {
-  /** The bundle's `Contents/Resources`, or a rejection when the app's files are not where they should be. */
+  /** The directory holding the app's bot files (`bot/`), or a rejection when they are not where they should be. */
   locate(): Promise<string>
+  /** How this platform starts the bot in `resources` on `port`: the Mac app's run.sh, or the Windows app's node.exe. */
+  launch(resources: string, port: number): Command
   /** `process.spawn` with `lines: true`. */
   spawn(command: string, args: string[]): ChildLike
   setTimeout?: (fn: () => void, ms: number) => unknown
@@ -50,7 +59,7 @@ export function parsePairing(line: string): { url: string; code: string | null }
   return m ? { url: m[1], code: m[2] } : null
 }
 
-/** `…/Boop.app/Contents/MacOS/<exe>` → `…/Boop.app/Contents/Resources`. */
+/** `…/Boop.app/Contents/MacOS/<exe>` → `…/Boop.app/Contents/Resources` (the Mac app's locate). */
 export function resourcesDir(executable: string): string {
   const macos = executable.slice(0, executable.lastIndexOf('/'))
   const contents = macos.slice(0, macos.lastIndexOf('/'))
@@ -75,7 +84,8 @@ export function createSupervisor(deps: Deps) {
 
   const spawnBot = () => {
     stderrTail = ''
-    const c = deps.spawn('/bin/sh', [`${resources}/bot/run.sh`, 'bot', '--port', String(state.port)])
+    const { command, args } = deps.launch(resources, state.port)
+    const c = deps.spawn(command, args)
     child = c
     c.on('stdout', (line) => {
       if (child !== c) return

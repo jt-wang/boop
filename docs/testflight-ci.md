@@ -42,7 +42,7 @@ Only `workflow_dispatch` is configured. There is no push or PR upload trigger. T
 
 The workflow uses the standard arm64 `macos-15` runner and Xcode 26.3. Dependency preparation also checks the runtime architecture. See GitHub's [runner label table](https://github.com/actions/runner-images#available-images) and [macOS 15 arm64 image](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md). It builds the committed Xcode project; xcodegen is not used.
 
-`scripts/testflight-deps.py` pins the stock NSH 0.4.0 macOS CLI and iOS framework to release asset SHA-256 values, matching this app's NSH 0.4 API. TailPocket is checked out at `3c19dca9e2e1ea1208deedc705fb7e4e9bf6fa83`, the revision used for the iOS 27 pairing and recovery checks, and built with the Go toolchain in its `go.mod`; Node 24 is prepared for the existing app build. No Apple secret is passed to the dependency step.
+`scripts/testflight-deps.py` pins the stock NSH 0.5.1 macOS CLI and iOS framework to release asset SHA-256 values, matching this app's NSH 0.4 API. TailPocket is checked out at `3c19dca9e2e1ea1208deedc705fb7e4e9bf6fa83`, the revision used for the iOS 27 pairing and recovery checks, and built with the Go toolchain in its `go.mod`; Node 24 is prepared for the existing app build. No Apple secret is passed to the dependency step.
 
 The runner uses a temporary signing keychain and profile, manual archive/export settings and the existing `ios-build.sh`/`ios-upload.sh` scripts. Cleanup runs after success or failure, with an `always()` step for cancellation and retryable cleanup failures. The standalone `scripts/ios-upload.sh` keeps its existing behavior: invoking it validates and then uploads.
 

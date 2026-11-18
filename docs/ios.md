@@ -12,7 +12,7 @@ What the shell adds:
 
 Using a coding agent? Tell it: follow "Build it for your own iPhone" in `docs/ios.md`.
 
-Needs a Mac with Xcode and Go, the [`nsh` CLI](https://nsh.dev/docs/installation) 0.4 (the scripts stop on any other version), and your Apple Account added in Xcode → Settings → Accounts. Measured 2026-11-05 from a clean checkout with public TailPocket and stock `nsh` 0.4.0: the app compiles and signs with a paid team. A new bundle id, and the setting without entitlements, were measured the same day with `nsh` 0.3.0. A free account and an install on a physical iPhone have not been tried yet; so far the app has run only on the simulator.
+Needs a Mac with Xcode and Go, the [`nsh` CLI](https://nsh.dev/docs/installation) 0.5 (the scripts stop on any other version), and your Apple Account added in Xcode → Settings → Accounts. Measured 2026-11-05 from a clean checkout with public TailPocket and stock `nsh` 0.4.0: the app compiles and signs with a paid team. A new bundle id, and the setting without entitlements, were measured the same day with `nsh` 0.3.0. A free account and an install on a physical iPhone have not been tried yet; so far the app has run only on the simulator.
 
 1. Get both repositories, side by side:
 
@@ -39,7 +39,7 @@ For notifications on your own build you need a paid Apple Developer Program team
 
 ## Build and run on the simulator
 
-Needs Xcode, the `nsh` 0.4 CLI with the NSH distribution it installs, and `xcodegen` (`brew install xcodegen`, only when you change `ios/project.yml`).
+Needs Xcode, the `nsh` 0.5 CLI with the NSH distribution it installs, and `xcodegen` (`brew install xcodegen`, only when you change `ios/project.yml`).
 
 ```sh
 scripts/ios-build.sh simulator
@@ -68,7 +68,7 @@ The probe opens both NSH socket APIs, the global `WebSocket` and the `websocket`
 
 A package signed by `nsh` 0.3 opens in a phone app on 0.4 (measured on both phones, 2026-11-05). The other way round the phone refuses it: "the package needs runtime 0.4.0 or newer".
 
-The framework has to come from the same version as the `nsh` CLI: with a framework from another NSH version, the typed email and access code never reached the sign-in fields (2026-10-29, one run). The build scripts take both from one install and stop on a version other than 0.4.
+The framework has to come from the same version as the `nsh` CLI: with a framework from another NSH version, the typed email and access code never reached the sign-in fields (2026-10-29, one run). The build scripts take both from one install and stop on a version other than 0.5.
 
 ## Ship through TestFlight
 

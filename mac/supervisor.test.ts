@@ -1,9 +1,13 @@
-// The supervisor keeps the bot alive under the Mac window (`nsh test supervisor.test.ts`).
-// `process.spawn` is not available headless, so the tests inject a fake one.
+// The supervisor keeps the bot alive under the desktop window (`nsh test supervisor.test.ts`).
+// `process.spawn` is not available headless, so the tests inject a fake one and the launch
+// command each app uses (the Mac app's run.sh here).
 import { expect, test } from 'nsh/test'
-import { backoffMs, createSupervisor, MAX_FAILURES, parsePairing, resourcesDir, type BotState, type ChildLike } from './src/supervisor.ts'
+import { backoffMs, createSupervisor, MAX_FAILURES, parsePairing, resourcesDir, type BotState, type ChildLike, type Command } from './src/supervisor.ts'
 
 const RES = '/Applications/Boop.app/Contents/Resources'
+
+// What the Mac app passes to createSupervisor.
+const macLaunch = (res: string, port: number): Command => ({ command: '/bin/sh', args: [`${res}/bot/run.sh`, 'bot', '--port', String(port)] })
 
 class FakeChild implements ChildLike {
   pid = 1
@@ -14,12 +18,13 @@ class FakeChild implements ChildLike {
   kill() { this.killed = true }
 }
 
-function harness(locate: () => Promise<string> = async () => RES) {
+function harness(locate: () => Promise<string> = async () => RES, launch: (resources: string, port: number) => Command = macLaunch) {
   const spawned: { command: string; args: string[]; child: FakeChild }[] = []
   const timers: { fn: () => void; ms: number }[] = []
   const states: BotState[] = []
   const sup = createSupervisor({
     locate,
+    launch,
     spawn: (command, args) => { const child = new FakeChild(); spawned.push({ command, args, child }); return child },
     setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
     clearTimeout: () => {},
@@ -53,6 +58,17 @@ test('start locates the bundle and runs its run.sh through /bin/sh on port 3850'
   expect(h.last().command).toBe('/bin/sh')
   expect(h.last().args).toEqual([`${RES}/bot/run.sh`, 'bot', '--port', '3850'])
   expect(h.state().phase).toBe('starting')
+})
+
+test('the launch command is the app\'s: the Windows app starts bot\\node.exe itself, with no shell', async () => {
+  const DIR = 'C:\\Users\\me\\Boop'
+  const h = harness(async () => DIR, (res, port) => ({
+    command: `${res}\\bot\\node.exe`,
+    args: [`${res}\\bot\\src\\main.ts`, '--home', 'C:\\Users\\me\\AppData\\Local\\DeepSeek Bot', '--port', String(port), '--supervised'],
+  }))
+  await h.sup.start()
+  expect(h.last().command).toBe(`${DIR}\\bot\\node.exe`)
+  expect(h.last().args).toEqual([`${DIR}\\bot\\src\\main.ts`, '--home', 'C:\\Users\\me\\AppData\\Local\\DeepSeek Bot', '--port', '3850', '--supervised'])
 })
 
 test('the pairing line makes it running, with the link and the code', async () => {

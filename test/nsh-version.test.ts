@@ -23,13 +23,13 @@ test('the build scripts refuse another NSH release and say which one they found'
   try {
     const r = require(nsh)
     assert.notEqual(r.status, 0)
-    assert.match(r.stderr, /Boop needs NSH 0\.4/)
+    assert.match(r.stderr, /Boop needs NSH 0\.5/)
     assert.match(r.stderr, /nsh 0\.3\.0/)
   } finally { rmSync(nsh, { recursive: true, force: true }) }
 })
 
 test('the framework comes from the same install as the CLI', () => {
-  const nsh = fakeNsh('0.4.0')
+  const nsh = fakeNsh('0.5.1')
   try {
     const r = require(nsh)
     assert.equal(r.status, 0, r.stderr)
@@ -51,7 +51,7 @@ test('no build script swaps NSH\'s runtime or warns about a framework without th
 })
 
 test('the sync links the framework of the NSH in use, even when an older link is already there', () => {
-  const nsh = fakeNsh('0.4.0')
+  const nsh = fakeNsh('0.5.1')
   const t = mkdtempSync(join(tmpdir(), 'tailpocket-'))
   const repo = mkdtempSync(join(tmpdir(), 'boop-'))
   try {

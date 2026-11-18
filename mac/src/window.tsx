@@ -1,7 +1,8 @@
 // The one window: what the assistant is doing, the pairing code to scan, Copy, Quit.
 // Black and white only (the theme in nsh.json); nothing a developer would need to read.
-import { Clipboard, Image, signal, Text, View, type Accessor } from 'nsh'
-import mark from '../assets/mark.png'
+// The mark is the app's own file, so both apps (which may not import each other's assets)
+// pass it in: `mark` is mac/assets/mark.png in the Mac app, windows/assets/mark.png on Windows.
+import { Clipboard, Image, signal, Text, View, type Accessor, type ImageAsset } from 'nsh'
 import { QrCanvas } from './qr.tsx'
 import { str } from './strings.ts'
 import type { BotState } from './supervisor.ts'
@@ -17,7 +18,7 @@ function Btn(props: { label: string; kind: 'soft' | 'quiet'; onPress: () => void
   )
 }
 
-export function Window(props: { state: Accessor<BotState>; matrix: Accessor<number[][] | null>; onQuit: () => void }) {
+export function Window(props: { mark: ImageAsset; state: Accessor<BotState>; matrix: Accessor<number[][] | null>; onQuit: () => void }) {
   const s = props.state
   const copied = signal(false)
   const running = () => s().phase === 'running'
@@ -34,7 +35,7 @@ export function Window(props: { state: Accessor<BotState>; matrix: Accessor<numb
   return (
     <View class="flex-1 bg-background items-center justify-center px-10 py-8">
       <View class="items-center gap-4" style={{ width: 400 }}>
-        <Image src={mark} style={{ width: 64, height: 64 }} class="rounded-[16px]" />
+        <Image src={props.mark} style={{ width: 64, height: 64 }} class="rounded-[16px]" />
         <Text class="text-foreground text-[24px] font-bold">Boop</Text>
         <View class="flex-row items-center gap-2">
           <View class={`w-2 h-2 rounded-full ${running() ? 'bg-foreground' : 'bg-muted-foreground'}`} />

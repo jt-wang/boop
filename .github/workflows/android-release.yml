@@ -57,8 +57,8 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
       - name: Prepare pinned Android dependencies
         run: |
-          curl --fail --location --silent --show-error https://github.com/longbridge/nsh/releases/download/v0.4.0/nsh-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nsh.tar.gz"
-          echo "8806121aebf40bb51f8fb6aa703722fbb01253f9a435759c18d53beece1ec976  $RUNNER_TEMP/nsh.tar.gz" | sha256sum --check
+          curl --fail --location --silent --show-error https://github.com/longbridge/nsh/releases/download/v0.5.1/nsh-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nsh.tar.gz"
+          echo "f34729e613196ca122d956deb543a92f319e053ff17dfc09ba04a6ec2fb79c74  $RUNNER_TEMP/nsh.tar.gz" | sha256sum --check
           tar xzf "$RUNNER_TEMP/nsh.tar.gz" -C "$RUNNER_TEMP"
           export NSH_HOME="$RUNNER_TEMP/nsh"
           export NSH_BIN="$NSH_HOME/bin/nsh"

@@ -7,7 +7,7 @@
 #   MAC_SIGN_IDENTITY="Developer ID Application: …" MAC_NOTARY_PROFILE=<notarytool keychain profile> scripts/mac-build.sh
 #                                   signed + notarized, for download by anyone (needs the owner's Apple Developer account; untested here)
 #
-# Needs: nsh 0.4 (https://nsh.dev/docs/installation), Node 24 + npm (to install the bot's
+# Needs: nsh 0.5 (https://nsh.dev/docs/installation), Node 24 + npm (to install the bot's
 # dependencies; the bundle gets its own Node), Xcode command line tools (codesign, hdiutil).
 set -eu
 

@@ -252,7 +252,10 @@ function zoneOf(st: Settings) { const z = personZone(st); return z ? { clientTim
 const followZone = async (st: Settings) => { const z = personZone(st); if (z && inContainer && process.getuid?.() === 0 && await setComputerZone(z).catch(() => false)) console.log(`[bot] clock zone ${z}`) }
 await followZone(config.get().settings)
 const settingsStore = { get: config.settings.get, set: async (p: Partial<Settings>) => { const v = await config.settings.set(p); if (p.person !== undefined || p.timeZone !== undefined) await followZone(v); if (p.proactivity !== undefined || p.assistantName !== undefined || p.person !== undefined) await openHome(root, homeOpts()).catch((e) => console.error('[bot] AGENTS.md rewrite failed', e)); return v } }
-const modelSwitch = new ModelSwitch({ home: root, config, supervised: process.env.DEEPSEEK_BOT_SUPERVISED === '1', checkBaseURL: async (u) => { await guard.checkModelBaseURL(u) }, exit: (c) => { console.log('[bot] model changed; restarting under the supervisor'); process.exit(c) } })
+// --supervised is the same as DEEPSEEK_BOT_SUPERVISED=1: a desktop window runs this bot and starts it
+// again after a model change. The Windows app cannot set a child's environment (process.spawn has no env
+// option), so it passes this flag instead; mac/bot/run.sh exports the variable.
+const modelSwitch = new ModelSwitch({ home: root, config, supervised: process.env.DEEPSEEK_BOT_SUPERVISED === '1' || argv.includes('--supervised'), checkBaseURL: async (u) => { await guard.checkModelBaseURL(u) }, exit: (c) => { console.log('[bot] model changed; restarting under the supervisor'); process.exit(c) } })
 
 // A service was connected: the phones hear it, the activity list notes it, and
 // the assistant is told in the main thread once dsh has mounted the new tools

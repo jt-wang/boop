@@ -41,14 +41,14 @@ scripts/mac-build.sh
 DEEPSEEK_BOT_MAC_BUILD=/Volumes/Some\ Disk/build scripts/mac-build.sh   # 1.3 GB of output on another disk
 ```
 
-Needs `nsh` 0.4, Node 24 with npm, and the Xcode command line tools (`codesign`, `hdiutil`). Steps: `nsh package --target macos` (the window), `npm ci --omit=dev` into `<build>/stage` with the Dockerfile's prune list and broken `.bin` symlinks removed (codesign stops on them), Node from `https://nodejs.org/dist/v24.13.1/` checked against its `SHASUMS256.txt` (cached in `~/Library/Caches/deepseek-bot-mac`), copy into `Contents/Resources/bot`, `codesign --force --deep --sign -`, `hdiutil create` with an `Applications` link in the image.
+Needs `nsh` 0.5, Node 24 with npm, and the Xcode command line tools (`codesign`, `hdiutil`). Steps: `nsh package --target macos` (the window), `npm ci --omit=dev` into `<build>/stage` with the Dockerfile's prune list and broken `.bin` symlinks removed (codesign stops on them), Node from `https://nodejs.org/dist/v24.13.1/` checked against its `SHASUMS256.txt` (cached in `~/Library/Caches/deepseek-bot-mac`), copy into `Contents/Resources/bot`, `codesign --force --deep --sign -`, `hdiutil create` with an `Applications` link in the image.
 
 Apple silicon only for now: the bundled Node matches the building Mac's architecture (`darwin-x64` on an Intel Mac); NSH's macOS runtime is arm64.
 
 ## Tests
 
 ```sh
-cd mac && nsh test                 # supervisor (10) + window (7), headless
+cd mac && nsh test                 # supervisor (12) + window (9), headless
 npm test                           # includes test/mac-qr.test.ts (qr.mjs) and test/mac-run.test.ts (run.sh follows the app)
 cd mac && nsh check                # types
 ```

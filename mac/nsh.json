@@ -51,6 +51,7 @@
       }
     }
   },
+  "window": { "title": "Boop", "defaultSize": { "width": 520, "height": 860 } },
   "capabilities": {
     "process": { "execute": ["/bin/sh"], "exit": true },
     "fs": { "read": ["${dataDir}"], "write": ["${dataDir}"] },
