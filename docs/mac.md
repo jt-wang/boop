@@ -31,7 +31,7 @@ Node is bundled rather than downloaded on first run: 114 MB on disk is the price
 
 The window shows the status in plain words, the QR, Copy code and Quit. On the plain local network route it also shows the link and the six-digit code, with Copy link. Nothing else: no paths, no commands, no logs.
 
-No "start at login" toggle: NSH 0.4.0 has no login-item API (nothing in its generated types, 2026-11-05), and a packaged NSH app ends when its window closes, so the app cannot live in the menu bar either. Keep the window open; `scripts/install-service.sh` remains the way to run the bot after logout.
+No "start at login" toggle: NSH 0.5.1 has no login-item switch in its TSX API (nothing in its generated types, 2026-11-18), and a packaged NSH app ends when its window closes, so the app cannot live in the menu bar either. Keep the window open; `scripts/install-service.sh` remains the way to run the bot after logout.
 
 ## Build
 

@@ -26,7 +26,10 @@ Boop\
     qr.mjs                     the QR encoder the window runs
 ```
 
-The sizes are printed by the build; the Mac bundle's numbers are in
+The build prints the sizes. Measured on `windows-latest` (2026-11-18): `Boop\` is
+**441.4 MB**, `bot\node.exe` 87.2 MB, `bot\node_modules` 256.7 MB, and
+`Boop-windows.zip` **146.7 MB**; `scripts/windows-build.ps1` took 71 s after the
+dependencies were downloaded. The Mac bundle's numbers are in
 [mac.md](mac.md#what-is-in-the-bundle). Node is bundled rather than downloaded on
 first run: open it and it works, with no network step and no version to get wrong.
 
