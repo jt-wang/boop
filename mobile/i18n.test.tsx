@@ -150,7 +150,6 @@ test('the first screen is in the phone\'s language, for each of the seven', asyn
     const app = await open('./App.tsx', { locale: tag })
     await app.waitFor('id:start')
     expect(app.shows(`text:${STRINGS[l].start}`)).toBe(true)
-    await app.close?.()
   }
 })
 

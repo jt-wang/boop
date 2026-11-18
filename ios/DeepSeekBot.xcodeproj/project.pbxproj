@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0693B935753B9E478D4353D6 /* QAPassTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F42439D5AB661C67A2AC10AB /* QAPassTests.swift */; };
+		2D79FF07A51BA7FF1D703774 /* TryItTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DB9D0741E894285F92C5A7 /* TryItTests.swift */; };
 		46E6CB8DCA608DDE175C6FDA /* PairLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC97505190C113AA738295F4 /* PairLink.swift */; };
 		47FBAE5D631C4F5A54B0CE44 /* ThreadGapsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FA35D426234BBE48F09A27 /* ThreadGapsTests.swift */; };
 		527B259DCB700D1664B4DC19 /* PushBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E475D50172BB71F82169E3F /* PushBridge.swift */; };
@@ -51,6 +52,7 @@
 		62F5F8D60393276A12A9D289 /* nsh */ = {isa = PBXFileReference; lastKnownFileType = folder; name = nsh; path = DeepSeekBot/nsh; sourceTree = SOURCE_ROOT; };
 		6634D5D1E17736A58DC3E393 /* ModuleOpenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModuleOpenTests.swift; sourceTree = "<group>"; };
 		6AA0165B773805FC7DAC87B9 /* RootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewController.swift; sourceTree = "<group>"; };
+		88DB9D0741E894285F92C5A7 /* TryItTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TryItTests.swift; sourceTree = "<group>"; };
 		8E475D50172BB71F82169E3F /* PushBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushBridge.swift; sourceTree = "<group>"; };
 		9212F2BC52AAD04B5B3C1DBB /* TabBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarTests.swift; sourceTree = "<group>"; };
 		9C1251657AA68096E70ACDD2 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 				F42439D5AB661C67A2AC10AB /* QAPassTests.swift */,
 				9212F2BC52AAD04B5B3C1DBB /* TabBarTests.swift */,
 				E6FA35D426234BBE48F09A27 /* ThreadGapsTests.swift */,
+				88DB9D0741E894285F92C5A7 /* TryItTests.swift */,
 			);
 			path = DeepSeekBotUITests;
 			sourceTree = "<group>";
@@ -274,6 +277,7 @@
 				0693B935753B9E478D4353D6 /* QAPassTests.swift in Sources */,
 				D9EEA06FE204B2AF9BA1604F /* TabBarTests.swift in Sources */,
 				47FBAE5D631C4F5A54B0CE44 /* ThreadGapsTests.swift in Sources */,
+				2D79FF07A51BA7FF1D703774 /* TryItTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,7 +397,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEEPSEEK_BOT_HOST_URL = "";
 				DEEPSEEK_BOT_LINK_DOMAIN = "deepseek-bot.example";
@@ -408,7 +412,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.4;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -457,7 +461,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEEPSEEK_BOT_HOST_URL = "";
 				DEEPSEEK_BOT_LINK_DOMAIN = "deepseek-bot.example";
@@ -478,7 +482,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.4;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

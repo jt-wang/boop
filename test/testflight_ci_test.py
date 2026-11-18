@@ -199,7 +199,7 @@ class ShellBoundaryTests(unittest.TestCase):
             (folder / "scripts").mkdir()
             (folder / "bin").mkdir()
             (folder / "home").mkdir()
-            for name in (script, "android-scrub-home.sh"):
+            for name in (script, "scrub-home.sh"):
                 shutil.copy(ROOT / "scripts" / name, folder / "scripts" / name)
             for tool in ("xcrun", "xcodebuild"):
                 shutil.copy(self.binary, folder / "bin" / tool)

@@ -1,9 +1,17 @@
 // Local use: this phone reaches its computer through TailPocket (docs/connection.md). The shell registers the bridge
 // (TailPocketNsh.attach), the bridge keeps the phone's key and the link in the Keychain or Keystore, and each opening of
 // the tunnel gives a new loopback port, so the saved origin is only ever a guess until the tunnel is open again.
-import { platform, signal, Storage } from 'nsh'
-import { tailPocket, TailPocketError, type TailPocketConnection } from './tailpocket/nsh.ts'
+import { host, platform, signal, Storage } from 'nsh'
+import { createTailPocket, TailPocketError, type TailPocketConnection } from './tailpocket/client.ts'
 import { pair } from './api.ts'
+
+// NSH 0.4.0 rejects a host call with `code: 'ERR_NSH_HOST_ERROR'` and the bridge's own code as the message (measured
+// 2026-11-05). TailPocket's client reads `code` first, so its own nsh.ts would lose "expired", "cancelled", "not-paired".
+const tailPocket = createTailPocket({
+  call: (name, args, timeoutMs) => host.call(name, args ?? null, timeoutMs === undefined ? null : { timeout: timeoutMs })
+    .catch((e: { code?: string; message?: string }) => { throw e?.code === 'ERR_NSH_HOST_ERROR' ? new Error(e.message) : e }),
+  on: (event, listener) => host.on(event, listener),
+})
 
 /** This session goes through TailPocket: a loopback address that is not on this phone's network at all. */
 export const viaPocket = signal(false)

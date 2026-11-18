@@ -35,8 +35,8 @@ export function LibraryPage(props: { onOpen: (path: string) => void }) {
               <View role="button" testID={`file:${f.path}`} onPress={() => props.onOpen(f.path)} class={`flex-row items-center gap-3 pl-[16px] pr-[14px] min-h-[44px] py-[10px] active:opacity-70 ${i > 0 ? 'border-t border-border' : ''}`} style={i > 0 ? { borderTopWidth: 0.5 } : undefined}>
                 <View class="w-7 items-center"><Glyph name="file" size={22} color={muted()} /></View>
                 <View class="flex-1 min-w-0">
-                  <Text class="text-foreground text-[17px]" numberOfLines={1}>{fileName(f.path)}</Text>
-                  <Text class="text-muted-foreground text-[15px]" numberOfLines={1}>{joined(f.description, fileSize(f.size), ago(f.mtime))}</Text>
+                  <Text class="text-foreground text-[17px]" style={{ numberOfLines: 1 }}>{fileName(f.path)}</Text>
+                  <Text class="text-muted-foreground text-[15px]" style={{ numberOfLines: 1 }}>{joined(f.description, fileSize(f.size), ago(f.mtime))}</Text>
                 </View>
                 <Text class="text-input text-[17px] font-semibold">›</Text>
               </View>
@@ -54,25 +54,25 @@ export function LibraryFilePage(props: { path: string; onDeleted: () => void }) 
   const ratio = signal(0.75) // height / width until the image reports its size
   const name = fileName(props.path)
   const remove = async () => {
-    const choice = await AlertDialog.show({ title: str('deleteFile'), description: t('deleteFileAsk')(name), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteGo'), role: 'destructive', id: 'delete' }] })
+    const { action: choice } = await AlertDialog.show({ title: str('deleteFile'), description: t('deleteFileAsk')(name), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteGo'), role: 'destructive', id: 'delete' }] })
     if (choice !== 'delete') return
     try { await api().send('DELETE', `/library/file?path=${encodeURIComponent(props.path)}`); showToast(str('deleted')); props.onDeleted() } catch { showToast(str('failed')) }
   }
   const isMarkdown = /\.(md|markdown)$/i.test(props.path)
   return (
-    <Page page="LibraryFilePage" contentClass="px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+24px)] gap-4 grow" onLayout={(e: unknown) => { const l = e as { width?: number; layout?: { width?: number } }; const w = l.width ?? l.layout?.width; if (w) width.set(w - 32) }}>
+    <Page page="LibraryFilePage" contentClass="px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+24px)] gap-4 grow" onLayout={({ bounds }) => { const w = bounds.size.width; if (w) width.set(w - 32) }}>
       {body.loading() ? null : !body() ? <Empty text={str('failed')} /> : body()!.kind === 'text' ? (
         <Card class="px-4 py-3">
           <TextView markdown={isMarkdown ? body()!.text ?? '' : `\`\`\`\n${body()!.text ?? ''}\n\`\`\``} selectable links="open" classes={{ root: 'text-foreground text-[17px] leading-6' }} />
         </Card>
       ) : body()!.kind === 'image' ? (
         <Card class="overflow-hidden items-center">
-          <Image src={`data:${body()!.mime};base64,${body()!.base64 ?? ''}`} resizeMode="contain" style={{ width: width() || 300, height: (width() || 300) * ratio() }} onLoad={(s) => { if (s.width > 0) ratio.set(Math.min(s.height / s.width, 2)) }} />
+          <Image src={`data:${body()!.mime};base64,${body()!.base64 ?? ''}`} style={{ width: width() || 300, height: (width() || 300) * ratio(), objectFit: 'contain' }} onLoad={({ size: s }) => { if (s.width > 0) ratio.set(Math.min(s.height / s.width, 2)) }} />
         </Card>
       ) : (
         <Card class="px-4 py-6 items-center gap-2">
           <Glyph name="file" size={40} />
-          <Text class="text-foreground text-[17px]" numberOfLines={2}>{name}</Text>
+          <Text class="text-foreground text-[17px]" style={{ numberOfLines: 2 }}>{name}</Text>
           <Text class="text-muted-foreground text-[15px] text-center">{str('noPreview')}</Text>
         </Card>
       )}

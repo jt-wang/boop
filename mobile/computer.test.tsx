@@ -115,7 +115,7 @@ test('unpairing a hosted computer warns about signing in, not a pairing code', a
   const app = await settings(origin, { hostedBy: 'https://host.example.dev' })
   app.onDialog((d) => d.buttons.find((b) => b === 'Cancel') ?? null)
   await app.press('id:unpair')
-  expect(String(app.dialogs().at(-1)?.description ?? app.dialogs().at(-1)?.message)).toMatch(/sign in again/)
+  expect(String(app.dialogs().at(-1)?.message)).toMatch(/sign in again/)
 })
 
 test('in all seven languages, and "end-to-end" is in none of the routes that are not TailPocket', async () => {

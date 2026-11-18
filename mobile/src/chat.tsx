@@ -13,7 +13,7 @@
 // the first row and wherever 15 minutes pass; the gap between rows depends on
 // who spoke before.
 import { formatDate, formatTime, labelSeparator, type Lang } from './locale.ts'
-import { Clipboard, computed, createMotion, effect, Image, Keyboard, keyboardFrame, List, safeAreaInsets, Scroll, signal, Text, View, type YNode } from 'nsh'
+import { Clipboard, computed, createMotion, effect, Image, Keyboard, keyboardFrame, List, safeAreaInsets, Scroll, signal, Text, View, type InputRef, type ListRef } from 'nsh'
 import { Input, TextView } from 'nsh/base'
 import { BackHandler } from 'nsh/mobile'
 import { connectorOf, serviceName, toolWord, type CardRow, type FileRow, type ModuleRow, type Row } from './fold.ts'
@@ -110,12 +110,12 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   const chromeBottom = () => Math.max(topH(), chromeH())
   const topH = signal(0)
   const bottomH = signal(0)
-  let list: YNode | undefined
+  let list: ListRef | undefined
   /** The person dragged the thread since it was last at its end. */
   let touched = false
   let contentH = 0
   let grewAt = 0
-  let input: YNode | undefined
+  let input: InputRef | undefined
 
   // Oldest first; the 👀 ack sits at the very bottom. The list
   // follows its end while the person is there (`maintainVisibleContentPosition`),
@@ -172,7 +172,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
     if (!(await trySend(text))) draft.set(text)
   }
   // Android's back button closes an open step list first; before, it left the app (Android pass, 2026-11-02)
-  BackHandler.onBackPress(() => { if (!openActivities().size) return false; openActivities.set(new Set()); return true })
+  BackHandler.on('press', () => { if (!openActivities().size) return false; openActivities.set(new Set()); return true })
   const toggleActivity = (id: string) => { openActivities.update((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }); if (atBottom()) setTimeout(() => list?.scrollToEnd({ animated: true }), 60) }
   const copy = async (text: string) => { try { await Clipboard.writeText(text); copiedToast(str('copied')) } catch {} }
   const refresh = async () => { const id = sessionId(); if (!id) return; refreshing.set(true); try { await follow(id) } catch {} finally { refreshing.set(false) } }
@@ -184,7 +184,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   // a card pinned above the composer makes the room under the list taller: the last message stays above it
   effect(() => { pending().length; bottomH(); if (atBottom()) setTimeout(() => { if (atBottom()) list?.scrollToEnd({ animated: true }) }, 150) })
   return (
-    <View class="flex-1 bg-background pb-[env(keyboard-inset-height)]" onLayout={(b) => screenH.set(b.size.height)}>
+    <View class="flex-1 bg-background pb-[env(keyboard-inset-height)]" onLayout={({ bounds: b }) => screenH.set(b.size.height)}>
       <List ref={list} each={items()} keyExtractor={(i) => i.id} estimatedItemSize={64} maintainVisibleContentPosition={{ autoscrollToBottomThreshold: bottomH() + 60 }}  /* the end of the content sits under the floating composer: anywhere inside that padding is "at the bottom" */ style={{ flex: 1, marginBottom: -bottomH() }}
         contentStyle={{ paddingHorizontal: 16, paddingTop: chromeBottom() + 8, paddingBottom: bottomH() + 40 }}  /* 40: a markdown row that ends with a list measures one line short (NSH 0.3.0, 2026-10-27); the padding keeps that line visible. The gap between rows is each row's own (ItemView). */
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={50} testID="thread"
@@ -218,16 +218,16 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
 
       {/* Top chrome: a scroll-edge fade, then three glass pieces (menu, identity, settings) and, while it works, the status pill. */}
       <EdgeFade edge="top" height={chromeBottom() + 24} />
-      <View pointerEvents="box-none" onLayout={(b) => chromeH.set(b.size.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+      <View onLayout={({ bounds: b }) => chromeH.set(b.size.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'box-none' }}>
         {/* the bar alone (topH) places the empty thread; the bar with the live activity (chromeH) is where messages start */}
-        <View pointerEvents="box-none" onLayout={(b) => topH.set(b.size.height)} class="pb-2">
+        <View onLayout={({ bounds: b }) => topH.set(b.size.height)} class="pb-2" style={{ pointerEvents: 'box-none' }}>
           <View class="flex-row items-center gap-2 px-3" style={{ paddingTop: insets().top + 6 }}>
             <Glass role="button" accessibilityLabel={str('menu')} onPress={props.onMenu} class="w-11 h-11 rounded-full items-center justify-center active:opacity-60"><Icon name="menu" /></Glass>
             <Glass role="button" onPress={props.onIdentity} onLongPress={openStop} testID="status" class="flex-1 min-w-0 h-11 rounded-full flex-row items-center gap-[10px] pl-[5px] pr-4 active:opacity-70">
               <Avatar size={34} dot={dot()} />
               <View class="flex-1 min-w-0">
-                <Text class="text-foreground font-semibold text-[15px] leading-[18px]" numberOfLines={1}>{me()?.assistant.name ?? ''}</Text>
-                <Text class={`text-[13px] leading-[14px] ${live() ? 'text-primary' : 'text-muted-foreground'}`} numberOfLines={1}>{status()}</Text>
+                <Text class="text-foreground font-semibold text-[15px] leading-[18px]" style={{ numberOfLines: 1 }}>{me()?.assistant.name ?? ''}</Text>
+                <Text class={`text-[13px] leading-[14px] ${live() ? 'text-primary' : 'text-muted-foreground'}`} style={{ numberOfLines: 1 }}>{status()}</Text>
               </View>
             </Glass>
             <StopControl />
@@ -250,7 +250,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
       <EdgeFade edge="bottom" height={bottomH() + 16} />
       <ModulePlayer />
       {/* In flow, over the list's bottom edge (the list carries a negative margin of this height): taps land here, the content still scrolls under. */}
-      <View onLayout={(b) => bottomH.set(b.size.height)} class="px-3 pt-2" style={{ paddingBottom: bottomPad() }}>
+      <View onLayout={({ bounds: b }) => bottomH.set(b.size.height)} class="px-3 pt-2" style={{ paddingBottom: bottomPad() }}>
         <If when={pending().length > 0}>
           {/* at most half the screen; taller (several cards, a long question) scrolls inside */}
           <Scroll testID="pinned-asks" style={{ maxHeight: Math.max(240, screenH() * 0.5), flexGrow: 0 }} contentClass="gap-2 pb-2" keyboardShouldPersistTaps="handled">
@@ -259,8 +259,8 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
         </If>
         <Glass class="flex-row items-end rounded-[22px] px-[5px]" style={{ minHeight: 44 }}>
           {/* no + until attachments work: a button that only says "coming soon" does nothing */}
-          <Input ref={input} placeholder={str('compose')} accessibilityLabel={str('compose')} value={draft()} onChange={(v) => draft.set(v)} multiline submitBehavior="submit" returnKeyType="send" onSubmit={submit} testID="composer"
-            onContentSizeChange={(e) => composerHeight.set(Math.min(Math.max(e.height, LINE), LINE * MAX_LINES))}
+          <Input ref={input} placeholder={str('compose')} accessibilityLabel={str('compose')} value={draft()} onChange={({ value: v }) => draft.set(v)} multiline submitBehavior="submit" returnKeyType="send" onSubmit={submit} testID="composer"
+            onContentSizeChange={({ size: e }) => composerHeight.set(Math.min(Math.max(e.height, LINE), LINE * MAX_LINES))}
             style={{ height: composerHeight() + 20 }}
             class="flex-1 bg-transparent pl-[12px] pr-[10px] py-[10px] text-foreground text-[17px] leading-[22px]" />
           <View role="button" accessibilityLabel={str('send')} onPress={submit} testID="send" class={`w-[34px] h-[34px] mb-[5px] rounded-full items-center justify-center ${canSend() ? 'bg-primary' : 'bg-black/[0.06] dark:bg-white/[0.10]'}`} style={[{ transitionProperty: 'background-color', transitionDuration: 150 }, sendPop.style]}>
@@ -283,7 +283,7 @@ function EmptyThread(props: { onStarter: (text: string) => void; onSayHi: () => 
         {t('starters').map((s, i) => (
           <Appear>
             <Card testID={`starter-${i}`} onPress={() => props.onStarter(s)} class="flex-row items-center px-4 min-h-[52px] py-3">
-              <Text class="flex-1 text-foreground text-[15px] leading-5" numberOfLines={2}>{s}</Text>
+              <Text class="flex-1 text-foreground text-[15px] leading-5" style={{ numberOfLines: 2 }}>{s}</Text>
             </Card>
           </Appear>
         ))}
@@ -334,7 +334,7 @@ function ItemView(props: { item: () => Item; prev: () => Item | undefined; index
         {(r) => (
           <Appear when={props.fresh(r().id)} class="items-end">
             <View class="max-w-[82%] bg-secondary rounded-[20px] px-4 py-[9px]" testID={`msg-${props.index()}`}>
-              <Text class="text-foreground text-[17px] leading-[22px]" selectable>{text()}</Text>
+              <Text class="text-foreground text-[17px] leading-[22px]" style={{ userSelect: 'text' }}>{text()}</Text>
             </View>
           </Appear>
         )}
@@ -349,7 +349,7 @@ function ItemView(props: { item: () => Item; prev: () => Item | undefined; index
               <If when={!r().filtered} else={<Text testID={`filtered-${r().id}`} class="text-muted-foreground text-[15px] leading-[22px]">{str('filtered')}</Text>}>
               <TextView markdown={words().text} options={{ streaming: streaming() }} links="open"
                 // an image from the web stays in the words; the computer's files are drawn under them (splitImages)
-                renderImage={(img) => (isRemote(img.src) ? <Image src={img.src} resizeMode="contain" style={{ width: '100%', aspectRatio: 1.6 }} /> : <LibraryImage path={img.src} alt={img.alt} onPress={() => props.onOpenFile?.(img.src)} />)}
+                renderImage={(img) => (isRemote(img.src) ? <Image src={img.src} style={{ width: '100%', aspectRatio: 1.6, objectFit: 'contain' }} /> : <LibraryImage path={img.src} alt={img.alt} onPress={() => props.onOpenFile?.(img.src)} />)}
                 streamingCaret={streaming() ? <View class="ml-0.5 h-4 w-[2px] rounded-sm bg-primary" /> : undefined}
                 classes={{ root: 'text-foreground text-[17px] leading-6', code: 'font-mono text-[15px]', codeBlock: 'font-mono text-[13px] bg-card rounded-[12px]' }} />
               <Each of={words().images} key={(im) => im.path}>
@@ -405,7 +405,7 @@ function StatusPill(props: { activity: () => Activity; open: () => boolean; togg
         <If when={props.open()} else={
           <View class="flex-row items-center gap-2" style={swap.style}>
             <Text class="text-foreground text-[15px] leading-5">{emojiFor(current().name)}</Text>
-            <Text class="text-foreground text-[15px] leading-5" style={{ flexShrink: 1 }} numberOfLines={1}>{phraseOf(current(), lang())}</Text>
+            <Text class="text-foreground text-[15px] leading-5" style={{ flexShrink: 1, numberOfLines: 1 }}>{phraseOf(current(), lang())}</Text>
             <Pulse />
           </View>
         }><StepList steps={steps} /></If>
@@ -425,13 +425,13 @@ function StepList(props: { steps: () => StepRow[] }) {
         <View class="gap-1 border-black/[0.06] dark:border-white/[0.08]" style={i > 0 ? { borderTopWidth: 0.5 } : undefined}>
           <View class="flex-row items-center gap-3 min-h-[40px] py-[6px]" testID={`step-${s.id}-${isDone(s) ? 'done' : 'doing'}`}>
             <View class="w-7 h-7 rounded-full bg-primary/[0.08] dark:bg-primary/[0.14] items-center justify-center"><Text class="text-foreground text-[13px] leading-4">{emojiFor(s.name)}</Text></View>
-            <Text class={`flex-1 text-[15px] leading-5 ${isDone(s) ? 'text-muted-foreground' : 'text-foreground'}`} numberOfLines={3}>{phraseOf(s, lang())}</Text>
+            <Text class={`flex-1 text-[15px] leading-5 ${isDone(s) ? 'text-muted-foreground' : 'text-foreground'}`} style={{ numberOfLines: 3 }}>{phraseOf(s, lang())}</Text>
             {isDone(s) ? <Text class="text-muted-foreground text-[13px] font-semibold">✓</Text> : <Pulse />}
           </View>
           <If when={showWork() && (s.command || s.output)}>
             <View class="bg-black/[0.05] dark:bg-white/[0.07] rounded-[12px] px-3 py-2 mb-2 gap-1">
-              {s.command ? <Text class="font-mono text-[13px] leading-[18px] text-foreground" numberOfLines={4} selectable>{s.command}</Text> : null}
-              {s.output ? <Text class="font-mono text-[13px] leading-4 text-muted-foreground" numberOfLines={30} selectable>{s.output}</Text> : null}
+              {s.command ? <Text class="font-mono text-[13px] leading-[18px] text-foreground" style={{ numberOfLines: 4, userSelect: 'text' }}>{s.command}</Text> : null}
+              {s.output ? <Text class="font-mono text-[13px] leading-4 text-muted-foreground" style={{ numberOfLines: 30, userSelect: 'text' }}>{s.output}</Text> : null}
             </View>
           </If>
         </View>
@@ -459,8 +459,8 @@ function ActivityView(props: { activity: () => Activity; open: () => boolean; to
         <View testID={`svc-card-${id}`} class="flex-row items-center gap-3 mt-2 rounded-[26px] bg-secondary px-4 self-stretch" style={{ minHeight: 72 }}>
           <View class="bg-background dark:bg-card rounded-[10px] items-center justify-center" style={{ width: 40, height: 40 }}><BrandMark id={id} name={serviceName(id)} size={22} /></View>
           <View class="flex-1 min-w-0">
-            <Text class="text-foreground text-[17px] leading-5 font-semibold" numberOfLines={1}>{serviceName(id)}</Text>
-            <Text class="text-muted-foreground text-[13px] leading-[18px]" numberOfLines={1}>{cm('svcUsed')(n)}</Text>
+            <Text class="text-foreground text-[17px] leading-5 font-semibold" style={{ numberOfLines: 1 }}>{serviceName(id)}</Text>
+            <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ numberOfLines: 1 }}>{cm('svcUsed')(n)}</Text>
           </View>
         </View>
       ))}
@@ -469,13 +469,13 @@ function ActivityView(props: { activity: () => Activity; open: () => boolean; to
       {changes().length > 1 ? (
         <View role="button" testID="mem-note-many" onPress={() => props.onMemory?.()} class="flex-row items-center gap-[6px] py-[3px] active:opacity-60">
           <Glyph name="brain" size={14} color={muted()} />
-          <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ flexShrink: 1 }} numberOfLines={1}>{changes().every((c) => c.kind === 'remembered') ? cm('memNoted')(changes().length) : cm('memChanged')(changes().length)}</Text>
+          <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ flexShrink: 1, numberOfLines: 1 }}>{changes().every((c) => c.kind === 'remembered') ? cm('memNoted')(changes().length) : cm('memChanged')(changes().length)}</Text>
         </View>
       ) : null}
       {(changes().length === 1 ? changes() : []).map((c) => (
         <View role="button" testID={`mem-note-${c.kind}`} onPress={() => props.onMemory?.(c.kind === 'remembered' ? c.text : undefined)} class="flex-row items-center gap-[6px] py-[3px] active:opacity-60">
           <Glyph name="brain" size={14} color={muted()} />
-          <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ flexShrink: 1 }} numberOfLines={2}>{`${c.kind === 'remembered' ? cm('memRemembered') : cm('memForgot')}${labelSeparator(lang())}${c.text}`}</Text>
+          <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ flexShrink: 1, numberOfLines: 2 }}>{`${c.kind === 'remembered' ? cm('memRemembered') : cm('memForgot')}${labelSeparator(lang())}${c.text}`}</Text>
         </View>
       ))}
     </View>

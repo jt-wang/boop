@@ -19,7 +19,7 @@ import { parseAddress } from './src/api.ts'
 import { AdultsOnlyScreen, AgeScreen, AiProviderPage, ConsentScreen, InterfacePage, InterfacesPage, ReportPage, interfaceFromLink, pendingInterface, pendingReport, type ReportTarget } from './src/compliance.tsx' // [compliance]
 import { openInterface } from './src/cards.tsx'
 import { notificationTarget, notificationUrl, openLink, pairLink } from './src/native.ts'
-import { needsAge, needsConsent, openThread, showToast, underAge } from './src/state.ts'
+import { isSample, needsAge, needsConsent, openThread, showToast, underAge } from './src/state.ts'
 
 type Route =
   | { name: 'chat' } | { name: 'menu' } | { name: 'identity' } | { name: 'upcoming' } | { name: 'goals' } | { name: 'activity' } | { name: 'devices' } | { name: 'settings' }
@@ -154,6 +154,7 @@ function App() {
                 {/* The keyboard covers the tab bar, as in Messages. */}
                 <If when={keyboardFrame().height === 0}>
                   <View class={underBarClass((tab() === 'chat' ? nav : discoverNav).routes().at(-1)?.name)}>
+                    <If when={isSample()}><DemoBar /></If>
                     <If when={mobileHost} else={
                       <View class="px-4 pt-1" style={{ paddingBottom: Math.max(insets().bottom, 8) }} testID="tabbar">
                         <Glass class="flex-row rounded-full px-1" style={{ boxShadow: '0 4px 14px rgba(0,0,0,0.10)' }}>
@@ -163,7 +164,7 @@ function App() {
                       </View>
                     }>
                       {/* The system's own tab bar (Liquid Glass on iOS 26; Material on Android): SF Symbols, Android's own drawables (ui.tsx tabIcons). */}
-                      <TabBar testID="tabbar" style={systemTabBarStyle(platform.os, insets().bottom)} items={[{ title: str('tabChat'), icon: tabIcons()[0] }, { title: str('tabDiscover'), icon: tabIcons()[1] }]} selectedIndex={tab() === 'chat' ? 0 : 1} onChange={pick} />
+                      <TabBar testID="tabbar" style={systemTabBarStyle(platform.os, insets().bottom)} items={[{ title: str('tabChat'), icon: tabIcons()[0] }, { title: str('tabDiscover'), icon: tabIcons()[1] }]} selectedIndex={tab() === 'chat' ? 0 : 1} onChange={({ index }) => pick(index)} />
                     </If>
                   </View>
                 </If>
@@ -176,7 +177,20 @@ function App() {
           )}</If>
         )}
       </If>
-      <If when={toast()}>{(m) => <View class="absolute left-0 right-0 items-center px-8" style={{ bottom: 100 }}><View class="bg-primary rounded-full px-5 py-[10px]" style={{ boxShadow: '0 6px 18px rgba(0,0,0,0.22)' }}><Text class="text-primary-foreground text-[15px] font-medium" numberOfLines={2}>{m()}</Text></View></View>}</If>
+      <If when={toast()}>{(m) => <View class="absolute left-0 right-0 items-center px-8" style={{ bottom: 100 }}><View class="bg-primary rounded-full px-5 py-[10px]" style={{ boxShadow: '0 6px 18px rgba(0,0,0,0.22)' }}><Text class="text-primary-foreground text-[15px] font-medium" style={{ numberOfLines: 2 }}>{m()}</Text></View></View>}</If>
+    </View>
+  )
+}
+
+/**
+ * Try it: every page, above the tab bar, says this is demo mode and that nothing in it is real or really done.
+ * 2026-11-06: the header's status and one grey line at the top of the thread were not enough to tell it from the person's own assistant.
+ */
+function DemoBar() {
+  return (
+    <View testID="demo-bar" class="flex-row flex-wrap items-center justify-center gap-x-2 px-4 py-2 bg-primary">
+      <Text class="text-primary-foreground text-[13px] leading-[18px] font-semibold">{str('sampleStatus')}</Text>
+      <Text class="text-primary-foreground text-[13px] leading-[18px] text-center">{str('sampleBar')}</Text>
     </View>
   )
 }

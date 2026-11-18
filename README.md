@@ -11,7 +11,7 @@ Run it on your computer:
 - **Mac**: [download Boop.dmg](https://github.com/jt-wang/boop/releases/latest/download/Boop.dmg). Nothing else to install.
 - **In a terminal**: `curl -fsSL https://raw.githubusercontent.com/jt-wang/boop/main/install.sh | sh`, then `cd ~/boop && DEEPSEEK_API_KEY=sk-… npm start` and scan the code it prints from Boop on your phone.
 - **With your AI agent**: point it at [SETUP.md](SETUP.md).
-- **Build it yourself**, or run it on your own server with Docker or Fly.io: [docs/BUILD.md](docs/BUILD.md).
+- **Build it yourself**, or run it on your own server with Docker: [docs/BUILD.md](docs/BUILD.md).
 
 Fully open source (MIT). Change anything you like. By Jingtao Wang, [@thejingtao](https://x.com/thejingtao).
 

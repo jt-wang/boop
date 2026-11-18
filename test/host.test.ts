@@ -406,7 +406,7 @@ test('the module openings do not wake a stopped sandbox and do not touch it; the
     const before = s.provider.calls.length
     const paths = [
       `${r.origin}/ui/m1234567890/play?ticket=x`,
-      `${r.origin}/ui/m1234567890/runtime/nsh.abcdef.js?token=x`,
+      `${r.origin}/ui/m1234567890/runtime/x/nsh.abcdef.js`,
       `${r.origin}/ui/m1234567890/tiles/1/0/0.png?token=x`,
     ]
     for (const p of paths) assert.equal((await fetch(p)).status, 401, p)
@@ -423,7 +423,7 @@ test('the access code is still the only way in: the module openings create no ac
   try {
     for (const p of [
       '/s/abcdef123456/ui/m1234567890/play?ticket=x',
-      '/s/abcdef123456/ui/m1234567890/runtime/nsh.abcdef.js?token=x',
+      '/s/abcdef123456/ui/m1234567890/runtime/x/nsh.abcdef.js',
       '/s/abcdef123456/ui/m1234567890/tiles/1/0/0.png?token=x',
     ]) assert.equal((await fetch(`${s.host.origin}${p}`)).status, 401, p)
     assert.equal((await fetch(`${s.host.origin}/s/abcdef123456/ui/m1234567890/result`, { method: 'POST', headers: { authorization: 'Bearer nope-nope-nope-nope' } })).status, 401)

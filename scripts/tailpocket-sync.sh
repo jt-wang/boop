@@ -6,6 +6,7 @@
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 T="${TAILPOCKET_DIR:-$ROOT/../tailpocket}"
+case " $* " in *" android "*|*" ios "*) . "$ROOT/scripts/nsh-require.sh"; export NSH_AAR="${NSH_AAR:-$NSH_HOME/embed/android/nsh.aar}" ;; esac
 [ -d "$T/sdk/node" ] || { echo "no TailPocket checkout at $T: set TAILPOCKET_DIR" >&2; exit 1; }
 case "$(uname -s)" in Darwin) OS=darwin ;; Linux) OS=linux ;; *) echo "unsupported system" >&2; exit 1 ;; esac
 case "$(uname -m)" in arm64|aarch64) ARCH=arm64 ;; x86_64) ARCH=amd64 ;; *) echo "unsupported machine" >&2; exit 1 ;; esac
@@ -33,7 +34,7 @@ for target in "$@"; do
       ;;
     ios)
       [ -d "$T/build/apple/TailPocketMobile.xcframework" ] || (cd "$T" && ./scripts/build-mobile.sh apple)
-      [ -e "$T/sdk/apple/NSH/NativeShell.xcframework" ] || ln -s "${NSH_IOS_XCFRAMEWORK:-$HOME/.nsh/embed/ios/NativeShell.xcframework}" "$T/sdk/apple/NSH/NativeShell.xcframework"
+      ln -sfn "${NSH_IOS_XCFRAMEWORK:-$NSH_HOME/embed/ios/NativeShell.xcframework}" "$T/sdk/apple/NSH/NativeShell.xcframework"
       echo "ios: the project links $T/sdk/apple/NSH"
       ;;
     *) echo "unknown target $target" >&2; exit 1 ;;

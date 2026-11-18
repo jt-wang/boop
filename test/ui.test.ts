@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
@@ -19,7 +19,7 @@ import { emptyThread, foldEvent, INJECT, type Row } from '../src/fold.ts'
 // the bot type-checks, compiles and signs it into a .nshpkg the phone verifies
 // against the bot's root key and runs in a sheet. The module posts its result
 // to POST /ui/:id/result with a one-time token; that becomes the person's next
-// message. Needs the nsh CLI (~/.local/bin/nsh, 0.3.0 measured 2026-10-27).
+// message. Needs the nsh 0.4 CLI (NSH_BIN, default ~/.local/bin/nsh).
 const NSH = process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh')
 const haveNsh = existsSync(NSH)
 
@@ -114,6 +114,26 @@ test('create: a good module is checked, published and verifies against the root;
 // Inside the thread (the Android shell's InlineModule, 2026-11-02) a module is as tall as what it draws. It cannot know
 // that it runs there, and the assistant should not have to write for it: the build mounts its root inside a view that
 // measures it and tells the shell (`ui.size`) when the app says `inline`. Full screen it mounts as written.
+// NSH 0.4.0 moved the layout event's size under `bounds`: a wrapper still reading `size` reports 0 and the thread gives
+// the module no height. Runs the wrapped module in `nsh test` with the app's `inline` set.
+test('withSizeReport: an inline module tells the shell a real height', { skip: !haveNsh }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bot-ui-size-'))
+  try {
+    writeFileSync(join(dir, 'App.tsx'), withSizeReport(TIP))
+    writeFileSync(join(dir, 'nsh.json'), JSON.stringify({ name: 't', id: 'dev.deepseekbot.ui.t', version: '1.0.0', build: 1, capabilities: { host: true, network: { hosts: ['127.0.0.1'] } } }))
+    writeFileSync(join(dir, 'size.test.tsx'), `import { expect, open, test } from 'nsh/test'
+test('size', async () => {
+  const sizes: number[] = []
+  const app = await open('./App.tsx', { host: { params: { inline: true }, handlers: { 'launch.params': { token: 't', origin: 'http://127.0.0.1:1', moduleId: 'm' }, 'ui.size': (d: { height: number }) => { sizes.push(d.height); return null } } } })
+  await app.waitUntil(() => sizes.length > 0)
+  expect(Math.max(...sizes) > 0).toBe(true)
+})
+`)
+    const r = spawnSync(NSH, ['test', dir], { encoding: 'utf8', timeout: 60_000, env: { ...process.env, NO_COLOR: '1' } })
+    assert.equal(r.status, 0, `${r.stdout}${r.stderr}`)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
 test('withSizeReport: mount from nsh goes through a measuring root; the lines stay where they were; other sources are left alone', () => {
   const out = withSizeReport(TIP)
   const lines = TIP.split('\n')
@@ -329,7 +349,7 @@ test('play page: a one-time address from the device; the page runs the bundle wi
   const harness = { kind: 'fake', events: { on() {}, clientId: 'c' }, async createSession() { return { sessionId: 'p1' } }, async listSessions() { return [] }, async prompt(sessionId: string, text: string) { prompts.push({ sessionId, text }) }, async answer() {}, async cancel() { return true }, async rpc() { return {} as never }, async close() {}, async follow() { return () => {} } }
   const devices = new MemoryDeviceStore()
   const appDir = mkdtempSync(join(tmpdir(), 'app-'))
-  for (const f of ['nsh.0a1b2c3d4e.js', 'nsh.0a1b2c3d4e.wasm', 'harden.0a1b2c3d4e.nshc', 'host.0a1b2c3d4e.js']) writeFileSync(join(appDir, f), '')
+  for (const f of ['nsh.0a1b2c3d4e.js', 'nsh.0a1b2c3d4e.wasm', 'host.0a1b2c3d4e.js']) writeFileSync(join(appDir, f), '')
   const bot = await createBotServer({ dsh: { origin: 'http://127.0.0.1:9', cookie: 'c=1' }, devices, harness: harness as never, host: '127.0.0.1', port: 0, workspace: root, ui, appDir, settings: { get: async () => ({ assistantName: 'Nori', mainSessionId: 'main-1', language: 'zh' }), set: async (p) => p as never } })
   try {
     const token = await devices.issue('phone')
@@ -344,8 +364,9 @@ test('play page: a one-time address from the device; the page runs the bundle wi
     const html = await page.text()
     assert.ok(html.includes(m.token), 'the module token, for its result')
     assert.ok(!html.includes(token), 'never the device token')
-    assert.ok(html.includes(readFileSync(ui.bundlePath(m.id, 'bundle.nshc')).toString('base64')), 'the bundle, inline')
-    assert.match(html, /"host\.0a1b2c3d4e\.js"/); assert.match(html, /"nsh\.0a1b2c3d4e\.wasm"/); assert.match(html, /"harden\.0a1b2c3d4e\.nshc"/)
+    assert.ok(html.includes(readFileSync(ui.bundlePath(m.id, 'bundle.js')).toString('base64')), 'the bundle, inline')
+    assert.equal(page.headers.get('content-security-policy'), 'sandbox allow-scripts', 'a module gets no origin of its own')
+    assert.match(html, /"host\.0a1b2c3d4e\.js"/); assert.match(html, /"nsh\.0a1b2c3d4e\.wasm"/)
     assert.match(html, /lang="zh-CN"/); assert.match(html, /INTC \/ HOOD 日线图/)
     assert.match(html, /完成/); assert.match(html, /CanvasText/) // the sheet's Done in the person's language, black or white, never blue
     assert.match(html, /正在打开…/); assert.match(html, /html\[data-app\] \.ui-sheet>div:first-child\{display:none!important\}/) // inside the app's sheet the app draws the bar
@@ -353,9 +374,9 @@ test('play page: a one-time address from the device; the page runs the bundle wi
     assert.match(html, /q\.get\('scheme'\)/) // the app's light or dark, which an Android web view does not pass on
     assert.equal((await fetch(`${bot.origin}${url}`)).status, 401, 'once')
     // the runtime files need the module token; they never become an unauthenticated tenant path
-    assert.equal((await fetch(`${bot.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js`)).status, 401)
-    assert.equal((await fetch(`${bot.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js?token=nope`)).status, 401)
-    assert.equal((await fetch(`${bot.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js?token=${encodeURIComponent(m.token)}`)).status, 200)
+    assert.notEqual((await fetch(`${bot.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js`)).status, 200)
+    assert.equal((await fetch(`${bot.origin}/ui/${m.id}/runtime/nope/nsh.0a1b2c3d4e.js`)).status, 401)
+    assert.equal((await fetch(`${bot.origin}/ui/${m.id}/runtime/${encodeURIComponent(m.token)}/nsh.0a1b2c3d4e.js`)).status, 200)
     // an unknown module is indistinguishable from a wrong token
     assert.equal((await fetch(`${bot.origin}/ui/nope/result`, { method: 'POST', headers: { authorization: 'Bearer nope', 'content-type': 'application/json' }, body: '{}' })).status, 401)
     // the session it was opened from gets the result
@@ -380,7 +401,8 @@ test('hosted: the play page, its runtime and the module\'s result reach the comp
   const prompts: { sessionId: string; text: string }[] = []
   const harness = { kind: 'fake', events: { on() {}, clientId: 'c' }, async createSession() { return { sessionId: 'p1' } }, async listSessions() { return [] }, async prompt(sessionId: string, text: string) { prompts.push({ sessionId, text }) }, async answer() {}, async cancel() { return true }, async rpc() { return {} as never }, async close() {}, async follow() { return () => {} } }
   const appDir = mkdtempSync(join(tmpdir(), 'app-'))
-  const runtime: Record<string, string> = { 'nsh.0a1b2c3d4e.js': 'export const js = 1', 'nsh.0a1b2c3d4e.wasm': 'wasm-bytes', 'harden.0a1b2c3d4e.nshc': 'harden-bytes', 'host.0a1b2c3d4e.js': 'export const host = 1' }
+  const runtime: Record<string, string> = { 'nsh.0a1b2c3d4e.js': 'export const js = 1', 'nsh.0a1b2c3d4e.wasm': 'wasm-bytes', 'browser.0a1b2c3d4e/runtime.js': 'export const browser = 1', 'host.0a1b2c3d4e.js': 'export const host = 1' }
+  mkdirSync(join(appDir, 'browser.0a1b2c3d4e'))
   for (const [f, body] of Object.entries(runtime)) writeFileSync(join(appDir, f), body)
   writeFileSync(join(appDir, 'index.html'), '<!doctype html>')
   const secret = 'host-secret-0123456789abcdef'
@@ -401,23 +423,24 @@ test('hosted: the play page, its runtime and the module\'s result reach the comp
     const html = await page.text()
     assert.ok(!html.includes(sb.token), 'never the phone token')
     // its runtime from the same computer, relative to the page; nothing from the host's root
-    assert.doesNotMatch(html, /["'`]\/(nsh|harden|host)\.[0-9a-f]+\./, 'no root-absolute runtime paths')
+    assert.doesNotMatch(html, /["'`]\/(nsh|host)\.[0-9a-f]+\./, 'no root-absolute runtime paths')
     assert.ok(html.includes("new URL('../../', location.href)"), 'the page finds its runtime and its computer from its own address')
     const base = new URL('../../', pageUrl)
     assert.equal(base.href, `${sb.origin}/`)
-    const runtimeUrl = (f: string) => `${sb.origin}/ui/${m.id}/runtime/${f}?token=${encodeURIComponent(m.token)}`
+    const runtimeUrl = (f: string) => `${sb.origin}/ui/${m.id}/runtime/${encodeURIComponent(m.token)}/${f}`
     for (const [f, body] of Object.entries(runtime)) {
       const r = await fetch(runtimeUrl(f))
       assert.equal(r.status, 200, f); assert.equal(await r.text(), body)
     }
     assert.equal((await fetch(`${sb.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js`)).status, 401, 'the runtime needs the module token')
+    assert.equal((await fetch(`${sb.origin}/ui/${m.id}/runtime/${encodeURIComponent(m.token)}/index.html`)).status, 401, 'only the runtime files pass')
     assert.equal((await fetch(`${sb.origin}/nsh.0a1b2c3d4e.js`)).status, 401, 'the old root-runtime opening is closed')
     assert.equal((await fetch(pageUrl)).status, 401, 'the play ticket is one-time')
     assert.equal((await fetch(`${sb.origin}/me`)).status, 401, 'the rest still needs a token')
     assert.equal((await fetch(`${sb.origin}/index.html`)).status, 401, 'only the module resources pass')
     // a valid sandbox id with a bad module token is the same 401 as an unknown sandbox id
-    assert.equal((await fetch(`${sb.origin}/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js?token=nope`)).status, 401)
-    const unknown = await fetch(`${host.origin}/s/nope-nope/ui/${m.id}/runtime/nsh.0a1b2c3d4e.js?token=${encodeURIComponent(m.token)}`)
+    assert.equal((await fetch(`${sb.origin}/ui/${m.id}/runtime/nope/nsh.0a1b2c3d4e.js`)).status, 401)
+    const unknown = await fetch(`${host.origin}/s/nope-nope/ui/${m.id}/runtime/${encodeURIComponent(m.token)}/nsh.0a1b2c3d4e.js`)
     assert.equal(unknown.status, 401)
     // a map's tiles through the host: the canvas sends no header, so the module token is in the address (measured 2026-11-02: without this the host answered 401 and hosted maps stayed empty)
     const tile = `${sb.origin}/ui/${m.id}/tiles/5/1/2.png`

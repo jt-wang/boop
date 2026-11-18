@@ -1,6 +1,6 @@
 // The Android shell against a real bot, hosted-style: a module the assistant builds opens in the app (not the
 // browser), is used, and its answer shows in the thread. The bot runs here behind an HTTPS tunnel (Android's path
-// to a hosted computer), so the app's events socket is wss:// and only opens with the TLS-fixed libnsh.so.
+// to a hosted computer), so the app's events socket is wss:// which needs NSH 0.4.
 // The interface runs inside the thread (InlineModule.java); 全屏 opens the same package full screen.
 // The model is scripted (test/fixtures/scripted-model.ts): its one tool call writes the tip calculator with `ui`.
 //
@@ -84,7 +84,7 @@ try {
   sh('pm grant io.jingtao.boop android.permission.POST_NOTIFICATIONS')
   sh('logcat -c')
   const pair = `${origin}/pair?code=${code}`
-  sh(`am start -W -a android.intent.action.VIEW -d '${`deepseekbot://pair?url=${encodeURIComponent(pair)}`}'`)
+  sh(`am start -W -a android.intent.action.VIEW -p io.jingtao.boop -d '${`deepseekbot://pair?url=${encodeURIComponent(pair)}`}'`)
   // The first-run steps in the order the app shows them: age, Connect, the AI provider consent; then the chat.
   const steps = ['age-adult', 'connect', 'consent-agree']
   for (const end = Date.now() + 90_000; ;) {
@@ -135,7 +135,7 @@ try {
   const inline = /inline dev\.deepseekbot\.ui\.\S+ shown, download \d+ ms/.exec(logcat)?.[0] ?? fail('no "inline … shown" line from the shell')
   const opened = /ui\.open dev\.deepseekbot\.ui\.\S+ build \d+ — download \d+ ms, verified\+shown \d+ ms/.exec(logcat)?.[0]
   log(`shell: ${inline}; ${opened ?? 'no ui.open line'}`)
-  if (/CryptoProvider/.test(logcat)) fail('rustls had no crypto provider (the stock libnsh.so)')
+  if (/CryptoProvider/.test(logcat)) fail('rustls had no crypto provider (NSH older than 0.4)')
   ok = true
 } finally {
   bot.kill('SIGTERM'); await model.close()

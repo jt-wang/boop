@@ -59,7 +59,7 @@ export const MODULE_HOST_FUNCTIONS = ['launch.params', 'ui.close', 'ui.size']
  */
 // The measuring root is a row: a module's root is usually `flex-1` (it fills the screen when full screen), which in a
 // column of no set height takes no height (only its padding: 32 dp measured on Android 2026-11-02); in a row `flex-1`
-// fills the width and the height is what the module draws. `onLayout` gives `{ origin, size }` (nsh 0.3.0).
+// fills the width and the height is what the module draws. `onLayout` gives `{ bounds: { origin, size } }` (nsh 0.4.0).
 export function withSizeReport(source: string): string {
   const m = /^(import\s*\{)([^}]*)(\}\s*from\s*(['"])nsh\4)/m.exec(source)
   if (!m || !m[2].split(',').some((x) => x.trim() === 'mount')) return source
@@ -70,7 +70,7 @@ function mount(app: any, props?: any) {
   if (!(__boopHost.params as any)?.inline) return __nshMount(app, props)
   const App = app
   return __nshMount(() => (
-    <__BoopView style={{ position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'flex-start' }} onLayout={(b: any) => { __boopHost.call('ui.size', { height: Math.ceil(b.size?.height ?? 0) }).catch(() => {}) }}>
+    <__BoopView style={{ position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'flex-start' }} onLayout={(b: any) => { __boopHost.call('ui.size', { height: Math.ceil(b.bounds?.size?.height ?? 0) }).catch(() => {}) }}>
       <App {...(props ?? {})} />
     </__BoopView>
   ))
@@ -273,7 +273,7 @@ export class Ui {
       }
       const publish = await this.run(['publish', dir, '--key', key, '--cert', cert, '-o', pkg, '--source-map', 'none'], dir)
       if (!publish.ok) return await this.fail(dir, publish.out)
-      // the browser build runs bundles, not packages (nsh 0.3.0 web player): keep the build too
+      // a browser runs the bundle, not the package (src/server.ts playPage): keep the build too
       const build = await this.run(['build', dir, '-o', join(dir, 'build')], dir)
       if (!build.ok) return await this.fail(dir, build.out)
       const size = (await stat(pkg)).size

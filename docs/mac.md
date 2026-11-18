@@ -31,7 +31,7 @@ Node is bundled rather than downloaded on first run: 114 MB on disk is the price
 
 The window shows the status in plain words, the QR, Copy code and Quit. On the plain local network route it also shows the link and the six-digit code, with Copy link. Nothing else: no paths, no commands, no logs.
 
-No "start at login" toggle: NSH 0.3.0 has no login-item API (nothing in `nsh/desktop`, nothing in the docs), and a packaged NSH app ends when its window closes, so the app cannot live in the menu bar either. Keep the window open; `scripts/install-service.sh` remains the way to run the bot after logout.
+No "start at login" toggle: NSH 0.4.0 has no login-item API (nothing in its generated types, 2026-11-05), and a packaged NSH app ends when its window closes, so the app cannot live in the menu bar either. Keep the window open; `scripts/install-service.sh` remains the way to run the bot after logout.
 
 ## Build
 
@@ -41,7 +41,7 @@ scripts/mac-build.sh
 DEEPSEEK_BOT_MAC_BUILD=/Volumes/Some\ Disk/build scripts/mac-build.sh   # 1.3 GB of output on another disk
 ```
 
-Needs `nsh` 0.3.0, Node 24 with npm, and the Xcode command line tools (`codesign`, `hdiutil`). Steps: `nsh package --target macos` (the window), `npm ci --omit=dev` into `<build>/stage` with the Dockerfile's prune list and broken `.bin` symlinks removed (codesign stops on them), Node from `https://nodejs.org/dist/v24.13.1/` checked against its `SHASUMS256.txt` (cached in `~/Library/Caches/deepseek-bot-mac`), copy into `Contents/Resources/bot`, `codesign --force --deep --sign -`, `hdiutil create` with an `Applications` link in the image.
+Needs `nsh` 0.4, Node 24 with npm, and the Xcode command line tools (`codesign`, `hdiutil`). Steps: `nsh package --target macos` (the window), `npm ci --omit=dev` into `<build>/stage` with the Dockerfile's prune list and broken `.bin` symlinks removed (codesign stops on them), Node from `https://nodejs.org/dist/v24.13.1/` checked against its `SHASUMS256.txt` (cached in `~/Library/Caches/deepseek-bot-mac`), copy into `Contents/Resources/bot`, `codesign --force --deep --sign -`, `hdiutil create` with an `Applications` link in the image.
 
 Apple silicon only for now: the bundled Node matches the building Mac's architecture (`darwin-x64` on an Intel Mac); NSH's macOS runtime is arm64.
 

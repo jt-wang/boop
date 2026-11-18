@@ -102,7 +102,7 @@ export function RemoteImage(props: { url: string; alt?: string; testID?: string;
           </View>
         </If>
       }>
-        {(s) => <Image src={s()} testID={props.testID ? `${props.testID}-loaded` : undefined} resizeMode="contain" style={{ width: '100%', height: '100%' }} onLoad={(e) => { if (e.width > 0) ratio.set(Math.min(Math.max(e.height / e.width, 0.3), 1.6)) }} />}
+        {(s) => <Image src={s()} testID={props.testID ? `${props.testID}-loaded` : undefined} style={{ width: '100%', height: '100%', objectFit: 'contain' }} onLoad={({ size: e }) => { if (e.width > 0) ratio.set(Math.min(Math.max(e.height / e.width, 0.3), 1.6)) }} />}
       </If>
     </View>
   )
@@ -122,8 +122,8 @@ export function FileView(props: { row: () => FileRow; onOpen?: (path: string) =>
       <Card onPress={open} testID={`file-${r().id}`} accessibilityLabel={r().name} class="flex-row items-center gap-3 px-4 py-3">
         <View class="w-10 h-10 rounded-[10px] bg-secondary items-center justify-center"><Glyph name="file" size={22} /></View>
         <View class="flex-1 min-w-0 gap-[2px]">
-          <Text class="text-foreground text-[17px] leading-[22px] font-semibold" numberOfLines={1}>{r().name}</Text>
-          {r().description || r().change ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={2}>{r().description || (r().change === 'new' ? str('fileNew') : str('fileEdited'))}</Text> : null}
+          <Text class="text-foreground text-[17px] leading-[22px] font-semibold" style={{ numberOfLines: 1 }}>{r().name}</Text>
+          {r().description || r().change ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 2 }}>{r().description || (r().change === 'new' ? str('fileNew') : str('fileEdited'))}</Text> : null}
         </View>
         <Glyph name="chevron" size={18} color={muted()} />
       </Card>

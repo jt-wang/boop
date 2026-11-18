@@ -4,11 +4,9 @@
 //   hostUrl  — <meta name="deepseek-bot-host" content="https://…"> when the page
 //              is served by a host (docs/hosting.md); absent when a bot serves it
 //   notificationUrl — a tapped notification opened this window (sw.js: /?open=<url>)
-// It also answers `ui.open` (a module the assistant wrote, mobile/src/native.ts):
-// the browser cannot verify a signed .nshpkg (nsh 0.3.0's web player runs
-// bundles only), so it fetches the module's compiled bundle (bundle.nshc) from the bot and
-// runs it in a second player over the page. No signature check on this path;
-// the bot that served the bundle is the same one the device token trusts.
+// It also exports `openModule`, which the play page uses to run a module the assistant wrote (src/server.ts playPage):
+// the browser cannot verify a signed .nshpkg, so that page gets the module's bundle.js from the bot. No signature check on
+// this path; the bot that served the bundle is the same one the device token trusts, and the page has no origin of its own.
 const b64ToBytes = (s) => { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(s.length / 4) * 4, '=')); return Uint8Array.from(b, (c) => c.charCodeAt(0)) }
 
 export async function createHost(player) {
@@ -39,39 +37,23 @@ export async function createHost(player) {
           notificationUrl: (l && new URLSearchParams(l.search).get('open')) || undefined,
         }
       }
-      if (name === 'ui.open') return openModule(args || {})
       throw new Error(`no host function ${name}`)
     },
   }
 }
 
-/** The runtime this page loaded: `nsh package --target web` names the files in its scripts (nsh.<digest>.js, nsh.<digest>.wasm, harden.<digest>.nshc). */
-function findRuntime() {
-  let js, wasm, harden
-  for (const s of document.scripts) {
-    const t = s.textContent || ''
-    js ??= (/["'](\.\/)?(nsh\.[0-9a-f]+\.js)["']/.exec(t) || [])[2]
-    wasm ??= (/nsh\.[0-9a-f]+\.wasm/.exec(t) || [])[0]
-    harden ??= (/harden\.[0-9a-f]+\.nshc/.exec(t) || [])[0]
-  }
-  if (!js || !wasm || !harden) throw new Error('the NSH runtime of this page was not found')
-  return { js: new URL(js, document.baseURI).href, wasm: new URL(wasm, document.baseURI).href, harden: new URL(harden, document.baseURI).href }
-}
-
 /**
- * ui.open { bundleUrl, auth, token, title, origin, moduleId } → runs the module in an
- * overlay: a title bar with Done, then a second player (the wasm is already in the
- * browser cache). The module gets { token, origin, moduleId } from `launch.params`
- * and closes itself with `ui.close`. `runtime` is for tests; the page finds its own.
+ * { bundleUrl, auth, token, title, origin, moduleId } → runs the module in an overlay: a title bar with Done, then a
+ * player from the runtime files the play page names. The module gets { token, origin, moduleId } from `launch.params`
+ * and closes itself with `ui.close`.
  */
 export async function openModule(args, runtime) {
   if (!args.bundleUrl || !args.auth || !args.moduleId) throw new Error('ui.open needs bundleUrl, auth and moduleId')
   const started = performance.now()
-  const { js, wasm, harden } = runtime || findRuntime()
-  // bytecode, as the page itself runs: the released runtime has no eval ("Error: eval is not supported" for a source bundle, measured 2026-10-27)
-  const [{ createPlayer }, response, hardenBytes] = await Promise.all([import(js), fetch(args.bundleUrl, { headers: { authorization: `Bearer ${args.auth}` } }), fetch(harden).then((r) => r.arrayBuffer())])
+  const { js, wasm } = runtime
+  const [{ createPlayer }, response] = await Promise.all([import(js), fetch(args.bundleUrl)])
   if (!response.ok) throw new Error(`bundle: HTTP ${response.status}`)
-  const code = await response.arrayBuffer()
+  const code = await response.text()
 
   const overlay = document.createElement('div')
   overlay.className = 'ui-sheet'
@@ -97,6 +79,6 @@ export async function openModule(args, runtime) {
     host: { call: (name) => { if (name === 'launch.params') return params; if (name === 'ui.close') { setTimeout(close, 0); return null } throw new Error(`no host function ${name}`) } },
     onError: (message) => { note.style.display = 'block'; note.textContent = message },
   })
-  player.run(code, { release: true, harden: hardenBytes, capabilities: JSON.stringify({ network: { hosts: [new URL(params.origin).hostname] }, host: ['*'] }), appId: `dev.deepseekbot.ui.${args.moduleId}` })
+  await player.runSource(code, { capabilities: JSON.stringify({ network: { hosts: [new URL(params.origin).hostname] }, host: ['*'] }), appId: `dev.deepseekbot.ui.${args.moduleId}`, name: 'App.tsx' })
   return { ok: true, verified: false, ms: Math.round(performance.now() - started) }
 }

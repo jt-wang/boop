@@ -39,7 +39,7 @@ export function MemoryEditPage(props: { item: MemoryItem; onDone: () => void }) 
     } catch { showToast(cm('memFailed')) } finally { busy.set(false) }
   }
   const forget = async () => {
-    const ok = await AlertDialog.show({ title: cm('memForgetTitle'), description: props.item.text, actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForget'), role: 'destructive' }] }).then((r) => r === 'ok').catch(() => false)
+    const ok = await AlertDialog.show({ title: cm('memForgetTitle'), description: props.item.text, actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForget'), role: 'destructive' }] }).then((r) => r.action === 'ok').catch(() => false)
     if (!ok) return
     try { await api().send('DELETE', `/memory/${encodeURIComponent(props.item.id)}`); memoryVersion.set(memoryVersion() + 1); showToast(cm('memForgotten')); props.onDone() } catch { showToast(cm('memFailed')) }
   }
@@ -47,7 +47,7 @@ export function MemoryEditPage(props: { item: MemoryItem; onDone: () => void }) 
   return (
     <Page page="MemoryEditPage" class="flex-1 bg-card dark:bg-background pb-[env(keyboard-inset-height)]" contentClass="px-4 pt-4 gap-2 pb-[calc(env(safe-area-inset-bottom)+32px)]" keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" testID="memory-edit">
       <View class="rounded-[12px] bg-background dark:bg-card px-4 py-[11px]">
-        <Input testID="memory-text" value={text()} onChange={(v) => text.set(v)} multiline maxLength={300} returnKeyType="done" submitBehavior="blurAndSubmit" onSubmit={() => { save().catch(() => {}) }} accessibilityLabel={cm('memEditTitle')}
+        <Input testID="memory-text" value={text()} onChange={({ value: v }) => text.set(v)} multiline maxLength={300} returnKeyType="done" submitBehavior="blurAndSubmit" onSubmit={() => { save().catch(() => {}) }} accessibilityLabel={cm('memEditTitle')}
           class="bg-transparent text-foreground text-[17px] leading-[22px] min-h-[66px]" />
       </View>
       <View class="px-4"><Text class="text-muted-foreground text-[13px] leading-[18px]">{cm('memLearned')(learned())}</Text></View>

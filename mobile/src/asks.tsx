@@ -37,7 +37,7 @@ export function AskCard(props: { ask: Ask }) {
     return (
       <Card class="px-4 pt-3 pb-4 gap-2" testID={`ask-${ask.eventId}`}>
         {what ? <Text class="text-foreground font-semibold text-[17px] leading-[22px]">{what}</Text> : null}
-        {reason ? <View class="bg-black/[0.05] dark:bg-white/[0.07] px-3 py-2" style={{ borderRadius: RADIUS.inner }}><Text class="text-foreground text-[15px] leading-5" selectable>{expanded() || !long ? reason : reason.split('\n').slice(0, SHORT_LINES).join('\n') + '\n…'}</Text></View> : null}
+        {reason ? <View class="bg-black/[0.05] dark:bg-white/[0.07] px-3 py-2" style={{ borderRadius: RADIUS.inner }}><Text class="text-foreground text-[15px] leading-5" style={{ userSelect: 'text' }}>{expanded() || !long ? reason : reason.split('\n').slice(0, SHORT_LINES).join('\n') + '\n…'}</Text></View> : null}
         {long ? <View role="button" onPress={() => expanded.set(!expanded())} class="self-start py-1 active:opacity-60"><Text class="text-primary text-[15px]">{expanded() ? str('hideDetails') : str('viewDetails')}</Text></View> : null}
         {/* Deny and Allow as two equal capsules, the plain one left, the filled one right. The two scoped allows stay as text under them. */}
         <View class="flex-row gap-2 mt-1">
@@ -81,12 +81,12 @@ export function AskCard(props: { ask: Ask }) {
                   </View>
                   <View class="flex-1 min-w-0">
                     <Text class="text-foreground text-[17px] leading-[22px]">{label}</Text>
-                    {desc ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={3}>{desc}</Text> : null}
+                    {desc ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 3 }}>{desc}</Text> : null}
                   </View>
                 </View>
               )
             })}
-            {q.allowCustom === false ? null : <Input placeholder={str('custom')} value={drafts[qi].custom()} onChange={(v) => { drafts[qi].custom.set(v); if (v) drafts[qi].selected.set([]) }} class="rounded-[12px] px-3 min-h-[44px] bg-black/[0.04] dark:bg-white/[0.06] text-foreground text-[17px]" />}
+            {q.allowCustom === false ? null : <Input placeholder={str('custom')} value={drafts[qi].custom()} onChange={({ value: v }) => { drafts[qi].custom.set(v); if (v) drafts[qi].selected.set([]) }} class="rounded-[12px] px-3 min-h-[44px] bg-black/[0.04] dark:bg-white/[0.06] text-foreground text-[17px]" />}
           </View>
         )
       })}

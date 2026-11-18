@@ -2,12 +2,12 @@
 
 An agent with **Actions: write** access to this repository can request a signed iOS build without holding an Apple private key. Signing happens on a disposable GitHub macOS runner. The repository owner first configures the `testflight` environment below.
 
-From the default branch, select the current commit, the version already in `mobile/nsh.json`, and a build number. For example, this builds version 0.1.0 with native build number 3:
+From the default branch, select the current commit, the version already in `mobile/nsh.json`, and an unused build number. For example, this builds version 0.1.4 with native build number 4:
 
 ```sh
 sha=$(gh api repos/jt-wang/boop/commits/main --jq .sha)
 gh workflow run testflight.yml --repo jt-wang/boop --ref main \
-  -f source_sha="$sha" -f version=0.1.0 -f build=3 -f upload=false
+  -f source_sha="$sha" -f version=0.1.4 -f build=4 -f upload=false
 gh run list --repo jt-wang/boop --workflow testflight.yml
 gh run view RUN_ID --repo jt-wang/boop --log-failed
 ```
@@ -42,7 +42,7 @@ Only `workflow_dispatch` is configured. There is no push or PR upload trigger. T
 
 The workflow uses the standard arm64 `macos-15` runner and Xcode 26.3. Dependency preparation also checks the runtime architecture. See GitHub's [runner label table](https://github.com/actions/runner-images#available-images) and [macOS 15 arm64 image](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md). It builds the committed Xcode project; xcodegen is not used.
 
-`scripts/testflight-deps.py` pins NSH 0.3.0's macOS CLI and iOS framework to release asset SHA-256 values. TailPocket is checked out at a fixed public commit and built with the Go toolchain in its `go.mod`; Node 24 is prepared for the existing app build. No Apple secret is passed to the dependency step. A runtime or product upgrade requires its own source review; changing CI does not upgrade the app to NSH 0.4.
+`scripts/testflight-deps.py` pins the stock NSH 0.4.0 macOS CLI and iOS framework to release asset SHA-256 values, matching this app's NSH 0.4 API. TailPocket is checked out at `3c19dca9e2e1ea1208deedc705fb7e4e9bf6fa83`, the revision used for the iOS 27 pairing and recovery checks, and built with the Go toolchain in its `go.mod`; Node 24 is prepared for the existing app build. No Apple secret is passed to the dependency step.
 
 The runner uses a temporary signing keychain and profile, manual archive/export settings and the existing `ios-build.sh`/`ios-upload.sh` scripts. Cleanup runs after success or failure, with an `always()` step for cancellation and retryable cleanup failures. The standalone `scripts/ios-upload.sh` keeps its existing behavior: invoking it validates and then uploads.
 

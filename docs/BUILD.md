@@ -36,7 +36,7 @@ docker compose logs bot | grep pair     # the pairing link, now over HTTPS
 
 Caddy gets the certificate; the phone pairs at `https://bot.example.com/pair?code=…`. Data lives in the `bot-data` volume. The image has no browser; the assistant installs one when it first needs it.
 
-[Three commands on Fly.io](hosting.md#on-flyio-in-one-command) give every person their own microVM; from a clean clone `fly launch` took 11 s and `fly deploy` 58 s. Hosting for several people is in [hosting.md](hosting.md).
+[Three commands on Fly.io](hosting.md#on-flyio-in-one-command) set up a host for several people, each with their own microVM; from a clean clone `fly launch` took 11 s and `fly deploy` 58 s. People sign in to a host rather than pair with it, so the phone app has to be built with the host's address: `scripts/android-build.sh --host https://<your app>.fly.dev`, or `DEEPSEEK_BOT_HOST_URL` in `ios/project.yml`. The downloaded apps connect to your own computer or to a Docker server like the one above, not to a host. Hosting for several people is in [hosting.md](hosting.md).
 
 ## Make the release files
 

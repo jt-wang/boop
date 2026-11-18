@@ -99,7 +99,7 @@ export function SectionTitle(props: { text: string; testID?: string }) {
     // one line: on a page pushed from the chat, Android broke "Today" as "Toda / y" however wide its box was
     // (column, w-full, flex-1 all tried on the emulator, 2026-10-30); a single line draws it whole
     <View class="flex-row px-4 pt-6 pb-2" testID={props.testID}>
-      <Text class="flex-1 text-foreground text-[17px] leading-[25px] font-semibold" numberOfLines={1}>{props.text}</Text>
+      <Text class="flex-1 text-foreground text-[17px] leading-[25px] font-semibold" style={{ numberOfLines: 1 }}>{props.text}</Text>
     </View>
   )
 }
@@ -115,8 +115,8 @@ export function Row(props: { lead?: JSX.Element; title: string; line?: string; t
       class={`flex-row items-center gap-3 mx-[6px] px-[10px] py-[11px] rounded-[14px] ${props.highlight ? 'bg-muted' : ''} ${props.onPress ? 'active:bg-black/[0.04] dark:active:bg-white/[0.06]' : ''}`}>
       {props.lead ?? null}
       <View class="flex-1 min-w-0 gap-[2px]">
-        <Text class="text-foreground text-[17px] leading-[22px] font-medium" numberOfLines={props.titleLines ?? 2}>{props.title}</Text>
-        {props.line ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={2}>{props.line}</Text> : null}
+        <Text class="text-foreground text-[17px] leading-[22px] font-medium" style={{ numberOfLines: props.titleLines ?? 2 }}>{props.title}</Text>
+        {props.line ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 2 }}>{props.line}</Text> : null}
         {props.time ? <Text class="text-muted-foreground text-[15px] leading-5">{props.time}</Text> : null}
       </View>
       {props.right ?? null}
@@ -129,7 +129,7 @@ export function Pill(props: { label: string; onPress: () => void; testID?: strin
   return (
     <View role="button" testID={props.testID} disabled={props.disabled} onPress={() => { if (!props.disabled) props.onPress() }}
       class={`rounded-full px-[14px] items-center justify-center active:opacity-70 ${props.strong ? 'bg-primary' : 'bg-secondary'} ${props.disabled ? 'opacity-50' : ''}`} style={{ height: 32 }}>
-      <Text class={`text-[15px] font-semibold ${props.strong ? 'text-primary-foreground' : 'text-foreground'}`} numberOfLines={1}>{props.label}</Text>
+      <Text class={`text-[15px] font-semibold ${props.strong ? 'text-primary-foreground' : 'text-foreground'}`} style={{ numberOfLines: 1 }}>{props.label}</Text>
     </View>
   )
 }
@@ -156,8 +156,8 @@ export function ListRow(props: { lead?: JSX.Element; title: string; subtitle?: s
       {props.lead ? <View class="items-center justify-center" style={{ marginLeft: 12, width: 32 }}>{props.lead}</View> : null}
       <View class={`flex-1 min-w-0 flex-row items-center gap-3 pr-4 py-[9px] ${props.lead ? 'ml-3' : 'ml-4'} ${props.centered ? 'justify-center' : ''}`}>
         <View class={`min-w-0 ${props.centered ? '' : 'flex-1'}`}>
-          <Text class={`text-[17px] leading-[22px] ${props.destructive ? 'text-destructive' : 'text-foreground'}`} numberOfLines={2}>{props.title}</Text>
-          {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5 mt-[1px]" numberOfLines={2}>{props.subtitle}</Text> : null}
+          <Text class={`text-[17px] leading-[22px] ${props.destructive ? 'text-destructive' : 'text-foreground'}`} style={{ numberOfLines: 2 }}>{props.title}</Text>
+          {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5 mt-[1px]" style={{ numberOfLines: 2 }}>{props.subtitle}</Text> : null}
         </View>
         {props.right ?? null}
         {props.chevron ? <Glyph name="chevron" size={17} color={muted()} /> : null}
@@ -180,7 +180,7 @@ export function SearchField(props: { value: string; onChange: (v: string) => voi
   return (
     <View class="mx-6 flex-row items-center gap-2 rounded-full bg-background dark:bg-card px-4" style={{ height: 48 }}>
       <Glyph name="search" size={18} color={muted()} />
-      <Input testID={props.testID} value={props.value} onChange={props.onChange} placeholder={props.placeholder} autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="blurAndSubmit" class="flex-1 bg-transparent text-foreground text-[17px] min-h-[44px]" />
+      <Input testID={props.testID} value={props.value} onChange={({ value }) => props.onChange(value)} placeholder={props.placeholder} autoCapitalize="none" autoCorrect={false} returnKeyType="search" submitBehavior="blurAndSubmit" class="flex-1 bg-transparent text-foreground text-[17px] min-h-[44px]" />
     </View>
   )
 }

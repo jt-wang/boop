@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.1.4
+
+- Boop now builds on stock NSH 0.4. No patched framework: a phone reaches an `https` computer with the release as it comes.
+- A computer that writes interfaces for the app needs `nsh` 0.4.
+- Interfaces written with `nsh` 0.4 do not open in the v0.1.0 phone app. Update the phone app before the computer. The new phone app opens interfaces from a computer still on `nsh` 0.3.
+- Integrate the GitHub TestFlight signing workflow with the NSH 0.4 app, retaining build caches and removing local home paths before export.
+- Pairing, reconnecting and offline history were checked on an iOS 27.0 simulator with the pinned TailPocket runtime.
+
+This release publishes updated source and computer packages. The iOS app is delivered through TestFlight, not the App Store. Android and Mac app downloads remain at v0.1.0.
+
+## v0.1.3
+
+- The phone app's connect screen has two ways in: scan the code on the computer, or paste the one the Boop window copies (Copy code). A server address and its six-digit code are under "Connect to a server address".
+- "Try a demo, no computer needed" opens demo mode: the header says Demo mode, and a bar above the tabs on every page says everything is made up and nothing is really done.
+- docs/BUILD.md says a Fly.io host is for several people and that its phone app is built with the host's address; the downloaded app connects to your own computer or a Docker server.
+
+Downloads: a new `boop.apk` (0.1.3), which installs over 0.1.0. The Mac app and the computer files are the v0.1.0 ones, since that code has not changed.
+
 ## v0.1.2-testflight-ci.1
 
 - Add a manual GitHub Actions workflow for signing iOS builds and optional TestFlight upload. Cloud agents use GitHub permissions; Apple credentials stay in the protected environment.

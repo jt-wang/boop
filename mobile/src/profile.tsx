@@ -58,8 +58,8 @@ export function ProfilePage(props: { tab?: ProfileTab; focus?: string; onEditNam
             <Glyph name="pencil" size={17} />
           </View>
         </View>
-        <Text class="text-foreground text-[28px] leading-[34px] font-bold mt-[15px]" numberOfLines={1}>{me()?.assistant.name ?? ''}</Text>
-        <View class="px-8"><Text class="text-muted-foreground text-[17px] leading-[22px] mt-[6px] text-center" numberOfLines={1} testID="profile-status">{status()}</Text></View>
+        <Text class="text-foreground text-[28px] leading-[34px] font-bold mt-[15px]" style={{ numberOfLines: 1 }}>{me()?.assistant.name ?? ''}</Text>
+        <View class="px-8"><Text class="text-muted-foreground text-[17px] leading-[22px] mt-[6px] text-center" testID="profile-status" style={{ numberOfLines: 1 }}>{status()}</Text></View>
       </View>
       <View class="px-4 mt-10"><IconSegments items={segments} value={tab()} onChange={(k) => tab.set(k)} /></View>
       <If when={tab() === 'activity'}><ActivityTab lastAsk={lastAsk()} stepName={liveStep()?.name ?? ''} liveStep={liveStep()?.description ?? statusText().replace(/…$/, '')} /></If>
@@ -131,16 +131,16 @@ function MemoryTab(props: { focus?: string; onEdit: (it: MemoryItem) => void }) 
   const open = signal<Set<string>>(new Set())
   const focused = (it: MemoryItem) => Boolean(props.focus && it.text.toLowerCase().includes(props.focus.toLowerCase()))
   const forget = async (it: MemoryItem) => {
-    const ok = await AlertDialog.show({ title: cm('memForgetTitle'), description: it.text, actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForget'), role: 'destructive' }] }).then((r) => r === 'ok').catch(() => false)
+    const ok = await AlertDialog.show({ title: cm('memForgetTitle'), description: it.text, actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForget'), role: 'destructive' }] }).then((r) => r.action === 'ok').catch(() => false)
     if (!ok) return
     try { await api().send('DELETE', `/memory/${encodeURIComponent(it.id)}`); items.mutate((items() ?? []).filter((x) => x.id !== it.id)); showToast(cm('memForgotten')) } catch { showToast(cm('memFailed')) }
   }
   const more = async (it: MemoryItem) => {
-    const r = await AlertDialog.show({ title: it.text, presentation: 'actionSheet', actions: [{ id: 'edit', label: cm('memEdit') }, { id: 'forget', label: cm('memForget'), role: 'destructive' }, { id: 'cancel', label: cm('memCancel'), role: 'cancel' }] }).catch(() => null)
+    const r = (await AlertDialog.show({ title: it.text, presentation: 'actionSheet', actions: [{ id: 'edit', label: cm('memEdit') }, { id: 'forget', label: cm('memForget'), role: 'destructive' }, { id: 'cancel', label: cm('memCancel'), role: 'cancel' }] }).catch(() => null))?.action
     if (r === 'edit') props.onEdit(it); else if (r === 'forget') forget(it).catch(() => {})
   }
   const forgetAll = async () => {
-    const ok = await AlertDialog.show({ title: cm('memForgetAllTitle'), description: cm('memForgetAllBody'), actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForgetAll'), role: 'destructive' }] }).then((r) => r === 'ok').catch(() => false)
+    const ok = await AlertDialog.show({ title: cm('memForgetAllTitle'), description: cm('memForgetAllBody'), actions: [{ id: 'cancel', label: cm('memCancel'), role: 'cancel' }, { id: 'ok', label: cm('memForgetAll'), role: 'destructive' }] }).then((r) => r.action === 'ok').catch(() => false)
     if (!ok) return
     try { for (const it of items() ?? []) await api().send('DELETE', `/memory/${encodeURIComponent(it.id)}`); items.mutate([]); showToast(cm('memForgotten')) } catch { showToast(cm('memFailed')); items.refetch() }
   }

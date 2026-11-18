@@ -68,6 +68,7 @@ test('connect screen pairs with the address and code, then asks for a name', asy
   })
   await app.press('id:own-computer')
   await app.waitFor('text:Connect to your computer')
+  await app.press('id:connect-server')
   await app.type('id:address', `${ORIGIN}/pair?code=123456`)
   await app.press('id:connect')
   await app.waitFor('text:What will you call your assistant?')
@@ -186,6 +187,7 @@ test('without a host configured, Start goes straight to the connect screen', asy
 test('a wrong code is explained inline, not swallowed', async () => {
   const app = await open('./App.tsx', { network: { [`POST ${ORIGIN}/pair`]: { status: 403, body: { error: 'wrong or expired code' } } } })
   await app.press('id:own-computer')
+  await app.press('id:connect-server')
   await app.type('id:address', ORIGIN)
   await app.type('id:code', '000000')
   await app.press('id:connect')
@@ -275,14 +277,14 @@ test('the naming screen suggests a name, so Continue alone names the assistant',
   expect(JSON.parse(String(saved!.body)).assistantName).toBe('Nori')
 })
 
-// The phone tells the bot what it knows (time zone, language) every time it connects, so the assistant never asks.
+// The phone tells the bot its language and, when known, its time zone; a bare UTC is deliberately omitted (context.test.tsx).
 test('on connect the app sends the phone\'s time zone and language to the bot', async () => {
   const app = await chatApp({ [`PUT ${ORIGIN}/me/context`]: { body: { ok: true } }, [`POST ${ORIGIN}/ws-ticket`]: { body: { ticket: 'ticket' } } })
   await app.waitFor('id:composer')
   const ctx = app.requests().find((r) => r.url.endsWith('/me/context'))
   expect(Boolean(ctx)).toBe(true)
-  const body = JSON.parse(String(ctx!.body)) as { timeZone: string; locale: string }
-  expect(typeof body.timeZone === 'string' && body.timeZone.length > 0).toBe(true)
+  const body = JSON.parse(String(ctx!.body)) as { timeZone?: string; locale: string }
+  expect(body.timeZone === undefined || (typeof body.timeZone === 'string' && body.timeZone.length > 0 && body.timeZone !== 'UTC')).toBe(true)
   expect(typeof body.locale).toBe('string')
 })
 
@@ -934,6 +936,7 @@ test('pairing names the device: Android on Android, iPhone on iOS', async () => 
   for (const [platform, name] of [['android', 'Android'], ['ios', 'iPhone']] as const) {
     const app = await open('./App.tsx', { platform, network: { [`POST ${ORIGIN}/pair`]: { body: { token: TOKEN } }, [`GET ${ORIGIN}/me`]: { body: meBody('') } } })
     await app.press('id:own-computer')
+    await app.press('id:connect-server')
     await app.type('id:address', `${ORIGIN}/pair?code=123456`)
     await app.press('id:connect')
     await app.waitUntil(() => app.requests().some((r) => r.url.endsWith('/pair')))

@@ -47,7 +47,7 @@ export function StopControl(props: { post?: StopPoster } = {}) {
           </Glass>
         )}
       </If>
-      <Sheet open={stopOpen()} onOpenChange={(o) => stopOpen.set(o)} side="bottom" closeOnSwipe
+      <Sheet open={stopOpen()} onOpenChange={({ open: o }) => stopOpen.set(o)} side="bottom" closeOnSwipe
         popupClass="bg-background dark:bg-card rounded-t-[28px] px-4 pt-5 pb-[calc(env(safe-area-inset-bottom)+16px)] gap-3" backdropClass="bg-black/40">
         <Text class="text-foreground font-semibold text-[17px] text-center">{s('stopTitle')}</Text>
         <Text class="text-muted-foreground text-[15px] text-center leading-5">{s('stopBody')}</Text>

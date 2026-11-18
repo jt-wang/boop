@@ -104,7 +104,7 @@ function Choices(props: Props) {
             class={`flex-row items-center gap-3 min-h-[44px] py-[10px] border-border ${answered() && !isSel(o.label) ? 'opacity-40' : ''} ${answered() ? '' : 'active:opacity-60'}`} style={i > 0 ? { ...SEP, ...FADE } : FADE}>
             <View class="flex-1 min-w-0">
               <Text class={`text-[15px] leading-5 ${isSel(o.label) ? 'text-primary font-semibold' : 'text-foreground'}`}>{o.label}</Text>
-              {o.detail ? <Text class="text-muted-foreground text-[13px] leading-[18px]" numberOfLines={3}>{o.detail}</Text> : null}
+              {o.detail ? <Text class="text-muted-foreground text-[13px] leading-[18px]" style={{ numberOfLines: 3 }}>{o.detail}</Text> : null}
             </View>
             {multiple
               ? <View class={`w-[22px] h-[22px] rounded-[6px] border-2 items-center justify-center ${isSel(o.label) ? 'border-primary bg-primary' : 'border-input'}`}>{isSel(o.label) ? <Text class="text-primary-foreground text-[13px] font-bold">✓</Text> : null}</View>
@@ -150,7 +150,7 @@ function Form(props: Props) {
                       ))}
                     </View>
                   : <View class="gap-1"><Text class="text-muted-foreground text-[13px] leading-[18px]">{f.label}{f.required ? ' *' : ''}</Text>
-                      <Input testID={`field-${id}-${f.name}`} value={String(values()[f.name] ?? '')} onChange={(v) => set(f.name, v)} placeholder={placeholderFor(f)} keyboardType={keyboardFor(f)} class={inputClass} />
+                      <Input testID={`field-${id}-${f.name}`} value={String(values()[f.name] ?? '')} onChange={({ value: v }) => set(f.name, v)} placeholder={placeholderFor(f)} keyboardType={keyboardFor(f)} class={inputClass} />
                     </View>}
             </View>
           ))}
@@ -191,7 +191,7 @@ function Table(props: Props) {
     <View class={`mt-1 ${pick ? dim() : ''}`}>
       {wide() ? null : (
         <View class="flex-row gap-2 pb-[6px]">
-          {card().columns.map((c) => <Text class="flex-1 min-w-0 text-muted-foreground text-[13px] leading-[18px] font-semibold" numberOfLines={2}>{c}</Text>)}
+          {card().columns.map((c) => <Text class="flex-1 min-w-0 text-muted-foreground text-[13px] leading-[18px] font-semibold" style={{ numberOfLines: 2 }}>{c}</Text>)}
         </View>
       )}
       {card().rows.map((r, j) => (
@@ -199,10 +199,10 @@ function Table(props: Props) {
           class={`flex-row gap-2 min-h-[44px] py-[10px] border-border items-center ${pick && answered() && !isSel(r) ? 'opacity-40' : ''} ${pick && !answered() ? 'active:opacity-60' : ''}`} style={{ ...SEP, ...(pick ? FADE : {}) }}>
           {wide() ? (
             <View class="flex-1 min-w-0 gap-[2px]">
-              <Text class={`text-[15px] leading-5 font-semibold ${isSel(r) ? 'text-primary' : 'text-foreground'}`} numberOfLines={2}>{r[0] ?? ''}</Text>
-              {card().columns.slice(1).map((c, i) => (r[i + 1] ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={2}>{labeled(c, r[i + 1])}</Text> : null))}
+              <Text class={`text-[15px] leading-5 font-semibold ${isSel(r) ? 'text-primary' : 'text-foreground'}`} style={{ numberOfLines: 2 }}>{r[0] ?? ''}</Text>
+              {card().columns.slice(1).map((c, i) => (r[i + 1] ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 2 }}>{labeled(c, r[i + 1])}</Text> : null))}
             </View>
-          ) : card().columns.map((_, i) => <Text class={`flex-1 min-w-0 text-[15px] leading-5 ${isSel(r) ? 'text-primary font-semibold' : 'text-foreground'}`} numberOfLines={3}>{r[i] ?? ''}</Text>)}
+          ) : card().columns.map((_, i) => <Text class={`flex-1 min-w-0 text-[15px] leading-5 ${isSel(r) ? 'text-primary font-semibold' : 'text-foreground'}`} style={{ numberOfLines: 3 }}>{r[i] ?? ''}</Text>)}
           {pick ? <Text class={`w-5 text-center text-[17px] font-semibold ${isSel(r) ? 'text-primary' : 'text-input'}`}>{isSel(r) ? '✓' : answered() ? '' : '›'}</Text> : null}
         </View>
       ))}
@@ -235,8 +235,8 @@ function Summary(props: Props) {
       <View>
         {card().items.map((it, i) => (
           <View class="flex-row items-start gap-3 min-h-[44px] py-[10px] border-border" style={i > 0 ? SEP : undefined}>
-            <Text class="text-muted-foreground text-[15px] leading-5 flex-1" numberOfLines={2}>{it.label}</Text>
-            <Text class="text-foreground text-[15px] leading-5 flex-[2] text-right" selectable>{it.value}</Text>
+            <Text class="text-muted-foreground text-[15px] leading-5 flex-1" style={{ numberOfLines: 2 }}>{it.label}</Text>
+            <Text class="text-foreground text-[15px] leading-5 flex-[2] text-right" style={{ userSelect: 'text' }}>{it.value}</Text>
           </View>
         ))}
       </View>
@@ -279,7 +279,6 @@ export async function openInterface(m: { moduleId: string; title: string; url?: 
     if (!meta.token) throw new Error(meta.error ?? 'no token')
     await uiOpen({
       url: `${s.origin}${m.url ?? `/ui/${encodeURIComponent(m.moduleId)}.nshpkg`}${sid ? `?session=${encodeURIComponent(sid)}` : ''}`,
-      bundleUrl: `${s.origin}/ui/${encodeURIComponent(m.moduleId)}/bundle.nshc`,
       auth: s.token, token: meta.token, title: m.title,
       rootKey: (me() as { uiRootPublicKey?: string | null } | null)?.uiRootPublicKey ?? '',
       origin: s.origin, moduleId: m.moduleId, grants,
@@ -302,13 +301,13 @@ export function ModulePlayer() {
   const close = () => playing.set(null)
   const heard = (data: string) => { if (data === 'closed') close(); else if (data === 'failed') { close(); showToast(str('moduleFailed')) } }
   return (
-    <Sheet open={playing() !== null} onOpenChange={(o) => { if (!o) close() }} side="bottom"
+    <Sheet open={playing() !== null} onOpenChange={({ open }) => { if (!open) close() }} side="bottom"
       popupClass="h-[94%] bg-background rounded-t-[14px] overflow-hidden" backdropClass="bg-black/40">
       <If when={playing()}>
         {(p) => (
           <View class="flex-1">
             <View class="flex-row items-center h-[52px] pl-4 pr-2 border-black/[0.08] dark:border-white/[0.10]" style={{ borderBottomWidth: 0.5 }}>
-              <Text class="flex-1 text-foreground font-semibold text-[17px]" numberOfLines={1}>{p().title}</Text>
+              <Text class="flex-1 text-foreground font-semibold text-[17px]" style={{ numberOfLines: 1 }}>{p().title}</Text>
               <View role="button" testID="module-done" accessibilityLabel={str('done')} onPress={close} class="min-w-11 h-11 px-2 items-center justify-center active:opacity-60">
                 <Text class="text-foreground font-semibold text-[17px]">{str('done')}</Text>
               </View>
@@ -350,7 +349,7 @@ function InlineModule(props: { row: () => ModuleRow; failed: () => void }) {
   return (
     <View class="w-full gap-2" testID={`module-inline-${row.id}`} onLongPress={() => { interfaceMenu({ moduleId: row.moduleId, title: row.title }).catch(() => {}) }} delayLongPress={400}>
       <View class="flex-row items-center gap-2">
-        <Text class="flex-1 text-foreground font-semibold text-[17px] leading-[22px]" numberOfLines={1}>{row.title}</Text>
+        <Text class="flex-1 text-foreground font-semibold text-[17px] leading-[22px]" style={{ numberOfLines: 1 }}>{row.title}</Text>
         <View role="button" testID={`expand-${row.id}`} onPress={() => { openModule(props.row()) }} class="min-h-[32px] px-2 items-center justify-center active:opacity-60"><Text class="text-muted-foreground text-[15px] leading-5">{str('moduleExpand')}</Text></View>
       </View>
       <If when={props.row().answer !== undefined}><Text class="text-primary font-semibold text-[15px] leading-5" testID={`module-${row.id}-answer`}>{str('moduleAnswered')}{props.row().answer}</Text></If>

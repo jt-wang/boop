@@ -30,7 +30,7 @@ RUN npm ci --omit=dev \
               node_modules/@opentelemetry \
     && npm cache clean --force
 
-# Stage 2: the runtime. Debian 13 (trixie, glibc 2.41): the nsh 0.3.0 Linux
+# Stage 2: the runtime. Debian 13 (trixie, glibc 2.41): the nsh 0.4.0 Linux
 # build needs glibc 2.39; on bookworm (2.36) every nsh call printed "weak
 # version `GLIBC_2.39' not found" into the ui tool's errors.
 FROM node:24-trixie-slim
@@ -59,11 +59,11 @@ RUN mkdir -p /etc/chromium/policies/managed /etc/opt/chrome/policies/managed
 COPY deploy/chromium-policy.json /etc/chromium/policies/managed/deepseek-bot.json
 RUN cp /etc/chromium/policies/managed/deepseek-bot.json /etc/opt/chrome/policies/managed/deepseek-bot.json
 
-# The nsh CLI (0.3.0) signs the interfaces the assistant writes (src/ui.ts). Only
+# The nsh CLI (0.4.0) signs the interfaces the assistant writes (src/ui.ts). Only
 # x86_64 has a Linux release (https://nsh.dev/docs/installation: "Linux arm64 …
-# No prebuilt release exists", checked 2026-10-27 against the v0.3.0 assets); on
+# No prebuilt release exists", checked 2026-11-05 against the v0.4.0 assets); on
 # arm64 the image has no nsh and the `ui` tool tells the assistant to use `show`.
-# Tarball sha256 recorded from nsh-linux-x86_64.tar.gz.sha256 on 2026-10-27.
+# Tarball sha256 recorded from nsh-linux-x86_64.tar.gz.sha256 on 2026-11-05.
 #
 # `nsh check` type-checks with TypeScript 7's native compiler, which nsh
 # downloads from registry.npmjs.org into $HOME on first use. The compiler runs
@@ -71,13 +71,13 @@ RUN cp /etc/chromium/policies/managed/deepseek-bot.json /etc/opt/chrome/policies
 # 1000 may not open connections except through the bot's proxy, so on the
 # hosted computer every check failed ("download … typescript-linux-x64-7.0.2.tgz:
 # Network is unreachable"). The image ships the exact package nsh
-# 0.3.0 pins (its sha512 is the one in the nsh binary and in the npm registry)
+# 0.4.0 pins (its sha512 is the one in the nsh binary and in the npm registry)
 # and NSH_TSC names it; the build fails if nsh warns about the C library or
 # if a check still downloads anything.
 ARG TARGETARCH
 RUN if [ "$TARGETARCH" = "amd64" ]; then \
-      curl -fsSL -o /tmp/nsh.tar.gz https://github.com/longbridge/nsh/releases/download/v0.3.0/nsh-linux-x86_64.tar.gz \
-      && echo "539ecf9d76d156b5afa5a086212f23764bfc3945c7395a2119b73a3c66effed0  /tmp/nsh.tar.gz" | sha256sum -c - \
+      curl -fsSL -o /tmp/nsh.tar.gz https://github.com/longbridge/nsh/releases/download/v0.4.0/nsh-linux-x86_64.tar.gz \
+      && echo "8806121aebf40bb51f8fb6aa703722fbb01253f9a435759c18d53beece1ec976  /tmp/nsh.tar.gz" | sha256sum -c - \
       && mkdir -p /opt/nsh && tar -xzf /tmp/nsh.tar.gz -C /opt/nsh --strip-components=1 nsh/bin nsh/LICENSE-APACHE \
       && ln -s /opt/nsh/bin/nsh /usr/local/bin/nsh && rm /tmp/nsh.tar.gz \
       && curl -fsSL -o /tmp/tsc.tgz https://registry.npmjs.org/@typescript/typescript-linux-x64/-/typescript-linux-x64-7.0.2.tgz \

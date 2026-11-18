@@ -31,7 +31,7 @@ export function IdeasPage(props: { onSent: () => void }) {
         <Card class="px-4 py-4 gap-1" testID={`idea-${i.id}`}>
           <Text class="text-foreground font-semibold text-[17px]">{i.title}</Text>
           {i.body ? <Text class="text-muted-foreground text-[15px] leading-5">{i.body}</Text> : null}
-          <Text class="text-muted-foreground text-[13px] mt-1" numberOfLines={2}>“{i.action}”</Text>
+          <Text class="text-muted-foreground text-[13px] mt-1" style={{ numberOfLines: 2 }}>“{i.action}”</Text>
           <View class="flex-row gap-2 mt-2">
             <Btn wide kind="primary" testID={`idea-${i.id}-do`} label={str('doIt')} onPress={() => doIt(i)} />
             <Btn wide kind="quiet" testID={`idea-${i.id}-dismiss`} label={str('notNow')} onPress={() => notNow(i)} />

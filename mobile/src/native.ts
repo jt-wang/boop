@@ -58,11 +58,11 @@ let vapid: string | null = null
 export function nativeAvailable() { try { return host.available() } catch { return false } }
 /**
  * Whether the app around this one runs a module the assistant wrote (`ui.open`): the iOS shell says so in its
- * params (`ui: true`, ios/DeepSeekBot/RootViewController.swift, android/…/MainActivity.java); the browser's page
- * answers it (web/host.js). An app around it that does not say so (the APK `nsh package` makes) gets the play page.
+ * params (`ui: true`, ios/DeepSeekBot/RootViewController.swift, android/…/MainActivity.java). A browser, and an app around
+ * it that does not say so (the APK `nsh package` makes), gets the play page.
  */
 export function shellOpensModules() {
-  try { return platform.os === 'web' ? host.available() : Boolean((host.params as { ui?: unknown } | undefined)?.ui) } catch { return false }
+  try { return platform.os !== 'web' && Boolean((host.params as { ui?: unknown } | undefined)?.ui) } catch { return false }
 }
 
 /** Whether the shell also runs those modules inside the thread (`inlineUi`: the Android shell's InlineModule). */
@@ -105,12 +105,12 @@ export async function disableNativePush() {
 export async function setNativePush(on: boolean) { return on ? enableNativePush() : disableNativePush().then(() => true) }
 
 // [agent:genui] Generated interfaces.
-//   ui.open { url, auth, token, title, rootKey, origin, moduleId, bundleUrl } → { ok }
+//   ui.open { url, auth, token, title, rootKey, origin, moduleId } → { ok }
 //     iOS (UiBridge.swift): downloads `url` (a signed .nshpkg) with `auth` (the device token),
 //     verifies it against `rootKey`, runs it in a sheet with params { token, origin, moduleId }.
-//     Browser (web/host.js): fetches `bundleUrl` (the module's bundle.nshc) and runs it in an overlay player (no signature check).
+//     A browser takes the play page instead (shellOpensModules, src/server.ts playPage).
 //   The module itself posts its result to the bot and asks the shell to `ui.close`.
-export interface UiOpenArgs { url: string; bundleUrl: string; auth: string; token: string; title: string; rootKey: string; origin: string; moduleId: string; /** [compliance] What the person allowed this interface beyond its screen; the shell grants that and nothing else. */ grants: string[] }
+export interface UiOpenArgs { url: string; auth: string; token: string; title: string; rootKey: string; origin: string; moduleId: string; /** [compliance] What the person allowed this interface beyond its screen; the shell grants that and nothing else. */ grants: string[] }
 export function uiOpen(args: UiOpenArgs): Promise<unknown> {
   if (!nativeAvailable()) return Promise.reject(new Error('no host'))
   return host.call('ui.open', args as unknown as Record<string, unknown>, { timeout: 60_000 })

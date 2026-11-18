@@ -443,11 +443,13 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
       // [agent:genui] The play page's runtime files. The page has the module's token; the host cannot check it, so the
       // page fetches them through the module's own (not spent) token. That keeps the public files off a tenant path
       // that any valid sandbox id could read.
-      const runtime = opts.ui && /^\/ui\/([\w-]+)\/runtime\/((?:nsh|harden|host)\.[0-9a-f]+\.(?:js|wasm|nshc))$/.exec(path)
+      // The token is in the path, because NSH's runtime imports its browser.<digest>/ files relative to its own address.
+      const runtime = opts.ui && /^\/ui\/([\w-]+)\/runtime\/([\w-]+)\/((?:nsh|host)\.[0-9a-f]+\.(?:js|wasm)|browser\.[0-9a-f]+\/[\w-]+\.js)$/.exec(path)
       if (runtime) {
         if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' })
-        if (!opts.ui!.verify(runtime[1], url.searchParams.get('token'))) return json(res, 401, { error: 'module-unauthorized' })
-        return serveStatic(appDir, `/${runtime[2]}`, res)
+        if (!opts.ui!.verify(runtime[1], runtime[2])) return json(res, 401, { error: 'module-unauthorized' })
+        res.setHeader('access-control-allow-origin', '*') // the play page has no origin of its own (PLAY_SANDBOX)
+        return serveStatic(appDir, `/${runtime[3]}`, res)
       }
 
       // A map's tiles (src/tiles.ts). A module's canvas can send no header, so its token is in the address, as above.
@@ -505,14 +507,17 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
           if (!t || t.moduleId !== id || t.expires < Date.now()) return json(res, 401, { error: 'ticket' })
           const m = opts.ui!.module(id)
           if (m?.hidden) return json(res, 410, { error: 'hidden' }) // [compliance]
-          const bundle = m && await readFile(opts.ui!.bundlePath(id, 'bundle.nshc')).catch(() => null)
+          const bundle = m && await readFile(opts.ui!.bundlePath(id, 'bundle.js')).catch(() => null)
           if (!m || !bundle) return json(res, 404, { error: 'not found' })
           const page = await playPage(appDir, { title: m.title, token: m.token, moduleId: id, bundle, lang: pageLang(String(req.headers['accept-language'] ?? '')) })
           if (!page) return json(res, 404, { error: 'no browser build' })
-          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer' })
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'referrer-policy': 'no-referrer', 'content-security-policy': PLAY_SANDBOX })
           return res.end(page)
         }
         if (what === '/result') {
+          // from the play page, which has no origin; the module's token is the only credential
+          res.setHeader('access-control-allow-origin', '*')
+          if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'authorization, content-type' }); return res.end() }
           if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
           if (await refused(res)) return // [compliance] the result becomes the person's message to the model
           const spent = await opts.ui!.spend(id, bearerToken(req.headers.authorization))
@@ -947,17 +952,21 @@ function proxyHttp(req: IncomingMessage, res: ServerResponse, dsh: URL, headers:
 }
 
 /**
- * A module's play page: the browser build's own runtime (the digested nsh/harden/host files in `appDir`) runs the
+ * A module's play page: the browser build's own runtime (the digested nsh/host files in `appDir`) runs the
  * module's bundle, inline, through web/host.js's player, with the module's result token. Null without a browser build.
  */
+// NSH 0.4.0 runs a web app's code as ordinary JavaScript in the page (0.3.0 ran it in QuickJS inside wasm). This header
+// gives the page no origin of its own, so a module cannot read what the browser keeps for the bot, the device token first.
+export const PLAY_SANDBOX = 'sandbox allow-scripts'
+
 export async function playPage(appDir: string, m: { title: string; token: string; moduleId: string; bundle: Buffer; lang: Lang }): Promise<string | null> {
   const names = await readdir(appDir).catch(() => [] as string[])
   const find = (re: RegExp) => names.find((n) => re.test(n))
-  const js = find(/^nsh\.[0-9a-f]+\.js$/), wasm = find(/^nsh\.[0-9a-f]+\.wasm$/), harden = find(/^harden\.[0-9a-f]+\.nshc$/), host = find(/^host\.[0-9a-f]+\.js$/)
-  if (!js || !wasm || !harden || !host) return null
+  const js = find(/^nsh\.[0-9a-f]+\.js$/), wasm = find(/^nsh\.[0-9a-f]+\.wasm$/), host = find(/^host\.[0-9a-f]+\.js$/)
+  if (!js || !wasm || !host) return null
   const esc = (x: string) => x.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
   const words = SERVER_WORDS[m.lang].play
-  const args = { bundleUrl: `data:application/octet-stream;base64,${m.bundle.toString('base64')}`, auth: 'page', token: m.token, title: m.title, moduleId: m.moduleId }
+  const args = { bundleUrl: `data:text/javascript;base64,${m.bundle.toString('base64')}`, auth: 'page', token: m.token, title: m.title, moduleId: m.moduleId }
   return `<!doctype html><html lang="${HTML_LANG[m.lang]}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>${esc(m.title)}</title>
 <style>html,body{margin:0;height:100%;background:Canvas;color:CanvasText;color-scheme:light dark;font:17px/1.4 -apple-system,system-ui,sans-serif}main{display:flex;min-height:100%;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;text-align:center;opacity:.7}html[data-app] .ui-sheet>div:first-child{display:none!important}html[data-app] .ui-sheet{color-scheme:inherit!important}</style></head>
 <body><main id="after">${esc(words.opening)}</main><script type="module">
@@ -975,7 +984,7 @@ if (scheme === 'dark' || scheme === 'light') {
 // and the module's result go to that computer, never to the root of the host in front of it. The runtime files carry
 // the module's (unspent) token so a valid sandbox id alone is not enough to fetch them.
 const base = new URL('../../', location.href)
-const runtime = (f) => new URL('ui/' + encodeURIComponent(${JSON.stringify(m.moduleId)}) + '/runtime/' + f + '?token=' + encodeURIComponent(${JSON.stringify(m.token)}), base).href
+const runtime = (f) => new URL('ui/' + encodeURIComponent(${JSON.stringify(m.moduleId)}) + '/runtime/' + encodeURIComponent(${JSON.stringify(m.token)}) + '/' + f, base).href
 const { openModule } = await import(runtime(${JSON.stringify(host)}))
 const args = ${JSON.stringify(args).replace(/</g, '\\u003c')}
 const after = document.getElementById('after')
@@ -986,8 +995,7 @@ const watch = new MutationObserver(() => {
   else { after.textContent = ${JSON.stringify(words.back)}; if (opened) { opened = false; window.nsh?.postMessage?.('closed') } } // inside the app's web view: the app closes it
 })
 watch.observe(document.body, { childList: true, subtree: true, characterData: true })
-const at = (f) => new URL(f, base).href
-openModule({ ...args, origin: base.href.replace(/\\/$/, '') }, { js: at(${JSON.stringify(js)}), wasm: at(${JSON.stringify(wasm)}), harden: at(${JSON.stringify(harden)}) }).catch(() => { after.textContent = ${JSON.stringify(words.failed)}; window.nsh?.postMessage?.('failed') })
+openModule({ ...args, origin: base.href.replace(/\\/$/, '') }, { js: runtime(${JSON.stringify(js)}), wasm: runtime(${JSON.stringify(wasm)}) }).catch(() => { after.textContent = ${JSON.stringify(words.failed)}; window.nsh?.postMessage?.('failed') })
 </script></body></html>`
 }
 
@@ -1000,7 +1008,7 @@ export async function serveStatic(appDir: string, path: string, res: ServerRespo
   try {
     const s = await stat(file)
     if (!s.isFile()) throw new Error('dir')
-    // Files named by their content digest (the NSH web build: nsh.<digest>.wasm, app.<digest>.nshc, icons/…) never change: cache them for a year.
+    // Files named by their content digest (the NSH web build: nsh.<digest>.wasm, app.<digest>.js, icons/…) never change: cache them for a year.
     const digested = /\.[0-9a-f]{10}\.[a-z0-9]+$/.test(rel)
     res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream', 'cache-control': rel === '/sw.js' || rel === '/index.html' || rel === '/manifest.webmanifest' ? 'no-cache' : digested ? 'public, max-age=31536000, immutable' : 'public, max-age=300' })
     const bytes = await readFile(file)

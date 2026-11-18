@@ -325,9 +325,10 @@ export async function createHostServer(o: HostOptions): Promise<HostServer> {
       // unspent token) and its result (the bot checks the same token, once). These never wake or touch a stopped
       // sandbox: a leaked sandbox id must not be a free wake switch.
       else if (owner && req.method === 'GET' && /^\/ui\/[\w-]+\/play$/.test(m[2] ?? '') && url.searchParams.get('ticket')) { acct = owner; unauth = true }
-      else if (owner && req.method === 'GET' && /^\/ui\/[\w-]+\/runtime\/(?:nsh|harden|host)\.[0-9a-f]+\.(?:js|wasm|nshc)$/.test(m[2] ?? '') && url.searchParams.get('token')) { acct = owner; unauth = true }
+      else if (owner && req.method === 'GET' && /^\/ui\/[\w-]+\/runtime\/[\w-]+\/(?:(?:nsh|host)\.[0-9a-f]+\.(?:js|wasm)|browser\.[0-9a-f]+\/[\w-]+\.js)$/.test(m[2] ?? '')) { acct = owner; unauth = true }
       else if (owner && req.method === 'GET' && /^\/ui\/[\w-]+\/tiles\/\d+\/\d+\/\d+\.png$/.test(m[2] ?? '') && url.searchParams.get('token')) { acct = owner; unauth = true } // a map's tiles (src/tiles.ts): same token
       else if (owner && req.method === 'POST' && /^\/ui\/[\w-]+\/result$/.test(m[2] ?? '') && bearer) { acct = owner; unauth = true }
+      else if (owner && req.method === 'OPTIONS' && /^\/ui\/[\w-]+\/result$/.test(m[2] ?? '')) { acct = owner; unauth = true } // the play page's preflight: it has no origin of its own
     }
     if (!acct) return { status: 401, error: 'account-unauthorized' }
     if (acct.suspendedAt) return { status: 403, error: 'suspended' } // [compliance]

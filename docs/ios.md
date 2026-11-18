@@ -12,7 +12,7 @@ What the shell adds:
 
 Using a coding agent? Tell it: follow "Build it for your own iPhone" in `docs/ios.md`.
 
-Needs a Mac with Xcode and Go, the [`nsh` CLI](https://nsh.dev/docs/installation), and your Apple Account added in Xcode → Settings → Accounts. Measured 2026-11-05 from a clean checkout with public TailPocket and stock `nsh` 0.3.0: the app compiles and signs with a paid team and a new bundle id, with and without the entitlements. A free account and an install on a physical iPhone have not been tried yet; so far the app has run only on the simulator.
+Needs a Mac with Xcode and Go, the [`nsh` CLI](https://nsh.dev/docs/installation) 0.4 (the scripts stop on any other version), and your Apple Account added in Xcode → Settings → Accounts. Measured 2026-11-05 from a clean checkout with public TailPocket and stock `nsh` 0.4.0: the app compiles and signs with a paid team. A new bundle id, and the setting without entitlements, were measured the same day with `nsh` 0.3.0. A free account and an install on a physical iPhone have not been tried yet; so far the app has run only on the simulator.
 
 1. Get both repositories, side by side:
 
@@ -33,15 +33,13 @@ scripts/ios-build.sh device <device id>
 ```
 
 5. If iOS will not open the app, trust your developer profile under Settings → General → VPN & Device Management.
-6. Pair: open Boop on your computer, then tap Scan the code in the app. No computer yet? Tap "Try it without a computer" to see the app on made-up data.
+6. Pair: open Boop on your computer, then tap Scan the code in the app. No computer yet? Tap "Try a demo, no computer needed" to see the app in demo mode, on made-up data.
 
 For notifications on your own build you need a paid Apple Developer Program team and an APNs key on your computer ([below](#2-tell-the-bot-about-apns)).
 
-Stock `nsh` 0.3.0 cannot open `wss://`. Pairing by scanning the code goes through TailPocket on `127.0.0.1` and does not need it; a computer you reach at an `https://` address needs [the patched framework](#nsh-030-cannot-open-wss-fixed-with-a-patched-framework).
-
 ## Build and run on the simulator
 
-Needs Xcode, the `nsh` CLI and the NSH distribution (`~/.nsh`, which `nsh` installs) and `xcodegen` (`brew install xcodegen`, only when you change `ios/project.yml`).
+Needs Xcode, the `nsh` 0.4 CLI with the NSH distribution it installs, and `xcodegen` (`brew install xcodegen`, only when you change `ios/project.yml`).
 
 ```sh
 scripts/ios-build.sh simulator
@@ -49,43 +47,28 @@ xcrun simctl install booted ios/build/sim/DeepSeekBot.app
 xcrun simctl launch booted io.jingtao.boop
 ```
 
-The simulator build is arm64 only: `~/.nsh/embed/ios/NativeShell.xcframework` (nsh 0.3.0) has no x86_64 simulator slice, and a generic simulator build fails with `Unable to resolve module dependency: 'NativeShell'` (measured 2026-10-27).
+The simulator build is arm64 only: NSH's `embed/ios/NativeShell.xcframework` has no x86_64 simulator slice (nsh 0.4.0, its `Info.plist`, 2026-11-05), and a generic simulator build fails with `Unable to resolve module dependency: 'NativeShell'` (measured 2026-10-27 on 0.3.0).
 
-`scripts/ios-bundle.sh` (called by the build) runs `nsh build mobile --release` into `ios/DeepSeekBot/nsh/` and links `~/.nsh/embed/ios/NativeShell.xcframework` into `ios/Frameworks/`. Both are ignored by git; run it again after changing anything in `mobile/`.
+`scripts/ios-bundle.sh` (called by the build) runs `nsh build mobile --release` into `ios/DeepSeekBot/nsh/` and links `embed/ios/NativeShell.xcframework`, from the same install as the CLI, into `ios/Frameworks/`. Both are ignored by git; run it again after changing anything in `mobile/`.
 
 `ios/DeepSeekBotUITests/GenerativeUITests.swift` drives the whole second layer against a real bot: `xcodebuild … -only-testing:DeepSeekBotUITests/GenerativeUITests TEST_RUNNER_BOT=http://127.0.0.1:3887 TEST_RUNNER_PAIR_CODE=<the six digits> TEST_RUNNER_HOST_SECRET=<the bot's DEEPSEEK_BOT_HOST_SECRET> TEST_RUNNER_SHOTS=<a directory> test` (exported as environment variables, not passed as arguments) pairs from the link, asks for a tip calculator, taps Open, screenshots the sheet in light and dark into `SHOTS`, uses the module and checks the thread shows "Answered: …".
 
 The UI test (`ios/DeepSeekBotUITests`) drives the shell against a stand-in bot on the Mac: opens the pair link, taps Connect, allows notifications and checks that the token reached the bot. Run it with `xcodebuild -project ios/DeepSeekBot.xcodeproj -scheme DeepSeekBot -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test` with a server answering `POST /pair`, `GET /me`, `POST /push/subscribe` and `GET /subscriptions` on `http://127.0.0.1:3861` (the test's `BOT` environment variable changes the address).
 
-## NSH 0.3.0 cannot open wss (fixed with a patched framework)
+## wss needs NSH 0.4
 
-NSH 0.3.0's iOS framework and runtimes have the same TLS gap as its Android library (docs/android.md, "NSH 0.3.0 cannot open wss"): rustls 0.23 with no crypto provider. A hosted computer is only reachable over `wss://`, so the app signs in, then stays 「Not connected」 with an empty thread and sends nothing. Upstream fixed it in nsh-core (longbridge/nsh#530, merge 464e7be3, 2026-10-27); no release has it yet.
+A computer you reach at an `https://` address is only reachable over `wss://`. NSH 0.3.0 could not open it on iOS or Android (rustls with no crypto provider); the app signed in, then stayed "Not connected" with an empty thread. NSH 0.4.0 contains the fix (longbridge/nsh#530).
 
-Measured 2026-10-29 on the iPhone 17 Pro Max simulator (iOS 26.3) with a probe app run by `nsh test --target ios`, one socket per launch, both NSH socket APIs (the global `WebSocket` and the `websocket` module):
+The probe opens both NSH socket APIs, the global `WebSocket` and the `websocket` module: `nsh test --target ios scripts/qa/wss-probe`, or `--target android`. Measured 2026-11-05 on the iPhone 17 Pro simulator and on an Android 15 arm64 emulator, the same on both:
 
-| Target | Stock 0.3.0 | 0.3.0 + #530 |
+| Target | Stock 0.4.0 | Stock 0.3.0 |
 |---|---|---|
-| `ws://127.0.0.1` (an echo server on the Mac) | echo | echo |
-| `wss://127.0.0.1:3972` (nothing listening) | error: connection refused | error: connection refused |
-| `wss://self-signed.badssl.com` | module: rejects with "Could not automatically determine the process-level CryptoProvider"; global: no open, error or close in 20 s, and the JS thread stops (a 1 s timer never fires) | error: invalid peer certificate: UnknownIssuer |
-| `wss://echo.websocket.org` | the same as the line above | echo |
+| `wss://echo.websocket.org` | echo, both APIs | never opens: the test does not end in 30 s, exit 1 |
+| `wss://self-signed.badssl.com` | error: invalid peer certificate: UnknownIssuer, both APIs | the run had already failed |
 
-The patched framework is v0.3.0 with #530 cherry-picked. A framework built from NSH main (a1397055) also opens `wss://` in the probe, but in the app bundled by nsh 0.3.0 the typed email and access code never reached the sign-in fields (one run), so the framework has to come from the same version as the `nsh` CLI. To build and install it, in an NSH checkout:
+A package signed by `nsh` 0.3 opens in a phone app on 0.4 (measured on both phones, 2026-11-05). The other way round the phone refuses it: "the package needs runtime 0.4.0 or newer".
 
-```sh
-git switch -c v030-ios-wss 76fa8a7f
-git cherry-pick -x 464e7be3          # Cargo.lock conflicts: git checkout --ours Cargo.lock && git add Cargo.lock && git cherry-pick --continue
-cargo build --release -p nsh-ios-host -p nsh-ios-app --target aarch64-apple-ios-sim
-cargo build --release -p nsh-ios-app --target aarch64-apple-ios
-cargo xtask ios-embed --no-catalyst --no-dev   # → dist/nsh/embed/ios/NativeShell.xcframework
-```
-
-`cargo xtask ios-embed` reads the Rust libraries from the checkout's own `target/`, whatever `CARGO_TARGET_DIR` says. Then keep the originals beside the new files and copy them in:
-
-- `~/.nsh/embed/ios/NativeShell.xcframework` (the original as `NativeShell.xcframework.orig`): what `scripts/ios-bundle.sh` links into the app.
-- `~/.nsh/runtime/ios/iphonesimulator/{nsh-ios-host,nsh-ios-app}` and `~/.nsh/runtime/ios/iphoneos/nsh-ios-app` (each original as `*.orig`): what `nsh test --target ios` and `nsh package` use.
-
-To go back, move each `.orig` over its file. The Mac Catalyst host and `NativeShellDev.xcframework` stay stock; this app uses neither. `scripts/ios-bundle.sh` warns when the framework it links has no `ring` symbols, which is the stock one. Once an NSH release contains #530, the stock install is enough.
+The framework has to come from the same version as the `nsh` CLI: with a framework from another NSH version, the typed email and access code never reached the sign-in fields (2026-10-29, one run). The build scripts take both from one install and stop on a version other than 0.4.
 
 ## Ship through TestFlight
 

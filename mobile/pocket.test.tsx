@@ -11,14 +11,14 @@ const reachable = (port: number) => ({
   [`GET http://127.0.0.1:${port}/threads`]: { body: [{ sessionId: 'main', title: '', updatedAt: 1700000000000, running: false, blank: false }] },
   [`POST http://127.0.0.1:${port}/ws-ticket`]: { body: { ticket: 't' } },
 })
-const toConnect = async (app: Awaited<ReturnType<typeof open>>) => { await app.waitFor('id:own-computer'); await app.press('id:own-computer'); await app.waitFor('id:connect') }
+const toConnect = async (app: Awaited<ReturnType<typeof open>>) => { await app.waitFor('id:own-computer'); await app.press('id:own-computer'); await app.waitFor('id:scan') }
 
 test('scan the code: pairs, spends the code that came inside the tunnel, and is in', async () => {
   let paired: { invite?: string; save?: boolean } = {}
   let claimed: { code?: string } = {}
   const app = await open('./App.tsx', {
     host: { handlers: { 'tailPocket.scan': invite, 'tailPocket.pair': (d: typeof paired) => { paired = d; return link }, 'tailPocket.connect': tunnel(50123) } },
-    network: { ...reachable(50123), 'POST http://127.0.0.1:50123/pair': (req: { body: string }) => { claimed = JSON.parse(req.body); return { body: { token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789' } } } },
+    network: { ...reachable(50123), 'POST http://127.0.0.1:50123/pair': (req) => { claimed = JSON.parse(String(req.body)); return { body: { token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789' } } } },
   })
   await toConnect(app)
   await app.press('id:scan')
@@ -29,13 +29,14 @@ test('scan the code: pairs, spends the code that came inside the tunnel, and is 
   expect(app.storage().pocket).toBe('1')
 })
 
-test('the code on the computer can be pasted: where there is no camera, or from a link', async () => {
+test('the code can also go in the server address field: the six-digit field then goes away', async () => {
   let paired: { invite?: string } = {}
   const app = await open('./App.tsx', {
     host: { handlers: { 'tailPocket.pair': (d: typeof paired) => { paired = d; return link }, 'tailPocket.connect': tunnel(50123) } },
     network: { ...reachable(50123), 'POST http://127.0.0.1:50123/pair': { body: { token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789' } } },
   })
   await toConnect(app)
+  await app.press('id:connect-server')
   expect(app.shows('id:code')).toBe(true)
   await app.type('id:address', invite)
   await app.waitUntil(() => !app.shows('id:code')) // the code comes inside the tunnel: nothing else to type

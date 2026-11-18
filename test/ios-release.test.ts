@@ -14,7 +14,7 @@ test('the archive step clears the home folder and the NSH checkout from the app 
     mkdirSync(join(dir, 'scripts'))
     mkdirSync(join(dir, 'ios'), { recursive: true })
     mkdirSync(join(dir, 'bin'))
-    for (const f of ['scripts/ios-build.sh', 'scripts/android-scrub-home.sh', 'ios/ExportOptions.plist']) cpSync(join(ROOT, f), join(dir, f))
+    for (const f of ['scripts/ios-build.sh', 'scripts/scrub-home.sh', 'ios/ExportOptions.plist']) cpSync(join(ROOT, f), join(dir, f))
     writeFileSync(join(dir, 'scripts/ios-bundle.sh'), '#!/bin/sh\nexit 0\n')
     chmodSync(join(dir, 'scripts/ios-bundle.sh'), 0o755)
     const home = ['', 'Users', 'somebody'].join('/')
@@ -41,6 +41,43 @@ esac
     assert.equal(signed.includes('/usr/lib/keep'), true)
   } finally {
     rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('the archive keeps Xcode\'s derived data and package caches in ios/build, next to the checkout', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ios-cache-'))
+  try {
+    mkdirSync(join(dir, 'scripts'))
+    mkdirSync(join(dir, 'ios'), { recursive: true })
+    mkdirSync(join(dir, 'bin'))
+    for (const f of ['scripts/ios-build.sh', 'scripts/scrub-home.sh', 'ios/ExportOptions.plist']) cpSync(join(ROOT, f), join(dir, f))
+    writeFileSync(join(dir, 'scripts/ios-bundle.sh'), '#!/bin/sh\nexit 0\n')
+    chmodSync(join(dir, 'scripts/ios-bundle.sh'), 0o755)
+    writeFileSync(join(dir, 'bin/xcodebuild'), `#!/bin/bash
+case " $* " in *" -exportArchive "*) ;; *) printf '%s\\n' "$@" > "${dir}/args" ;; esac
+args=("$@")
+for ((i = 0; i < \${#args[@]}; i++)); do [ "\${args[i]}" = -archivePath ] && archive="\${args[i+1]}"; done
+mkdir -p "$archive/Products/Applications/DeepSeekBot.app"; : > "$archive/Products/Applications/DeepSeekBot.app/DeepSeekBot"
+`)
+    chmodSync(join(dir, 'bin/xcodebuild'), 0o755)
+    const r = spawnSync('bash', [join(dir, 'scripts/ios-build.sh'), 'archive'], { encoding: 'utf8', env: { ...process.env, ASC_KEY_ID: undefined, PATH: `${join(dir, 'bin')}:${process.env.PATH}` } })
+    assert.equal(r.status, 0, r.stderr)
+    const args = readFileSync(join(dir, 'args'), 'utf8').split('\n')
+    const after = (flag: string) => args[args.indexOf(flag) + 1]
+    assert.equal(after('-derivedDataPath'), join(dir, 'ios/build/derived'))
+    assert.equal(after('-clonedSourcePackagesDirPath'), join(dir, 'ios/build/packages'))
+    assert.equal(after('-packageCachePath'), join(dir, 'ios/build/package-cache'))
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('the iOS version is the one the phone app ships (mobile/nsh.json)', () => {
+  const nsh = JSON.parse(readFileSync(join(ROOT, 'mobile/nsh.json'), 'utf8')) as { version: string }
+  for (const f of ['ios/project.yml', 'ios/DeepSeekBot.xcodeproj/project.pbxproj']) {
+    const versions = [...readFileSync(join(ROOT, f), 'utf8').matchAll(/MARKETING_VERSION = ?:? ?"?([0-9.]+)"?;?|MARKETING_VERSION: ([0-9.]+)/g)].map((m) => m[1] ?? m[2])
+    assert.ok(versions.length > 0, f)
+    for (const v of versions) assert.equal(v, nsh.version, f)
   }
 })
 

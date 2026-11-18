@@ -45,8 +45,8 @@ function Tracked(props: { item: Item; onCheck?: () => void; onMore: () => void; 
         ? <View role="checkbox" accessibilityLabel={props.item.title} testID={`check-${props.item.key}`} onPress={props.onCheck} class="items-center justify-center -mt-[11px] active:opacity-50" style={{ width: 22, height: 44 }}><View class="rounded-[6px] border-[2px] border-muted-foreground" style={{ width: 22, height: 22 }} /></View>
         : <View class="items-center justify-center" style={{ width: 22, height: 22 }}><Glyph name="clock" size={20} color={muted()} /></View>}
       <View class="flex-1 min-w-0 gap-[4px]">
-        <Text class="text-foreground text-[17px] leading-[22px]" numberOfLines={2}>{props.item.title}</Text>
-        {props.item.line ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={2}>{props.item.line}</Text> : null}
+        <Text class="text-foreground text-[17px] leading-[22px]" style={{ numberOfLines: 2 }}>{props.item.title}</Text>
+        {props.item.line ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 2 }}>{props.item.line}</Text> : null}
       </View>
       <View role="button" accessibilityLabel={str('more')} testID={`more-${props.item.key}`} onPress={props.onMore} class="items-center justify-center -mr-2 -mt-[11px] active:opacity-50" style={{ width: 36, height: 44 }}><Glyph name="dots" size={20} color={muted()} /></View>
     </View>
@@ -93,7 +93,7 @@ export function DiscoverPage(props: { onOpenThread: () => void }) {
       : it.kind === 'goal'
         ? [{ id: 'ask', label: ms('checkIn') }, { id: it.goal!.status === 'paused' ? 'resume' : 'pause', label: it.goal!.status === 'paused' ? str('resume') : str('pause') }, { id: 'done', label: str('markDone') }, { id: 'delete', label: str('remove'), role: 'destructive' as const }]
         : [{ id: 'ask', label: ms('checkIn') }, { id: 'done', label: str('markDone') }]
-    const r = await AlertDialog.show({ title: it.title, presentation: 'actionSheet', actions: [...acts, { id: 'cancel', label: cm('memCancel'), role: 'cancel' as const }] }).catch(() => null)
+    const r = (await AlertDialog.show({ title: it.title, presentation: 'actionSheet', actions: [...acts, { id: 'cancel', label: cm('memCancel'), role: 'cancel' as const }] }).catch(() => null))?.action
     if (r === 'ask') say(ms('checkInMsg')(it.title)).catch(() => {})
     else if (r === 'done') check(it)
     else if (r === 'pause' && it.task) act(() => api().send('PATCH', `/schedules/${it.task!.id}`, { active: false }), () => tasks.refetch())
@@ -102,7 +102,7 @@ export function DiscoverPage(props: { onOpenThread: () => void }) {
     else if (r === 'delete' && it.goal) act(() => api().send('DELETE', `/goals/${it.goal!.id}`), () => goals.refetch())
   }
   const idea = async (i: Idea) => {
-    const r = await AlertDialog.show({ title: i.title, description: i.body || undefined, presentation: 'actionSheet', actions: [{ id: 'do', label: str('doIt') }, { id: 'no', label: str('notNow') }, { id: 'cancel', label: cm('memCancel'), role: 'cancel' }] }).catch(() => null)
+    const r = (await AlertDialog.show({ title: i.title, description: i.body || undefined, presentation: 'actionSheet', actions: [{ id: 'do', label: str('doIt') }, { id: 'no', label: str('notNow') }, { id: 'cancel', label: cm('memCancel'), role: 'cancel' }] }).catch(() => null))?.action
     if (r === 'do') say(i.action).catch(() => {})
     else if (r === 'no') act(() => api().send('POST', `/ideas/${encodeURIComponent(i.id)}/dismiss`), () => ideas.refetch())
   }
@@ -137,7 +137,7 @@ export function DiscoverPage(props: { onOpenThread: () => void }) {
             <View role="button" testID={`need-${a.eventId}`} onPress={props.onOpenThread} class="flex-row items-center gap-3 px-4 py-[10px] active:bg-black/[0.04] dark:active:bg-white/[0.06]">
               <View class="items-center justify-center -ml-1" style={{ width: 32, height: 22 }}><Glyph name={a.kind === 'approval' ? 'shield' : 'bell'} size={20} /></View>
               <View class="flex-1 min-w-0 gap-[2px]">
-                <Text class="text-foreground text-[17px] leading-[22px] font-medium" numberOfLines={2}>{a.kind === 'approval' ? (a.request.reason || cm('needApproval')) : String(a.request.questions?.[0]?.prompt ?? a.request.questions?.[0]?.question ?? cm('needAnswer'))}</Text>
+                <Text class="text-foreground text-[17px] leading-[22px] font-medium" style={{ numberOfLines: 2 }}>{a.kind === 'approval' ? (a.request.reason || cm('needApproval')) : String(a.request.questions?.[0]?.prompt ?? a.request.questions?.[0]?.question ?? cm('needAnswer'))}</Text>
                 <Text class="text-muted-foreground text-[15px] leading-5">{a.kind === 'approval' ? str('askApproval') : str('askQuestion')}</Text>
               </View>
               <Glyph name="chevron" size={18} color={muted()} />
@@ -164,8 +164,8 @@ export function DiscoverPage(props: { onOpenThread: () => void }) {
             <View role="button" testID={`idea-${i.id}`} onPress={() => { idea(i).catch(() => {}) }} class="flex-row items-start gap-[13px] px-4 py-[14px] border-border active:bg-black/[0.04] dark:active:bg-white/[0.06]" style={n ? { borderTopWidth: 0.5 } : undefined}>
               <View class="items-center justify-center rounded-[10px] bg-secondary" style={{ width: 40, height: 40 }}><Glyph name="sparkles" size={22} /></View>
               <View class="flex-1 min-w-0 gap-[3px]">
-                <Text class="text-foreground text-[17px] leading-[22px] font-semibold" numberOfLines={2}>{i.title}</Text>
-                {i.body ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={3}>{i.body}</Text> : null}
+                <Text class="text-foreground text-[17px] leading-[22px] font-semibold" style={{ numberOfLines: 2 }}>{i.title}</Text>
+                {i.body ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 3 }}>{i.body}</Text> : null}
               </View>
             </View>
           ))}

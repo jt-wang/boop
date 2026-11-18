@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
 
 /**
  * The tab bar's selected pill is black, white in dark mode, never the system's
- * dynamic color. NSH 0.3.0's TabBar takes Material 3's system palette and no color from the app; on an Android 12+
+ * dynamic color. NSH's TabBar (0.3.0, read then) takes Material 3's system palette and no color from the app; on an Android 12+
  * phone the pill was the wallpaper's tint (a grey blue on the emulator). The iOS shell's TabBarTests is the same check.
  * Pairs with a stand-in bot on 127.0.0.1 through a pairing link, then reads the selected tab's pixels in light and dark.
  */

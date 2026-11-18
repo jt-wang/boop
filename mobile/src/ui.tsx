@@ -2,7 +2,7 @@
 // states. Sizes follow
 // Apple HIG (17 body, 15 secondary, 13 footnote, 44pt targets, 16pt margins);
 // hierarchy comes from material and elevation, not lines.
-import { cleanup, colorScheme, createMotion, effect, Image, platform, safeAreaInsets, Scroll, signal, Storage, Text, View, type Easing, type JSX, type ScrollProps, type StyleProp, type ViewStyle, type YNode } from 'nsh'
+import { cleanup, colorScheme, createMotion, effect, Image, platform, safeAreaInsets, Scroll, signal, Storage, Text, View, type Easing, type JSX, type ScrollProps, type StyleProp, type ViewStyle, type ScrollRef, type ViewRef } from 'nsh'
 import menuIcon from '../assets/menu.png'
 import gearIcon from '../assets/gear.png'
 import chatIcon from '../assets/chat.png'
@@ -51,12 +51,15 @@ type Press = { onPress?: () => void; onLongPress?: () => void; role?: 'button'; 
 export function Glass(props: Press & { children?: JSX.Element; class?: string; style?: StyleProp<ViewStyle>; pointerEvents?: 'auto' | 'none' | 'box-none' | 'box-only' }) {
   // Over a flat background glass is nearly invisible (measured on the iOS 26.3 simulator, 2026-10-27), so every piece
   // gets a hairline and a soft shadow for its edge; off iOS 26 it also gets a 60% tint.
+  // NSH 0.4.0 on Android: a view with both a shadow and overflow hidden never fires onPress (its Box moves the children
+  // into a second Box with the same node id; measured 2026-11-05 with real taps, scripts/qa/android-try-it.py).
+  const clip = props.onPress && platform.os === 'android' ? '' : 'overflow-hidden'
   const fallback = liquid ? 'border-black/[0.08] dark:border-white/[0.12]' : 'bg-white/60 dark:bg-card/60 border-black/[0.08] dark:border-white/[0.12]'
   return (
-    <View role={props.role} testID={props.testID} accessibilityLabel={props.accessibilityLabel} onPress={props.onPress} onLongPress={props.onLongPress} disabled={props.disabled} pointerEvents={props.pointerEvents}
+    <View role={props.role} testID={props.testID} accessibilityLabel={props.accessibilityLabel} onPress={props.onPress} onLongPress={props.onLongPress} disabled={props.disabled}
       ios={{ backdropMaterial: 'thin' }}
-      style={[{ glassEffect: 'regular', backdropFilter: 'blur(20px)', borderWidth: 0.5, boxShadow: colorScheme() === 'dark' ? '0 2px 10px rgba(0,0,0,0.35)' : '0 2px 10px rgba(0,0,0,0.08)' }, props.style]}
-      class={`overflow-hidden ${fallback} ${props.class ?? ''}`}>
+      style={[{ glassEffect: 'regular', backdropFilter: 'blur(20px)', borderWidth: 0.5, boxShadow: colorScheme() === 'dark' ? '0 2px 10px rgba(0,0,0,0.35)' : '0 2px 10px rgba(0,0,0,0.08)' }, props.style, { pointerEvents: props.pointerEvents }]}
+      class={`${clip} ${fallback} ${props.class ?? ''}`}>
       {props.children}
     </View>
   )
@@ -66,7 +69,7 @@ export function Glass(props: Press & { children?: JSX.Element; class?: string; s
 export function EdgeFade(props: { edge: 'top' | 'bottom'; height: number }) {
   const dir = props.edge === 'top' ? 'to bottom' : 'to top'
   return (
-    <View pointerEvents="none" class="bg-background/80" style={{ position: 'absolute', left: 0, right: 0, [props.edge]: 0, height: props.height, backdropFilter: 'blur(14px)', maskImage: `linear-gradient(${dir}, black 45%, transparent 100%)` }} />
+    <View class="bg-background/80" style={{ position: 'absolute', left: 0, right: 0, [props.edge]: 0, height: props.height, backdropFilter: 'blur(14px)', maskImage: `linear-gradient(${dir}, black 45%, transparent 100%)`, pointerEvents: 'none' }} />
   )
 }
 
@@ -110,7 +113,7 @@ export function Btn(props: { label: string; kind?: 'primary' | 'soft' | 'quiet' 
   return (
     <View role="button" testID={props.testID} disabled={props.disabled} onPress={() => { if (!props.disabled) props.onPress() }}
       class={`rounded-full px-4 min-h-[44px] items-center justify-center active:opacity-70 ${cls()} ${props.wide ? 'flex-1' : ''} ${props.disabled ? 'opacity-50' : ''}`}>
-      <Text class={`font-semibold ${props.wide ? 'text-[15px]' : 'text-[17px]'} ${tcls()}`} numberOfLines={1}>{props.label}</Text>
+      <Text class={`font-semibold ${props.wide ? 'text-[15px]' : 'text-[17px]'} ${tcls()}`} style={{ numberOfLines: 1 }}>{props.label}</Text>
     </View>
   )
 }
@@ -137,10 +140,10 @@ export function Cell(props: { title: string; subtitle?: string; value?: string; 
     <View role={props.onPress ? 'button' : undefined} testID={props.testID} onPress={props.onPress} onLongPress={props.onLongPress} class={`pl-4 ${props.onPress ? 'active:bg-secondary' : ''}`}>
       <View style={{ borderTopWidth: 0.5 }} class={`flex-row items-center gap-3 min-h-[44px] pr-4 py-[11px] border-border ${props.centered ? 'justify-center' : ''}`}>
         <View class={`min-w-0 ${props.centered ? '' : 'flex-1'}`}>
-          <Text class={titleClass()} numberOfLines={props.subtitle ? 2 : 3}>{props.title}</Text>
-          {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5 mt-[2px]" numberOfLines={3}>{props.subtitle}</Text> : null}
+          <Text class={titleClass()} style={{ numberOfLines: props.subtitle ? 2 : 3 }}>{props.title}</Text>
+          {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5 mt-[2px]" style={{ numberOfLines: 3 }}>{props.subtitle}</Text> : null}
         </View>
-        {props.value ? <Text class="text-muted-foreground text-[17px]" numberOfLines={1}>{props.value}</Text> : null}
+        {props.value ? <Text class="text-muted-foreground text-[17px]" style={{ numberOfLines: 1 }}>{props.value}</Text> : null}
         {props.right ?? null}
         {props.chevron ? <Text class="text-input text-[17px] font-semibold -mr-[2px]">›</Text> : null}
       </View>
@@ -238,12 +241,12 @@ function reportLayout(r: { page: string; top: number; headerBottom: number }) {
  * must be inset by its scroll view, as UIKit does. The chat's header is its own (`headerBottom`). It measures again
  * every second, so a page that was hidden (the other tab) reports where it is once shown.
  */
-export function TopProbe(props: { page: string; root?: () => YNode | undefined; headerBottom?: () => number }) {
+export function TopProbe(props: { page: string; root?: () => ViewRef | undefined; headerBottom?: () => number }) {
   return <If when={layoutGuard()}><Probe {...props} /></If>
 }
-function Probe(props: { page: string; root?: () => YNode | undefined; headerBottom?: () => number }) {
+function Probe(props: { page: string; root?: () => ViewRef | undefined; headerBottom?: () => number }) {
   const insets = safeAreaInsets()
-  let ref: YNode | undefined
+  let ref: ViewRef | undefined
   let last = ''
   let timer: ReturnType<typeof setInterval> | undefined
   const check = async () => {
@@ -261,13 +264,13 @@ function Probe(props: { page: string; root?: () => YNode | undefined; headerBott
   }
   const start = () => { if (!timer) { setTimeout(check, 300); timer = setInterval(check, 1000) } }
   cleanup(() => { if (timer) clearInterval(timer) })
-  return <View ref={ref} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1 }} onLayout={start} />
+  return <View ref={ref} style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, pointerEvents: 'none' }} onLayout={start} />
 }
 
 /** A list page: the grouped scroll root every pushed page uses, with the layout guard's mark at its top. */
 export function Page(props: Pick<ScrollProps, 'class' | 'contentClass' | 'refreshing' | 'onRefresh' | 'testID' | 'keyboardShouldPersistTaps' | 'keyboardDismissMode' | 'onLayout'> & { page: string; children?: JSX.Element }) {
   // props are read where they are used (not destructured), so what the page binds stays reactive
-  let root: YNode | undefined
+  let root: ScrollRef | undefined
   return (
     <Scroll ref={root} class={props.class ?? pageClass} contentClass={props.contentClass ?? pageContentClass} refreshing={props.refreshing} onRefresh={props.onRefresh} testID={props.testID} keyboardShouldPersistTaps={props.keyboardShouldPersistTaps} keyboardDismissMode={props.keyboardDismissMode} onLayout={props.onLayout}>
       <TopProbe page={props.page} root={() => root} />
@@ -281,8 +284,8 @@ export function RowItem(props: { title: string; subtitle?: string; right?: JSX.E
   return (
     <Card testID={props.testID} onPress={props.onPress} class="flex-row items-center gap-3 px-4 min-h-[44px] py-[11px]">
       <View class="flex-1 min-w-0">
-        <Text class="text-foreground text-[17px] leading-[22px]" numberOfLines={2}>{props.title}</Text>
-        {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={3}>{props.subtitle}</Text> : null}
+        <Text class="text-foreground text-[17px] leading-[22px]" style={{ numberOfLines: 2 }}>{props.title}</Text>
+        {props.subtitle ? <Text class="text-muted-foreground text-[15px] leading-5" style={{ numberOfLines: 3 }}>{props.subtitle}</Text> : null}
       </View>
       {typeof props.right === 'string' ? <Text class="text-muted-foreground text-[17px]">{props.right}</Text> : (props.right ?? null)}
     </Card>
@@ -292,7 +295,7 @@ export function RowItem(props: { title: string; subtitle?: string; right?: JSX.E
 /** An iOS-style switch (51×31, green when on). */
 export function Toggle(props: { checked: boolean; onChange: (v: boolean) => void; label?: string; testID?: string }) {
   return (
-    <Switch checked={props.checked} onChange={props.onChange} accessibilityLabel={props.label} testID={props.testID}
+    <Switch checked={props.checked} onChange={({ checked }) => props.onChange(checked)} accessibilityLabel={props.label} testID={props.testID}
       trackClass="w-[51px] h-[31px] rounded-full bg-input checked:bg-primary justify-center px-[2px]"
       thumbClass="w-[27px] h-[27px] rounded-full bg-white shadow-sm checked:translate-x-5" style={{ transitionProperty: 'all', transitionDuration: 200 }} />
   )

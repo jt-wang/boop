@@ -27,7 +27,6 @@ test('a module row shows its title and Open; tapping fetches the one-time token 
   expect(app.requests().some((r) => r.url.endsWith('/ui/m0123456789/meta'))).toBe(true)
   expect(calls[0]).toEqual({
     url: `${ORIGIN}/ui/m0123456789.nshpkg?session=main`,
-    bundleUrl: `${ORIGIN}/ui/m0123456789/bundle.nshc`,
     auth: 'tok_test',
     token: 'modtoken_abcdefghijklmnopqrstuv',
     title: 'Tip calculator',
@@ -81,6 +80,20 @@ test('no shell (Android): Open gets a one-time play page for this thread and run
   await app.press('id:module-done')
   await app.waitFor('id:module-web', { state: 'gone' })
   expect(app.shows('id:open-c7')).toBe(true)
+})
+
+// NSH 0.4.0 runs web code as ordinary JavaScript: a module may not share the page that holds the device token.
+test('in a browser Open takes the play page, even though the page answers host calls', async () => {
+  const PLAY = `/ui/m0123456789/play?ticket=tkt_abcdefghijklmnopqrstuvwxyz`
+  const app = await open('./modules.fixture.tsx', { platform: 'web', host: { handlers: { 'launch.params': {}, 'ui.open': { ok: true } } }, network: {
+    [`GET ${ORIGIN}/me`]: { body: me }, [`GET ${ORIGIN}/threads`]: { body: threads },
+    [`POST ${ORIGIN}/ui/m0123456789/play`]: { body: { url: PLAY } },
+    [`GET ${ORIGIN}/ui/m0123456789/meta`]: { body: { id: 'm0123456789', title: 'Tip calculator', token: 'modtoken_abcdefghijklmnopqrstuv', at: AT, answered: false } },
+  } })
+  await app.host.send('thread', [snapshot([moduleRow('c7', 'm0123456789')])])
+  await app.press('id:open-c7')
+  await app.waitFor('id:module-web')
+  expect(app.host.calls().some((c) => c.name === 'ui.open')).toBe(false)
 })
 
 // The Android shell (android/, UiBridge.java) runs modules in the app as the iOS shell does, and says so the same way

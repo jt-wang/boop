@@ -1,7 +1,7 @@
 .gradle/
 build/
 local.properties
-# Put in place by scripts/android-build.sh: the app's bundle (`nsh build mobile`) and nsh.aar with the patched libnsh.so.
+# Put in place by scripts/android-build.sh: the app's bundle (`nsh build mobile`) and NSH's nsh.aar.
 app/src/main/assets/nsh/
 app/libs/
 # `nsh publish` of the test module writes its type declarations here.

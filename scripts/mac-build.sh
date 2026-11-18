@@ -7,12 +7,13 @@
 #   MAC_SIGN_IDENTITY="Developer ID Application: …" MAC_NOTARY_PROFILE=<notarytool keychain profile> scripts/mac-build.sh
 #                                   signed + notarized, for download by anyone (needs the owner's Apple Developer account; untested here)
 #
-# Needs: nsh 0.3.0 (https://nsh.dev/docs/installation), Node 24 + npm (to install the bot's
+# Needs: nsh 0.4 (https://nsh.dev/docs/installation), Node 24 + npm (to install the bot's
 # dependencies; the bundle gets its own Node), Xcode command line tools (codesign, hdiutil).
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # About 1.3 GB of build output; DEEPSEEK_BOT_MAC_BUILD puts it on another disk (default: mac/.nsh, ignored by git).
+. "$ROOT/scripts/nsh-require.sh"
 BUILD="${DEEPSEEK_BOT_MAC_BUILD:-$ROOT/mac/.nsh}"
 OUT="$BUILD/out"
 STAGE="$BUILD/stage"
@@ -34,7 +35,7 @@ say() { printf '\n== %s\n' "$*"; }
 say "1/6 the window (nsh package --target macos)"
 rm -rf "$APP" "$DMG"
 mkdir -p "$OUT"
-( cd "$ROOT/mac" && nsh package --target macos --out "$OUT" )
+( cd "$ROOT/mac" && "$NSH_BIN" package --target macos --out "$OUT" )
 test -d "$APP" || { echo "nsh package did not produce $APP" >&2; exit 1; }
 
 say "2/6 the bot's dependencies (npm ci --omit=dev, pruned as in the Dockerfile)"

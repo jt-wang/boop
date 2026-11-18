@@ -48,6 +48,8 @@ final class PocketTripTests: XCTestCase {
         let allow = springboard.buttons["Allow"]
         if allow.waitForExistence(timeout: 30) { allow.tap() }
         print("TRIP paired after \(Int(Date().timeIntervalSince(started))) s")
+        // [compliance] the age question and the AI disclosure, on a bot with the consent gate
+        for gate in ["age-adult", "consent-agree"] { let b = any("identifier == '\(gate)'"); if b.waitForExistence(timeout: 10) { b.tap() } }
 
         roundTrip("same network")
         shot("ios-thread")

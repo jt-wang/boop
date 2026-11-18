@@ -36,7 +36,7 @@ export async function pair(origin: string, code: string, name: string): Promise<
 }
 
 export class Bot {
-  constructor(readonly s: Session) {}
+  constructor(public s: Session) {}
   private headers(extra: Record<string, string> = {}) { return { authorization: `Bearer ${this.s.token}`, 'content-type': 'application/json', ...extra } }
   async get<T>(path: string): Promise<T> { const r = await fetch(this.s.origin + path, { headers: this.headers() }); if (r.status === 401) throw new Error('unpaired'); return r.json() }
   async send<T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown, raw = false): Promise<T> {

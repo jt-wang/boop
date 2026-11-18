@@ -3,10 +3,11 @@
 # which the bot serves at /. Needs the nsh CLI (https://nsh.dev); the output is committed,
 # so people who install from git or npm do not need nsh.
 set -eu
-cd "$(dirname "$0")/../mobile"
-export PATH="$HOME/.local/bin:$PATH"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+. "$ROOT/scripts/nsh-require.sh"
+cd "$ROOT/mobile"
 out="$(mktemp -d)"
-nsh package --target web -o "$out" "$PWD/App.tsx"   # absolute: nsh resolves the app directory from the entry path
+"$NSH_BIN" package --target web -o "$out" "$PWD/App.tsx"   # absolute: nsh resolves the app directory from the entry path
 dir="$(find "$out" -mindepth 1 -maxdepth 1 -type d | head -1)"
 rm -rf ../app
 cp -R "$dir" ../app

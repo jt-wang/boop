@@ -3,7 +3,8 @@
 // Android 12+) and takes no color from the app. The app is black and white only, as the iOS shell gets through
 // the window tint. This repaints the bar's items with TabColors before each frame, after NSH painted them.
 // It depends on NSH's view tree for a tab: Item (LinearLayout) → [indicator (FrameLayout, background = the pill,
-// a GradientDrawable) → glyph (ImageView)], label (TextView); read from nsh.aar 0.3.0 with javap (2026-10-28).
+// a GradientDrawable) → glyph (ImageView)], label (TextView); read from nsh.aar 0.3.0 with javap (2026-10-28);
+// TabBarColorTest passes on stock 0.4.0 (2026-11-05).
 // If that shape changes, the items are left as NSH drew them and TabBarColorTest fails.
 package dev.deepseekbot.app;
 

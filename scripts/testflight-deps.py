@@ -11,8 +11,8 @@ import urllib.request
 
 # GitHub's release asset digests, read 2026-11-17; a different response must fail before extraction.
 ASSETS = {
-    "nsh-macos-arm64.tar.gz": "34fdd2ec43d5e22986723e7633acf9223e365bd5bace1a502b5ae24fb75c266c",
-    "nsh-embed-ios.zip": "d12907e63f6bfcb8d3fd5908f9a2f2fa45fe148dc8974f8eff2019e6cf19ca7f",
+    "nsh-macos-arm64.tar.gz": "f63c3d57c31b28c9b34227aac81f099d1e0e61f1db552a6ec5127d114eaf59cb",
+    "nsh-embed-ios.zip": "698404af02006ae9bf9e2b2c7cd2fd89e52f6d65ab2cb8273229bc31394640c7",
 }
 
 
@@ -33,7 +33,7 @@ def main():
     directory = Path(os.environ["RUNNER_TEMP"]) / "boop-deps"
     directory.mkdir()
     for name, digest in ASSETS.items():
-        download("https://github.com/longbridge/nsh/releases/download/v0.3.0/" + name, directory / name, digest)
+        download("https://github.com/longbridge/nsh/releases/download/v0.4.0/" + name, directory / name, digest)
     distribution = directory / "distribution"
     distribution.mkdir()
     with tarfile.open(directory / "nsh-macos-arm64.tar.gz") as archive:
@@ -54,8 +54,8 @@ def main():
         shutil.rmtree(target)
     shutil.move(str(bundles[0]), target)
     version = subprocess.check_output([str(nsh), "--version"], text=True)
-    if not version.startswith("nsh 0.3.0"):
-        raise ValueError("downloaded NSH does not identify as 0.3.0")
+    if not version.startswith("nsh 0.4.0"):
+        raise ValueError("downloaded NSH does not identify as 0.4.0")
     tailpocket = root.parent / "tailpocket"
     subprocess.run(["bash", "scripts/build-mobile.sh", "apple"], cwd=tailpocket, check=True)
     link = tailpocket / "sdk/apple/NSH/NativeShell.xcframework"

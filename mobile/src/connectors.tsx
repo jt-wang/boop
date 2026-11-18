@@ -122,7 +122,7 @@ export function ConnectorsPage(props: { onOpen: (id: string) => void; onAdd: () 
             <View testID={`connector-${c.id}`}>
               <ListRow first={i === 0 && mine().length === 0} lead={<View style={{ width: 32, height: 32, borderRadius: 8, borderWidth: 0.5 }} class="bg-background dark:bg-card border-black/[0.10] dark:border-white/[0.12] items-center justify-center"><Glyph name="file" size={20} /></View>} title={title(c)} subtitle={c.enabled ? cm('connCustom') : cm('connStatusOff')}
                 right={<View class="flex-row items-center gap-1">
-                  <Switch testID={`toggle-${c.id}`} checked={c.enabled} onChange={(on) => toggle(c, on)} accessibilityLabel={title(c)} class="w-[51px] h-[31px] rounded-full p-[2px] bg-secondary checked:bg-primary" thumbClass="w-[27px] h-[27px] rounded-full bg-background checked:translate-x-5" />
+                  <Switch testID={`toggle-${c.id}`} checked={c.enabled} onChange={({ checked: on }) => toggle(c, on)} accessibilityLabel={title(c)} class="w-[51px] h-[31px] rounded-full p-[2px] bg-secondary checked:bg-primary" thumbClass="w-[27px] h-[27px] rounded-full bg-background checked:translate-x-5" />
                   <View role="button" accessibilityLabel={str('remove')} testID={`remove-${c.id}`} onPress={() => remove(c)} class="items-center justify-center active:opacity-50" style={{ width: 36, height: 44 }}><Glyph name="dots" size={20} color={muted()} /></View>
                 </View>} />
             </View>
@@ -165,7 +165,7 @@ export function ConnectorPage(props: { id: string; onClose: () => void; onTry: (
   // the page follows the sign-in: when it finishes, the page shows Connected
   effect(() => { connectedIds() })
   const disconnect = async () => {
-    const ok = await AlertDialog.show({ title: cm('connDisconnectTitle')(svc().name), description: cm('connDisconnectBody'), actions: [{ id: 'cancel', label: cm('connCancel'), role: 'cancel' }, { id: 'ok', label: cm('connDisconnect'), role: 'destructive' }] }).then((r) => r === 'ok').catch(() => false)
+    const ok = await AlertDialog.show({ title: cm('connDisconnectTitle')(svc().name), description: cm('connDisconnectBody'), actions: [{ id: 'cancel', label: cm('connCancel'), role: 'cancel' }, { id: 'ok', label: cm('connDisconnect'), role: 'destructive' }] }).then((r) => r.action === 'ok').catch(() => false)
     if (!ok) return
     try { await api().send('DELETE', `/connectors/${encodeURIComponent(props.id)}`); showToast(str('removed')); bump(); props.onClose() } catch { showToast(str('failed')) }
   }
@@ -242,18 +242,18 @@ export function ConnectorAddPage(props: { onDone: () => void }) {
           <Cell testID={`preset-${p.id}`} title={presetText(p, 'name')} subtitle={presetText(p, 'description') + (p.envNames.length ? `\n${t('needsEnv')(envLine(p))}` : '')} chevron={picked()?.id !== p.id} value={picked()?.id === p.id ? '•' : undefined} onPress={() => pick(p)} />
           {picked()?.id === p.id ? (
             <View class="px-4 py-3 gap-2 border-border" style={{ borderTopWidth: 0.5 }} testID={`detail-${p.id}`}>
-              {p.needsPath ? <Input testID="folder" placeholder={str('folderPath')} value={path()} onChange={(v) => path.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
+              {p.needsPath ? <Input testID="folder" placeholder={str('folderPath')} value={path()} onChange={({ value: v }) => path.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
               {p.custom ? (
                 <View class="gap-2">
-                  <Input testID="custom-name" placeholder={str('customName')} value={name()} onChange={(v) => name.set(v)} class={input} />
+                  <Input testID="custom-name" placeholder={str('customName')} value={name()} onChange={({ value: v }) => name.set(v)} class={input} />
                   <View class="flex-row gap-2">
                     {(['stdio', 'streamable-http'] as const).map((k) => <View role="button" testID={`transport-${k}`} onPress={() => transport.set(k)} class={`px-4 min-h-[36px] justify-center rounded-full border-[0.5px] ${transport() === k ? 'bg-primary border-transparent' : 'bg-background dark:bg-card border-border'}`}><Text class={`text-[15px] ${transport() === k ? 'text-primary-foreground font-semibold' : 'text-foreground'}`}>{k === 'stdio' ? str('transportCommand') : str('transportUrl')}</Text></View>)}
                   </View>
-                  {transport() === 'stdio' ? <Input testID="custom-command" placeholder={str('customCommand')} value={command()} onChange={(v) => command.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
-                  {transport() === 'stdio' ? <Input testID="custom-args" multiline placeholder={str('customArgs')} value={args()} onChange={(v) => args.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
-                  {transport() === 'streamable-http' ? <Input testID="custom-url" placeholder={str('customUrl')} value={url()} onChange={(v) => url.set(v)} autoCapitalize="none" autoCorrect={false} keyboardType="url" class={input} /> : null}
-                  {transport() === 'streamable-http' ? <Input testID="custom-bearer" placeholder={str('customBearer')} value={bearerEnv()} onChange={(v) => bearerEnv.set(v)} autoCapitalize="characters" autoCorrect={false} class={input} /> : null}
-                  <Input testID="custom-env" multiline placeholder={str('customEnv')} value={envNames()} onChange={(v) => envNames.set(v)} autoCapitalize="characters" autoCorrect={false} class={input} />
+                  {transport() === 'stdio' ? <Input testID="custom-command" placeholder={str('customCommand')} value={command()} onChange={({ value: v }) => command.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
+                  {transport() === 'stdio' ? <Input testID="custom-args" multiline placeholder={str('customArgs')} value={args()} onChange={({ value: v }) => args.set(v)} autoCapitalize="none" autoCorrect={false} class={input} /> : null}
+                  {transport() === 'streamable-http' ? <Input testID="custom-url" placeholder={str('customUrl')} value={url()} onChange={({ value: v }) => url.set(v)} autoCapitalize="none" autoCorrect={false} keyboardType="url" class={input} /> : null}
+                  {transport() === 'streamable-http' ? <Input testID="custom-bearer" placeholder={str('customBearer')} value={bearerEnv()} onChange={({ value: v }) => bearerEnv.set(v)} autoCapitalize="characters" autoCorrect={false} class={input} /> : null}
+                  <Input testID="custom-env" multiline placeholder={str('customEnv')} value={envNames()} onChange={({ value: v }) => envNames.set(v)} autoCapitalize="characters" autoCorrect={false} class={input} />
                   {confirming() ? (
                     <View class="gap-2 pt-1" testID="custom-confirm">
                       <Text class="text-foreground font-semibold text-[17px]">{str('customConfirmTitle')}</Text>

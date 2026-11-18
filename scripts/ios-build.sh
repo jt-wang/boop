@@ -38,8 +38,8 @@ case "$MODE" in
   simulator)
     # Ad hoc signed (no account needed). Not CODE_SIGNING_ALLOWED=NO: without the
     # aps-environment entitlement the simulator refuses to register for push (measured 2026-10-27).
-    # arm64 only: ~/.nsh/embed/ios/NativeShell.xcframework has no x86_64 simulator slice (nsh 0.3.0, measured
-    # 2026-10-27: a generic simulator build fails with "Unable to resolve module dependency: 'NativeShell'").
+    # arm64 only: NSH's NativeShell.xcframework has no x86_64 simulator slice (nsh 0.4.0's Info.plist,
+    # 2026-11-05; on 0.3.0 a generic simulator build failed with "Unable to resolve module dependency: 'NativeShell'").
     xcodebuild -project "$PROJECT" -scheme DeepSeekBot -configuration Debug \
       -destination 'generic/platform=iOS Simulator' -derivedDataPath "$BUILD/derived" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build | tail -3
     mkdir -p "$BUILD/sim"
@@ -63,7 +63,7 @@ case "$MODE" in
       -destination 'generic/platform=iOS' -archivePath "$ARCHIVE" -derivedDataPath "$BUILD/derived" \
       -clonedSourcePackagesDirPath "$BUILD/packages" -packageCachePath "$BUILD/package-cache" ${AUTH[@]+"${AUTH[@]}"} ${SIGNING[@]+"${SIGNING[@]}"} archive | tail -5
     # Whatever was compiled on this Mac must not carry its home folder to testers. The export signs the binary again.
-    "$ROOT/scripts/android-scrub-home.sh" "$HOME" "$ARCHIVE/Products/Applications/DeepSeekBot.app/DeepSeekBot"
+    "$ROOT/scripts/scrub-home.sh" "$HOME" "$ARCHIVE/Products/Applications/DeepSeekBot.app/DeepSeekBot"
     xcodebuild -exportArchive -archivePath "$ARCHIVE" -exportOptionsPlist "${IOS_EXPORT_OPTIONS:-$ROOT/ios/ExportOptions.plist}" \
       -exportPath "$BUILD/export" ${AUTH[@]+"${AUTH[@]}"} | tail -5
     echo "→ $BUILD/export/DeepSeekBot.ipa"

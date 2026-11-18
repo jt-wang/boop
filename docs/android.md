@@ -18,11 +18,11 @@ ORG_GRADLE_PROJECT_keystorePassword="$(cat "$HOME/.android-keys/boop-release.pas
 scripts/android-build.sh
 ```
 
-The script overwrites your home folder inside `libnsh.so` (the patched runtime below holds it in panic locations). Without `--host`, Start opens the connect screen.
+Without `--host`, Start opens the connect screen.
 
-The script builds the app (`nsh build mobile --release` into `android/app/src/main/assets/nsh`), puts `nsh.aar` with the TLS-fixed `libnsh.so` in `android/app/libs` (both gitignored; below), and runs Gradle (`./gradlew assembleRelease`; `--debug` for a debuggable build). `--host` is the host Start signs in to; the shell passes it to the app as `host.params.hostUrl`, as `DEEPSEEK_BOT_HOST_URL` does on iOS. For a store release add `-Pkeystore=… -PkeyAlias=… -PkeystorePassword=…` to the Gradle call and raise `build` in `mobile/nsh.json` (name, id and version come from there).
+The script builds the app (`nsh build mobile --release` into `android/app/src/main/assets/nsh`), puts NSH's `nsh.aar` in `android/app/libs` (both gitignored), and runs Gradle (`./gradlew assembleRelease`; `--debug` for a debuggable build). `--host` is the host Start signs in to; the shell passes it to the app as `host.params.hostUrl`, as `DEEPSEEK_BOT_HOST_URL` does on iOS. For a store release add `-Pkeystore=… -PkeyAlias=… -PkeystorePassword=…` to the Gradle call and raise `build` in `mobile/nsh.json` (name, id and version come from there).
 
-What it needs: `ANDROID_HOME` (default `~/Library/Android/sdk`) with `platforms;android-36`, a JDK 17 or newer (Android Studio's is used when `JAVA_HOME` is unset), and the NSH distribution in `~/.nsh` (`embed/android/nsh.aar`, `runtime/android/release/lib`). Gradle 8.14.3 and the Android Gradle plugin 8.13.0 come through the wrapper; set `GRADLE_USER_HOME` to keep their cache off a full system disk.
+What it needs: `ANDROID_HOME` (default `~/Library/Android/sdk`) with `platforms;android-36`, a JDK 17 or newer (Android Studio's is used when `JAVA_HOME` is unset), and `nsh` 0.4 (the scripts stop on any other version; `embed/android/nsh.aar` comes from the same install). Gradle 8.14.3 and the Android Gradle plugin 8.13.0 come through the wrapper; set `GRADLE_USER_HOME` to keep their cache off a full system disk.
 
 ## What the shell does
 
@@ -48,13 +48,9 @@ Notifications: FCM through `PushService.java` and `PushBridge.java` (the permiss
 
 Chinese and dark mode on an emulator (a `google_apis` image, which allows root): `adb root`, `adb shell "setprop persist.sys.locale zh-CN && setprop ctl.restart zygote"`, then `adb shell cmd uimode night yes`.
 
-## NSH 0.3.0 cannot open wss (fixed with a patched runtime)
+## wss needs NSH 0.4
 
-NSH's Android runtime cannot open a `wss://` socket: it carries rustls 0.23 (through tokio-tungstenite's `rustls-tls-webpki-roots`) with no crypto provider installed, and nothing in the tree calls `install_default()` (NSH source at 1849776, 2026-10-27). Measured 2026-10-27 with a probe app: the global `WebSocket` never opens to `wss://echo.websocket.org` and the JS thread stalls; the `websocket` module rejects with `Could not automatically determine the process-level CryptoProvider from Rustls crate features`; both open plain `ws://`. v0.3.0 is the latest release, and nothing after it touches WebSocket or TLS.
-
-The fix: compile rustls with its `ring` provider and install it before a connect (`rustls::crypto::ring::default_provider().install_default()`; four lines against v0.3.0, the upstream PR draft). Built with NDK r27c (`cargo xtask android --release --abi arm64-v8a`), the patched `libnsh.so` lives in `~/.nsh/runtime/android/release/lib/arm64-v8a/`. The stock `nsh.aar` in `~/.nsh/embed/android` still has the unpatched one, so `scripts/android-build.sh` replaces each ABI's library in a copy of the AAR with the runtime's (`NSH_RUNTIME_LIBS` overrides the directory) and warns when the arm64 one is the stock library. Only arm64-v8a is patched; the armeabi-v7a and x86_64 libraries are stock.
-
-Measured 2026-10-27 on the emulator through a tunnel, the same build twice: with the runtime's arm64 library the thread fills live and the module flow passes; with the stock one (`NSH_RUNTIME_LIBS` pointing at it) the app pairs over HTTPS but no message or card ever reaches the thread. Until NSH ships the fix, an Android build needs that runtime. The iOS framework has the same gap and its own patched build (docs/ios.md, measured 2026-10-29).
+NSH 0.3.0 could not open `wss://` on Android or iOS; 0.4.0 can (longbridge/nsh#530). Results and the probe: docs/ios.md, "wss needs NSH 0.4". On Android: `nsh test --target android scripts/qa/wss-probe`.
 
 ## Known
 

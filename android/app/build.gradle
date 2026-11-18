@@ -68,7 +68,7 @@ android {
 }
 
 dependencies {
-    // ~/.nsh/embed/android/nsh.aar with the TLS-fixed libnsh.so (scripts/android-build.sh writes libs/nsh.aar).
+    // NSH's embed/android/nsh.aar (scripts/android-build.sh copies it to libs/nsh.aar).
     implementation files('libs/nsh.aar')
     // TailPocket: how a phone reaches a computer running Boop (docs/connection.md). scripts/tailpocket-sync.sh android puts these in place.
     implementation files('libs/tailpocket-nsh.aar')

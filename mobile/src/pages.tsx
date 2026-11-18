@@ -5,7 +5,7 @@
 import { routeOf } from './route.ts'
 import { APP_VERSION } from './version.ts'
 import { LANGS, LANG_NAMES, formatDateTime, formatNumber } from './locale.ts'
-import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type YNode } from 'nsh'
+import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type InputRef } from 'nsh'
 import { AlertDialog, Input } from 'nsh/base'
 import { api, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
 import { activityText } from './plain.ts'
@@ -29,18 +29,28 @@ const fieldClass = 'min-h-[44px] px-4 text-foreground text-[17px] bg-transparent
 const setupContent = 'px-4 gap-4 pt-[calc(env(safe-area-inset-top)+44px)] pb-[calc(env(safe-area-inset-bottom)+32px)]'
 
 export function ConnectScreen(props: { initial?: { origin?: string; code?: string } }) {
-  const address = signal(props.initial?.origin ?? '')
+  // Two ways in: scan the computer's QR code, or paste the code its window copies. A server's
+  // address and six-digit code sit behind one small link; in the browser (no camera) they are all there is.
+  type Mode = 'scan' | 'paste' | 'server'
+  const first = props.initial?.origin
+  const mode = signal<Mode>(first && isInvite(first) && canScan() ? 'paste' : first || !canScan() ? 'server' : 'scan')
+  const invite = signal(first && isInvite(first) ? first : '')
+  const address = signal(first && !(isInvite(first) && canScan()) ? first : '')
   const code = signal(props.initial?.code ?? '')
   const busy = signal(false)
   const error = signal('')
-  let codeInput: YNode | undefined
+  let codeInput: InputRef | undefined
   // a pairing link opened while this screen shows (the shell's `pair` event) fills it in
-  effect(() => { const p = parseAddress(pairLink() ?? ''); if (p && (p.code || isInvite(p.origin))) { address.set(p.origin); code.set(p.code ?? ''); error.set('') } })
+  effect(() => {
+    const p = parseAddress(pairLink() ?? ''); if (!p) return
+    if (isInvite(p.origin) && canScan()) { invite.set(p.origin); mode.set('paste'); error.set('') }
+    else if (p.code || isInvite(p.origin)) { address.set(p.origin); code.set(p.code ?? ''); mode.set('server'); error.set('') }
+  })
   /** The computer's QR, from the camera or pasted: pair, then in (src/pocket.ts). */
-  const attempt = async (invite: string | null) => {
+  const attempt = async (pasted: string | null) => {
     busy.set(true); error.set('')
     try {
-      const s = await pairInvite(invite ?? await scanInvite(), deviceName())
+      const s = await pairInvite(pasted ?? await scanInvite(), deviceName())
       await connect(s, { hostedBy: null })
     } catch (e) {
       const code = (e as { code?: string }).code
@@ -48,7 +58,8 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
     } finally { busy.set(false) }
   }
   const go = async () => {
-    if (isInvite(address())) return attempt(address())
+    if (mode() === 'paste') { if (!isInvite(invite())) { error.set(str('pocketInvalid')); return } return attempt(invite().trim()) }
+    if (isInvite(address())) return attempt(address().trim())
     const parsed = parseAddress(address()); if (!parsed) { error.set(str('connectFailed')); return }
     const c = (parsed.code ?? code()).trim(); if (!/^\d{6}$/.test(c)) { error.set(str('codeWrong')); return }
     busy.set(true); error.set('')
@@ -58,30 +69,52 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       await connect({ origin: parsed.origin, token: r.token }, { hostedBy: null })
     } catch { error.set(str('connectFailed')) } finally { busy.set(false) }
   }
+  const ErrorLine = () => <If when={error()}><View class="px-4"><Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text></View></If>
+  const link = (testID: string, label: string, onPress: () => void, small = false) => (
+    <View role="button" testID={testID} onPress={onPress} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class={small ? 'text-muted-foreground text-[15px]' : 'text-primary text-[17px]'}>{label}</Text></View>
+  )
   return (
     <Scroll class={`${pageClass} pb-[env(keyboard-inset-height)]`} contentClass={setupContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
       <Avatar size={64} label="•" />
       <Text class="text-foreground text-[28px] font-bold leading-[41px]">{str('connectTitle')}</Text>
       <Hint text={str(canScan() ? 'connectBody' : 'connectBodyWeb')} />
       <If when={canScan()}>
-        <Btn kind="primary" testID="scan" label={busy() ? str('connecting') : str('scanCode')} disabled={busy()} onPress={() => { attempt(null).catch(() => {}) }} />
-        <View class="px-4 mt-3"><Text class="text-muted-foreground text-[13px] leading-[18px]">{str('orAddress')}</Text></View>
+        <Btn kind="primary" testID="scan" label={busy() && mode() === 'scan' ? str('connecting') : str('scanCode')} disabled={busy()} onPress={() => { mode.set('scan'); attempt(null).catch(() => {}) }} />
+        <If when={mode() === 'scan'}>
+          <ErrorLine />
+          {link('paste-code', str('pasteCode'), () => { mode.set('paste'); error.set('') })}
+        </If>
       </If>
-      <Card class="overflow-hidden mt-2">
-        <Input testID="address" placeholder={str('address')} value={address()} onChange={(v) => { address.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} keyboardType="url" returnKeyType="next" submitBehavior="submit" onSubmit={() => codeInput?.focus()} class={fieldClass} />
-        <If when={!isInvite(address())}>
-        <View class="ml-4 border-border" style={{ borderTopWidth: 0.5 }}>
-          <Input ref={codeInput} testID="code" placeholder={str('code')} value={code()} onChange={(v) => { code.set(v.replace(/\D/g, '')); error.set('') }} keyboardType="number-pad" autoComplete="one-time-code" maxLength={6} returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={`${fieldClass} pl-0`} />
+      <If when={mode() === 'paste'}>
+        <Card class="overflow-hidden mt-2">
+          <Input testID="invite" placeholder="tailpocket1:…" value={invite()} onChange={({ value: v }) => { invite.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} autoFocus={!invite()} returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
+        </Card>
+        <View class="px-4 -mt-2">
+          <If when={error()} else={<Text class="text-muted-foreground text-[13px] leading-[18px]">{str('pasteHint')}</Text>}>
+            <Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text>
+          </If>
         </View>
-        </If>
-      </Card>
-      <View class="px-4 -mt-2">
-        <If when={error()} else={<If when={!isInvite(address())}><Text class="text-muted-foreground text-[13px] leading-[18px]">{str('codeHint')}</Text></If>}>
-          <Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text>
-        </If>
-      </View>
-      <Btn kind={canScan() ? 'soft' : 'primary'} testID="connect" label={busy() ? str('connecting') : str('connect')} disabled={busy()} onPress={go} />
-      <View role="button" testID="try-it" onPress={() => { startSample().catch(() => {}) }} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-primary text-[17px]">{str('tryIt')}</Text></View>
+        <Btn kind="soft" testID="connect" label={busy() ? str('connecting') : str('connect')} disabled={busy()} onPress={go} />
+      </If>
+      <If when={mode() === 'server'}>
+        <If when={canScan()}><View class="px-4 mt-3"><Text class="text-muted-foreground text-[13px] leading-[18px]">{str('orAddress')}</Text></View></If>
+        <Card class="overflow-hidden mt-2">
+          <Input testID="address" placeholder={str('address')} value={address()} onChange={({ value: v }) => { address.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} keyboardType="url" returnKeyType="next" submitBehavior="submit" onSubmit={() => codeInput?.focus()} class={fieldClass} />
+          <If when={!isInvite(address())}>
+          <View class="ml-4 border-border" style={{ borderTopWidth: 0.5 }}>
+            <Input ref={codeInput} testID="code" placeholder={str('code')} value={code()} onChange={({ value: v }) => { code.set(v.replace(/\D/g, '')); error.set('') }} keyboardType="number-pad" autoComplete="one-time-code" maxLength={6} returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={`${fieldClass} pl-0`} />
+          </View>
+          </If>
+        </Card>
+        <View class="px-4 -mt-2">
+          <If when={error()} else={<If when={!isInvite(address())}><Text class="text-muted-foreground text-[13px] leading-[18px]">{str('codeHint')}</Text></If>}>
+            <Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text>
+          </If>
+        </View>
+        <Btn kind={canScan() ? 'soft' : 'primary'} testID="connect" label={busy() ? str('connecting') : str('connect')} disabled={busy()} onPress={go} />
+      </If>
+      {link('try-it', str('tryIt'), () => { startSample().catch(() => {}) })}
+      <If when={canScan() && mode() !== 'server'}>{link('connect-server', str('connectServer'), () => { mode.set('server'); error.set('') }, true)}</If>
       <View role="button" testID="connect-privacy" onPress={() => openLegal('privacy')} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-muted-foreground text-[13px]">{str('privacyPolicy')}</Text></View>
     </Scroll>
   )
@@ -122,11 +155,11 @@ export function SignInScreen(props: { hostUrl: string; onSignedIn: (accountToken
       <Text class="text-foreground text-[28px] font-bold leading-[41px]">{str('signInTitle')}</Text>
       <Hint text={str('signInBody')} />
       <Card class="overflow-hidden mt-2">
-        <Input testID="email" placeholder={str('email')} value={email()} onChange={(v) => { email.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" autoFocus returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
+        <Input testID="email" placeholder={str('email')} value={email()} onChange={({ value: v }) => { email.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" autoFocus returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
       </Card>
       <If when={needsCode()}>
         <Card class="overflow-hidden">
-          <Input testID="access-code" placeholder={str('accessCode')} value={code()} onChange={(v) => { code.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} masked autoComplete="one-time-code" returnKeyType="go" onSubmit={go} class="px-4 py-3 text-[17px] text-foreground" />
+          <Input testID="access-code" placeholder={str('accessCode')} value={code()} onChange={({ value: v }) => { code.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} masked autoComplete="one-time-code" returnKeyType="go" onSubmit={go} class="px-4 py-3 text-[17px] text-foreground" />
         </Card>
         <Hint text={str('accessCodeHint')} />
       </If>
@@ -182,7 +215,7 @@ export function NameScreen() {
       <Text class="text-foreground text-[28px] font-bold leading-[41px]">{str('nameTitle')}</Text>
       <Hint text={str('nameHint')} />
       <Card class="overflow-hidden mt-2">
-        <Input testID="name" placeholder={str('nameSuggestion')} value={name()} onChange={(v) => name.set(v)} maxLength={40} autoFocus autoCapitalize="words" returnKeyType="done" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
+        <Input testID="name" placeholder={str('nameSuggestion')} value={name()} onChange={({ value: v }) => name.set(v)} maxLength={40} autoFocus autoCapitalize="words" returnKeyType="done" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
       </Card>
       <If when={error()}><View class="px-4 -mt-2"><Text class="text-destructive text-[13px] leading-[18px]">{error()}</Text></View></If>
       <Btn kind="primary" testID="name-go" label={str('nameGo')} disabled={busy()} onPress={go} />
@@ -238,7 +271,7 @@ export function IdentityPage() {
         <Hint text={str('identityHint')} />
       </View>
       <Card class="flex-1 mx-4 mt-3 overflow-hidden">
-        <Input multiline value={text()} onChange={(v) => text.set(v)} autoCorrect={false} autoCapitalize="none" class="flex-1 px-4 py-3 text-foreground text-[17px] leading-6" />
+        <Input multiline value={text()} onChange={({ value: v }) => text.set(v)} autoCorrect={false} autoCapitalize="none" class="flex-1 px-4 py-3 text-foreground text-[17px] leading-6" />
       </Card>
       <View class="px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]"><Btn kind="primary" label={str('save')} onPress={async () => { try { await api().send('PUT', `/files/${current()}`, text(), true); showToast(str('saved')) } catch { showToast(str('failed')) } }} /></View>
     </View>
@@ -375,7 +408,7 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
   const hosted = () => isHostedOrigin(origin(), hostedBy(), hostUrl())
   const unpairBody = () => str(hosted() ? 'unpairBodyHosted' : 'unpairBody')
   const unpair = async () => {
-    const choice = await AlertDialog.show({ title: str('unpairTitle'), description: unpairBody(), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('unpair'), role: 'destructive', id: 'unpair' }] })
+    const { action: choice } = await AlertDialog.show({ title: str('unpairTitle'), description: unpairBody(), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('unpair'), role: 'destructive', id: 'unpair' }] })
     if (choice !== 'unpair') return
     try { await api().send('DELETE', `/devices/${me()?.device.id}`) } catch {}
     await disconnect()
@@ -402,7 +435,7 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
       <Group header={str('assistant')}>
         <View class="pl-4"><View class="flex-row items-center min-h-[44px] pr-4 gap-3">
           <Text class="text-foreground text-[17px]">{str('name')}</Text>
-          <Input testID="assistant-name" value={name()} onChange={(v) => name.set(v)} maxLength={40} returnKeyType="done" onSubmit={saveName} onBlur={saveName} accessibilityLabel={str('assistantName')} class="flex-1 text-right text-muted-foreground text-[17px] min-h-[44px] bg-transparent" />
+          <Input testID="assistant-name" value={name()} onChange={({ value: v }) => name.set(v)} maxLength={40} returnKeyType="done" onSubmit={saveName} onBlur={saveName} accessibilityLabel={str('assistantName')} class="flex-1 text-right text-muted-foreground text-[17px] min-h-[44px] bg-transparent" />
         </View></View>
       </Group>
       <Group footer={str('styleHint')}>

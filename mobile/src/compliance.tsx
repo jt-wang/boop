@@ -113,7 +113,7 @@ export function AiProviderPage(props: { onStopped?: () => void }) {
   const ai = () => me()?.ai
   const since = () => { const at = ai()?.consent?.at; if (!at) return ''; return formatDate(at, lang(), true) }
   const stop = async () => {
-    const choice = await AlertDialog.show({ title: str('stopSharingTitle'), description: str('stopSharingBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('stopSharing'), role: 'destructive', id: 'stop' }] })
+    const { action: choice } = await AlertDialog.show({ title: str('stopSharingTitle'), description: str('stopSharingBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('stopSharing'), role: 'destructive', id: 'stop' }] })
     if (choice !== 'stop') return
     try { await setConsent({ ai: false }); props.onStopped?.() } catch { showToast(str('failed')) }
   }
@@ -134,9 +134,9 @@ export function AiProviderPage(props: { onStopped?: () => void }) {
 /** Settings' About group: the AI provider, the privacy policy and terms, and Delete account on a hosted computer. */
 export function AboutGroup(props: { onAiProvider: () => void }) {
   const remove = async () => {
-    const first = await AlertDialog.show({ title: str('deleteTitle'), description: str('deleteBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteConfirm'), role: 'destructive', id: 'go' }] })
+    const { action: first } = await AlertDialog.show({ title: str('deleteTitle'), description: str('deleteBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteConfirm'), role: 'destructive', id: 'go' }] })
     if (first !== 'go') return
-    const sure = await AlertDialog.show({ title: str('deleteSure'), description: str('deleteSureBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteAccount'), role: 'destructive', id: 'go' }] })
+    const { action: sure } = await AlertDialog.show({ title: str('deleteSure'), description: str('deleteSureBody'), actions: [{ label: str('cancel'), role: 'cancel', id: 'cancel' }, { label: str('deleteAccount'), role: 'destructive', id: 'go' }] })
     if (sure !== 'go') return
     try {
       const r = await fetch(`${hostedBy()}/host/account`, { method: 'DELETE', headers: { authorization: `Bearer ${session()!.token}` } })
@@ -162,14 +162,14 @@ const reasonWord = (r: (typeof REASONS)[number]) => str(({ harmful: 'reasonHarmf
 
 /** Long-press on a reply: Copy or Report, as a sheet from the bottom. */
 export async function replyMenu(row: { id: string; text: string }, sessionId: string | null) {
-  const choice = await AlertDialog.show({ title: '', presentation: 'actionSheet', actions: [{ label: str('copy'), id: 'copy' }, { label: str('report'), role: 'destructive', id: 'report' }, { label: str('cancel'), role: 'cancel', id: 'cancel' }] })
+  const { action: choice } = await AlertDialog.show({ title: '', presentation: 'actionSheet', actions: [{ label: str('copy'), id: 'copy' }, { label: str('report'), role: 'destructive', id: 'report' }, { label: str('cancel'), role: 'cancel', id: 'cancel' }] })
   if (choice === 'copy') { try { await Clipboard.writeText(row.text); copiedToast(str('copied')) } catch {} }
   if (choice === 'report') pendingReport.set({ kind: 'reply', rowId: row.id, excerpt: row.text, sessionId })
 }
 
 /** Long-press on an interface card: Report or Hide. */
 export async function interfaceMenu(i: { moduleId: string; title: string }) {
-  const choice = await AlertDialog.show({ title: i.title, presentation: 'actionSheet', actions: [{ label: str('report'), role: 'destructive', id: 'report' }, { label: str('ifHide'), id: 'hide' }, { label: str('cancel'), role: 'cancel', id: 'cancel' }] })
+  const { action: choice } = await AlertDialog.show({ title: i.title, presentation: 'actionSheet', actions: [{ label: str('report'), role: 'destructive', id: 'report' }, { label: str('ifHide'), id: 'hide' }, { label: str('cancel'), role: 'cancel', id: 'cancel' }] })
   if (choice === 'report') pendingReport.set({ kind: 'interface', moduleId: i.moduleId, title: i.title })
   if (choice === 'hide') { try { await api().send('PATCH', `/ui/${encodeURIComponent(i.moduleId)}`, { hidden: true }); showToast(str('ifHidden')) } catch { showToast(str('failed')) } }
 }
@@ -213,13 +213,13 @@ export function ReportPage(props: { target: ReportTarget; onDone: () => void }) 
     }>
       <Page page="ReportPage" keyboardShouldPersistTaps="handled" class={`${pageClass} pb-[env(keyboard-inset-height)]`}>
         <If when={props.target.kind === 'reply'}>
-          <View class="px-8"><Text class="text-muted-foreground text-[15px] leading-5" numberOfLines={4} testID="report-excerpt">{props.target.kind === 'reply' ? props.target.excerpt : ''}</Text></View>
+          <View class="px-8"><Text class="text-muted-foreground text-[15px] leading-5" testID="report-excerpt" style={{ numberOfLines: 4 }}>{props.target.kind === 'reply' ? props.target.excerpt : ''}</Text></View>
         </If>
         <Group footer={local() ? str('reportLocalHint') : props.target.kind === 'reply' ? str('reportReplyHint') : str('reportInterfaceHint')}>
           {REASONS.map((r) => <Cell title={reasonWord(r)} testID={`reason-${r}`} onPress={() => reason.set(r)} right={reason() === r ? <Text class="text-primary text-[17px] font-semibold">✓</Text> : undefined} />)}
         </Group>
         <Group>
-          <Input testID="report-note" placeholder={str('reportNote')} value={note()} onChange={(v) => note.set(v)} multiline maxLength={1000} class="min-h-[88px] px-4 py-3 text-foreground text-[17px] bg-transparent" />
+          <Input testID="report-note" placeholder={str('reportNote')} value={note()} onChange={({ value: v }) => note.set(v)} multiline maxLength={1000} class="min-h-[88px] px-4 py-3 text-foreground text-[17px] bg-transparent" />
         </Group>
         <If when={props.target.kind === 'interface'}>
           <Group><Cell title={str('reportHide')} right={<Toggle checked={hide()} onChange={(v) => hide.set(v)} label={str('reportHide')} testID="report-hide" />} /></Group>
@@ -288,7 +288,7 @@ export async function askPermissions(m: { id: string; title: string; permissions
   const grants = [...(m.grants ?? [])]
   const missing = (m.permissions ?? []).filter((p) => !grants.includes(p))
   if (!missing.length) return grants
-  const choice = await AlertDialog.show({ title: t('permTitle')(m.title), description: missing.map((p) => `• ${permissionWord(p)}`).join('\n'), actions: [{ label: str('permDeny'), role: 'cancel', id: 'deny' }, { label: str('permAllow'), id: 'allow' }] })
+  const { action: choice } = await AlertDialog.show({ title: t('permTitle')(m.title), description: missing.map((p) => `• ${permissionWord(p)}`).join('\n'), actions: [{ label: str('permDeny'), role: 'cancel', id: 'deny' }, { label: str('permAllow'), id: 'allow' }] })
   if (choice !== 'allow') return grants
   const next = [...grants, ...missing]
   try { await api().send('PATCH', `/ui/${encodeURIComponent(m.id)}`, { grants: next }) } catch {}

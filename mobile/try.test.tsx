@@ -13,9 +13,9 @@ async function intoSample() {
 
 test('the connect screen offers Try it, which opens the app on made-up data with no question, no request and no pairing kept', async () => {
   const app = await intoSample()
-  expect(app.shows('text:/This is a sample/')).toBe(true)
+  expect(app.shows('text:/This is demo mode/')).toBe(true)
   expect(app.shows('text:/call the dentist/')).toBe(true)
-  expect(app.shows('text:Sample')).toBe(true)
+  expect(app.shows('text:Demo mode')).toBe(true)
   expect(app.shows('text:How old are you?')).toBe(false)
   expect(app.requests()).toEqual([])
   expect(app.storage().origin).toBe(undefined)
@@ -29,7 +29,7 @@ test('a message gets a sample reply and an approval card can be answered, with n
   await app.waitFor('text:/how asking works/')
   await app.type('id:composer', 'Book me a table')
   await app.press('label:Send')
-  await app.waitFor('text:/sample reply/', { timeout: 5000 })
+  await app.waitFor('text:/demo reply/', { timeout: 5000 })
   expect(app.shows('text:Book me a table')).toBe(true)
   expect(app.requests()).toEqual([])
 })
@@ -42,8 +42,58 @@ test('every page has something to show and asks no one for anything', async () =
   await app.press('label:Settings')
   await app.waitFor('id:demo-leave')
   expect(app.shows('id:unpair')).toBe(false)
-  expect(app.shows('text:Sample computer')).toBe(true)
+  expect(app.shows('text:Demo computer')).toBe(true)
   expect(app.requests()).toEqual([])
+})
+
+// 2026-11-06: the header's "Sample" and one grey line at the top of the thread were not enough for people to tell
+// the made-up app from their own. The button says demo before it is pressed, and every page says demo mode.
+test('the button says demo before it is pressed', async () => {
+  const app = await fresh()
+  await app.press('id:own-computer')
+  await app.waitFor('id:try-it')
+  expect(app.shows('text:Try a demo, no computer needed')).toBe(true)
+})
+
+const demoBar = (app: Awaited<ReturnType<typeof open>>) => {
+  expect(app.shows('id:demo-bar')).toBe(true)
+  expect(app.shows('text:Demo mode')).toBe(true)
+  expect(app.shows('text:/Everything here is made up\\. Nothing is really done\\./')).toBe(true)
+}
+
+test('every page says demo mode, that it is made up and that nothing is really done: the chat, Discover, memory, the library, Settings', async () => {
+  const app = await intoSample()
+  demoBar(app)
+  await app.host.send('tab', 1)
+  await app.waitFor('text:/Run 10 km/')
+  demoBar(app)
+  await app.host.send('tab', 0)
+  await app.press('label:Menu')
+  await app.press('text:Library')
+  await app.waitFor('text:lisbon.md')
+  demoBar(app)
+  await app.host.send('tab', 0)
+  await app.press('label:Settings')
+  await app.waitFor('id:demo-leave')
+  demoBar(app)
+  await app.press('id:memory-row')
+  await app.waitFor('text:Likes short answers')
+  demoBar(app)
+})
+
+test('in Chinese: 演示模式 on the button, the header and every page', async () => {
+  const app = await open('./App.tsx', { storage: { lang: 'zh' }, network: {} })
+  await app.press('id:own-computer')
+  await app.waitFor('text:先看演示，不用连电脑')
+  await app.press('id:try-it')
+  await app.waitFor('id:composer')
+  expect(app.shows('id:demo-bar')).toBe(true)
+  expect(app.shows('text:/内容都是编的，不会真的去做/')).toBe(true)
+  expect(app.shows('text:/这是演示模式/')).toBe(true)
+  await app.press('label:设置')
+  await app.waitFor('id:demo-leave')
+  expect(app.shows('text:演示模式')).toBe(true)
+  expect(app.shows('text:演示电脑')).toBe(true)
 })
 
 test('leaving goes back to the connect screen and keeps nothing; a new launch starts at the welcome screen', async () => {
@@ -51,6 +101,7 @@ test('leaving goes back to the connect screen and keeps nothing; a new launch st
   await app.press('label:Settings')
   await app.press('id:demo-leave')
   await app.waitFor('id:try-it')
+  expect(app.shows('id:demo-bar')).toBe(false)
   expect(app.dialogs()).toEqual([])
   const kept = app.storage()
   expect(Object.keys(kept).filter((k) => k === 'origin' || k === 'token' || k === 'me' || k.startsWith('thread:'))).toEqual([])
@@ -104,6 +155,7 @@ test('a report on a hosted computer still goes to the people who run it, who ans
     },
   })
   await app.waitFor('id:composer')
+  expect(app.shows('id:demo-bar')).toBe(false)
   await app.host.send('thread', [{ type: 'snapshot', sessionId: 'main', rows: [{ kind: 'them', id: 'a1', text: 'Some reply', at: 1 }], running: false, statusText: '', title: '' }])
   app.onDialog(() => 'Report')
   await app.longPress('text:Some reply')

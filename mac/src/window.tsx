@@ -12,7 +12,7 @@ function Btn(props: { label: string; kind: 'soft' | 'quiet'; onPress: () => void
   return (
     <View role="button" testID={props.testID} onPress={props.onPress}
       class={`rounded-full px-5 min-h-[40px] items-center justify-center active:opacity-70 ${props.kind === 'soft' ? 'bg-primary/10 dark:bg-primary/20' : 'bg-transparent'}`}>
-      <Text class={`font-semibold text-[15px] ${props.kind === 'soft' ? 'text-primary' : 'text-muted-foreground'}`} numberOfLines={1}>{props.label}</Text>
+      <Text class={`font-semibold text-[15px] ${props.kind === 'soft' ? 'text-primary' : 'text-muted-foreground'}`} style={{ numberOfLines: 1 }}>{props.label}</Text>
     </View>
   )
 }

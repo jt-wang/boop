@@ -5,9 +5,9 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// A public APK must not carry the builder's home folder. NSH's arm64 libnsh.so holds it in 666 panic locations (cargo registry
-// paths, measured 2026-11-03). Each location is a pointer and a length, so the bytes change in place and the size stays.
-const SCRUB = join(import.meta.dirname, '..', 'scripts', 'android-scrub-home.sh')
+// A public binary must not carry the builder's home folder (scripts/ios-build.sh runs this on the archive). A Rust library built
+// here holds it in panic locations (cargo registry paths: 666 in an arm64 libnsh.so, measured 2026-11-03). Each location is a pointer and a length, so the bytes change in place and the size stays.
+const SCRUB = join(import.meta.dirname, '..', 'scripts', 'scrub-home.sh')
 
 test('the home folder is overwritten in place, every time, and nothing else moves', () => {
   const dir = mkdtempSync(join(tmpdir(), 'scrub-'))
