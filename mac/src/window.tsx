@@ -41,6 +41,9 @@ export function Window(props: { mark: ImageAsset; state: Accessor<BotState>; mat
           <View class={`w-2 h-2 rounded-full ${running() ? 'bg-foreground' : 'bg-muted-foreground'}`} />
           <Text testID="status" class="text-foreground text-[15px] text-center">{status()}</Text>
         </View>
+        <If when={s().phase === 'failed' && !!s().reason}>
+          <Text testID="reason" class="text-muted-foreground text-[13px] text-center leading-4 px-6">{`${str('failedReason')}${(s().reason ?? '').slice(0, 140)}`}</Text>
+        </If>
 
         <View class="items-center justify-center rounded-[20px] bg-card overflow-hidden mt-2" style={{ width: QR + 24, height: QR + 24 }}>
           <If when={running() ? props.matrix() : null} else={<Text class="text-muted-foreground text-[15px] text-center px-8 leading-5">{s().phase === 'failed' ? str('failed') : str('waiting')}</Text>}>

@@ -6,6 +6,7 @@ export const es: MacWords = {
   running: 'Tu asistente está funcionando en tu Mac.',
   restarting: 'Tu asistente se detuvo. Volviendo a iniciarlo…',
   failed: 'Tu asistente no pudo iniciarse. Sal y vuelve a abrir Boop.',
+  failedReason: 'Motivo: ',
   stopped: 'Detenido.',
   waiting: 'El código aparecerá aquí en un momento.',
   scanTitle: 'Escanea con tu teléfono',

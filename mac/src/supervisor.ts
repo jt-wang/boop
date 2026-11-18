@@ -20,6 +20,8 @@ export interface BotState {
   failures: number
   /** Starts after the first. */
   restarts: number
+  /** Why the window gave up: a short, user-sendable reason, set only on `failed`. */
+  reason?: string
 }
 
 /** The part of NSH's `ChildProcess` the supervisor uses. */
@@ -44,6 +46,8 @@ export interface Deps {
   spawn(command: string, args: string[]): ChildLike
   setTimeout?: (fn: () => void, ms: number) => unknown
   clearTimeout?: (handle: unknown) => void
+  /** Optional diagnostics sink: the Windows app writes these lines to boop-start.log. */
+  log?: (line: string) => void
   onChange(state: BotState): void
 }
 
@@ -71,6 +75,15 @@ export function backoffMs(failures: number): number {
   return Math.min(1000 * 2 ** Math.max(0, failures - 1), 30_000)
 }
 
+/** A launch/locate failure is an Error, a string, or anything; keep it short and sendable. */
+export function errorText(e: unknown): string {
+  if (e instanceof Error) {
+    const code = 'code' in e && e.code ? ` (${String(e.code)})` : ''
+    return `${e.message}${code}`.slice(0, 300)
+  }
+  return String(e).slice(0, 300)
+}
+
 export function createSupervisor(deps: Deps) {
   const setTimer = deps.setTimeout ?? ((fn, ms) => setTimeout(fn, ms))
   const clearTimer = deps.clearTimeout ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>))
@@ -79,32 +92,60 @@ export function createSupervisor(deps: Deps) {
   let child: ChildLike | null = null
   let timer: unknown = null
   let stderrTail = ''
+  const log = (line: string) => deps.log?.(line)
 
-  const set = (patch: Partial<BotState>) => { state = { ...state, ...patch }; deps.onChange(state) }
+  const set = (patch: Partial<BotState>) => {
+    const phaseChanged = patch.phase && patch.phase !== state.phase
+    state = { ...state, ...patch }
+    if (phaseChanged) log(`phase ${state.phase}${state.reason ? ` reason=${state.reason}` : ''}`)
+    deps.onChange(state)
+  }
 
   const spawnBot = () => {
     stderrTail = ''
-    const { command, args } = deps.launch(resources, state.port)
-    const c = deps.spawn(command, args)
+    let command: string
+    let args: string[]
+    let c: ChildLike
+    try {
+      const launched = deps.launch(resources, state.port)
+      command = launched.command
+      args = launched.args
+      // Paths only: no env, no secrets. The Windows log keeps this for a user to send us.
+      log(`launch ${command} ${args.join(' ')}`)
+      c = deps.spawn(command, args)
+    } catch (e) {
+      // NSH's spawn throws before the launch (ENOENT, access denied, quoting): without this
+      // catch, start()'s rejection was swallowed by the app and the window stayed on "starting".
+      const reason = errorText(e)
+      log(`spawn failed: ${reason}`)
+      set({ phase: 'failed', pairUrl: null, code: null, reason })
+      return
+    }
     child = c
     c.on('stdout', (line) => {
       if (child !== c) return
+      log(`stdout ${line}`)
       const p = parsePairing(line)
       if (p) set({ phase: 'running', pairUrl: p.url, code: p.code, failures: 0 })
     })
     c.on('stderr', (line) => {
       if (child !== c) return
+      log(`stderr ${line}`)
       stderrTail = (stderrTail + line + '\n').slice(-4000)
       // src/main.ts: the bot stays up, but no phone can reach it and no code will come.
-      if (line.includes('TailPocket did not start')) set({ phase: 'failed', pairUrl: null, code: null })
+      if (line.includes('TailPocket did not start')) set({ phase: 'failed', pairUrl: null, code: null, reason: line })
     })
-    c.on('exit', () => {
+    c.on('exit', (result) => {
       if (child !== c || state.phase === 'stopped') return
       child = null
+      log(`exit code=${String(result.code)} signal=${String(result.signal)}${result.error ? ` error=${result.error}` : ''}`)
       const wasRunning = state.phase === 'running'
       if (/EADDRINUSE/.test(stderrTail)) { set({ phase: 'restarting', pairUrl: null, code: null, port: state.port + 1 }); return schedule(0) }
       const failures = wasRunning ? 0 : state.failures + 1
-      if (failures >= MAX_FAILURES) return set({ phase: 'failed', pairUrl: null, code: null, failures })
+      if (failures >= MAX_FAILURES) {
+        set({ phase: 'failed', pairUrl: null, code: null, failures, reason: `exited ${failures} times before pairing (last: ${result.error ?? `code ${String(result.code)}`})` })
+        return
+      }
       set({ phase: 'restarting', pairUrl: null, code: null, failures })
       schedule(wasRunning ? 1000 : backoffMs(failures))
     })
@@ -117,8 +158,16 @@ export function createSupervisor(deps: Deps) {
   return {
     get state() { return state },
     async start() {
+      log(`phase ${state.phase}`)
       deps.onChange(state)
-      try { resources = await deps.locate() } catch { return set({ phase: 'failed' }) }
+      try {
+        resources = await deps.locate()
+        log(`locate ${resources}`)
+      } catch (e) {
+        const reason = errorText(e)
+        log(`locate failed: ${reason}`)
+        return set({ phase: 'failed', pairUrl: null, code: null, reason })
+      }
       spawnBot()
     },
     stop() {

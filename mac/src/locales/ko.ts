@@ -6,6 +6,7 @@ export const ko: MacWords = {
   running: '이 Mac에서 비서가 실행 중이에요.',
   restarting: '비서가 멈췄어요. 다시 시작하고 있어요…',
   failed: '비서를 시작하지 못했어요. 종료한 다음 Boop을 다시 열어 주세요.',
+  failedReason: '이유: ',
   stopped: '중지됨.',
   waiting: '잠시 후 코드가 여기에 나타나요.',
   scanTitle: '휴대폰으로 스캔하세요',

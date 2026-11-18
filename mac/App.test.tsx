@@ -52,6 +52,11 @@ test('restarting and failed are said in plain words', async () => {
   expect(b.shows('id:qr')).toBe(false)
 })
 
+test('failed shows a short reason under the status, for the user to send us', async () => {
+  const app = await open('./window.fixture.tsx', { storage: { state: state('failed', { failures: 5, reason: 'cannot find Boop.exe (ENOENT)' }) } })
+  await app.waitFor('text:Reason: cannot find Boop.exe (ENOENT)')
+})
+
 test('Quit asks the app to quit', async () => {
   const app = await open('./window.fixture.tsx', { storage: { state: running } })
   await app.waitFor('id:quit')

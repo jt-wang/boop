@@ -6,6 +6,7 @@ export const zhHant: MacWords = {
   running: '你的助理正在這台 Mac 上執行。',
   restarting: '助理停止了，正在重新啟動…',
   failed: '助理無法啟動。請結束後再開啟一次 Boop。',
+  failedReason: '原因：',
   stopped: '已停止。',
   waiting: 'QR Code 馬上就會出現在這裡。',
   scanTitle: '用手機掃描',

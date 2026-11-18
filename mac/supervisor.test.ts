@@ -18,7 +18,7 @@ class FakeChild implements ChildLike {
   kill() { this.killed = true }
 }
 
-function harness(locate: () => Promise<string> = async () => RES, launch: (resources: string, port: number) => Command = macLaunch) {
+function harness(locate: () => Promise<string> = async () => RES, launch: (resources: string, port: number) => Command = macLaunch, log?: (line: string) => void) {
   const spawned: { command: string; args: string[]; child: FakeChild }[] = []
   const timers: { fn: () => void; ms: number }[] = []
   const states: BotState[] = []
@@ -28,6 +28,7 @@ function harness(locate: () => Promise<string> = async () => RES, launch: (resou
     spawn: (command, args) => { const child = new FakeChild(); spawned.push({ command, args, child }); return child },
     setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length },
     clearTimeout: () => {},
+    log,
     onChange: (s) => states.push(s),
   })
   const last = () => spawned[spawned.length - 1]
@@ -147,4 +148,49 @@ test('when the bundle cannot be found the state is failed and nothing is spawned
   await h.sup.start()
   expect(h.state().phase).toBe('failed')
   expect(h.spawned.length).toBe(0)
+})
+
+test('a locate failure keeps the actual error in the failed reason and in the log', async () => {
+  const lines: string[] = []
+  const sup = createSupervisor({
+    locate: async () => { throw Object.assign(new Error('cannot find Boop.exe'), { code: 'ENOENT' }) },
+    launch: macLaunch,
+    spawn: () => new FakeChild(),
+    log: (line) => lines.push(line),
+    onChange: () => {},
+  })
+  await sup.start()
+  expect(sup.state.phase).toBe('failed')
+  expect(/cannot find Boop.exe \(ENOENT\)/.test(sup.state.reason ?? '')).toBe(true)
+  expect(lines.some((l) => l.includes('locate failed'))).toBe(true)
+})
+
+test('a spawn error fails with a reason instead of leaving the window stuck on starting', async () => {
+  const lines: string[] = []
+  const sup = createSupervisor({
+    locate: async () => RES,
+    launch: macLaunch,
+    spawn: () => { throw Object.assign(new Error('The system cannot find the file specified'), { code: 'ENOENT' }) },
+    log: (line) => lines.push(line),
+    onChange: () => {},
+  })
+  await sup.start()
+  expect(sup.state.phase).toBe('failed')
+  expect(/ENOENT/.test(sup.state.reason ?? '')).toBe(true)
+  expect(lines.some((l) => l.includes('spawn failed'))).toBe(true)
+})
+
+test('the log carries phase transitions, the launch command and each child line', async () => {
+  const lines: string[] = []
+  const h = harness(undefined, undefined, (line) => lines.push(line))
+  await h.sup.start()
+  h.last().child.emit('stdout', '  http://192.168.1.23:3850/pair?code=654321')
+  h.last().child.emit('stderr', '[bot] a warning')
+  h.last().child.emit('exit', { code: 0, signal: null })
+  expect(lines.some((l) => l.startsWith('phase starting'))).toBe(true)
+  expect(lines.some((l) => l.startsWith('launch /bin/sh'))).toBe(true)
+  expect(lines.some((l) => l.includes('stdout   http://'))).toBe(true)
+  expect(lines.some((l) => l.includes('stderr [bot] a warning'))).toBe(true)
+  expect(lines.some((l) => l.includes('exit code=0'))).toBe(true)
+  expect(lines.some((l) => l.startsWith('phase restarting'))).toBe(true)
 })

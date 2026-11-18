@@ -1,10 +1,11 @@
 # Boop for Windows
 
-The "I have my own PC" path without a terminal: download the zip, unpack it, open
-`Boop.exe`, scan the code with your phone. The app runs the assistant on this PC and
+The "I have my own PC" path without a terminal: download the build, unpack it once,
+open `Boop.exe`, scan the code with your phone. The app runs the assistant on this PC and
 shows the pairing code; your phone reaches it through TailPocket, from any network
 ([connection.md](connection.md)). Everything the assistant remembers lives in
-`%LOCALAPPDATA%\DeepSeek Bot`, so the next launch is the same assistant.
+`%LOCALAPPDATA%\DeepSeek Bot` (derived from `%USERPROFILE%\AppData\Local`), so the next
+launch is the same assistant.
 
 Windows 10 1809 or later, or Windows 11. A web view needs the WebView2 Runtime (it
 comes with Windows 11 and with Microsoft Edge on Windows 10); Boop's window uses none.
@@ -44,13 +45,18 @@ launch it:
 1. Finds its own directory. NSH has no documented API for the app's directory and
    `process.run` takes a name or an absolute path, so it runs PowerShell once:
    `Get-CimInstance Win32_Process` for its parent process (this process, `Boop.exe`)
-   gives the executable's path, and `$env:LOCALAPPDATA` gives the bot's home. The
-   Mac app uses `ps` instead ([mac.md](mac.md#how-the-window-works)).
-2. Starts `bot\node.exe bot\src\main.ts --home %LOCALAPPDATA%\DeepSeek Bot --port 3850
-   --supervised` (`mac/src/supervisor.ts`): no shell and no `run.sh`. `--supervised`
-   stands in for `DEEPSEEK_BOT_SUPERVISED=1`, which a child's environment cannot
-   carry (`process.spawn` has no `env` option), so a model change exits and the
-   window starts the bot again.
+   gives the executable's path. The bot's home comes from `%USERPROFILE%\AppData\Local\DeepSeek Bot`,
+   because a child's environment is only `PATH`, `HOME`, `USERPROFILE`, `SystemRoot`,
+   `TEMP`, `TMP`, `TMPDIR`, `LANG` and `LC_*` — **not** `LOCALAPPDATA`
+   (`windows/.nsh/types/process.d.ts:57`). Using `$env:LOCALAPPDATA` there made the app
+   fail immediately on real Windows (2026-11-18). The Mac app uses `ps` instead
+   ([mac.md](mac.md#how-the-window-works)).
+2. Starts `bot\node.exe bot\src\main.ts --home %USERPROFILE%\AppData\Local\DeepSeek Bot
+   --port 3850 --supervised` (`mac/src/supervisor.ts`): no shell and no `run.sh`. Paths are
+   absolute argv entries, so spaces and Japanese characters in the user's name need no
+   quoting. `--supervised` stands in for `DEEPSEEK_BOT_SUPERVISED=1`, which a child's
+   environment cannot carry (`process.spawn` has no `env` option), so a model change exits
+   and the window starts the bot again.
 3. Reads the bot's stdout line by line; the line `tailpocket1:…` (src/main.ts
    `printPocketPairing`), or `http://<lan ip>:<port>/pair?code=<6 digits>` when the
    helper is missing (`printPairing`), makes the state *running*. The QR is drawn
@@ -67,7 +73,9 @@ the window and node, and NSH ends the process tree with the app.
 
 The window shows the status in plain words, the QR, Copy code and Quit. On the plain
 local network route it also shows the link and the six-digit code, with Copy link.
-Nothing else: no paths, no commands, no logs.
+Nothing else: no paths, no commands. When it fails it shows a short reason under the
+status; the full, timestamped story goes to `%LOCALAPPDATA%\DeepSeek Bot\boop-start.log`
+(or `process.dataDir\boop-start.log` when there is no home yet).
 
 ## Build
 
@@ -105,7 +113,16 @@ installer that upgrades in place.
 `.github/workflows/windows-build.yml` runs on `windows-latest` for pushes to
 `windows-build` and by hand (`gh workflow run windows-build.yml --ref windows-build`).
 It downloads NSH 0.5.1, builds TailPocket's Windows helper, runs
-`scripts/windows-build.ps1`, and uploads `boop-windows` (the zip) for 7 days.
+`scripts/windows-build.ps1`, and uploads two artifacts for 7 days:
+
+| Artifact | What a download contains | Extract times |
+| --- | --- | --- |
+| `Boop-windows` | GitHub's wrapper zip holding one `Boop\` folder (`Boop\Boop.exe`, `Boop\nsh\...`, `Boop\bot\...`) | once |
+| `Boop-windows-zip` | GitHub's wrapper zip holding the distributable `Boop-windows.zip` (for release use) | twice: once for the wrapper, then the inner zip is ready to hand out |
+
+**For normal use download `Boop-windows`, not `Boop-windows-zip`.** Uploading the inner
+zip alone made GitHub wrap it, so a download had to be extracted twice (2026-11-18 user
+report). `Boop-windows` uploads the unpacked folder instead.
 
 ## Tests
 
@@ -123,5 +140,33 @@ checked by the workflow.
 
 ## Run
 
-Unpack the zip and open `Boop.exe` (or from a terminal: `Boop\Boop.exe`). Keep the
-window open; closing it stops the assistant.
+Download the `Boop-windows` artifact, extract it **once**, and open `Boop\Boop.exe`.
+(If you use the release `Boop-windows.zip` instead, extract it once — it already holds
+the `Boop\` folder: do not extract an inner `Boop\` again.) Keep the window open;
+closing it stops the assistant.
+
+## Troubleshooting
+
+**「アシスタントを起動できませんでした。Boopを終了して、もう一度開いてください。」
+(the failed state).** The window could not start the bot: either it could not find its
+own bundle/derive the home, or `bot\node.exe` failed to launch, or the bot exited five
+times before printing a pairing code. Quit and reopen once. If it happens again, send us
+the log — a short reason is now also shown under the status line.
+
+**Where the log is, and what to send:**
+
+```
+%LOCALAPPDATA%\DeepSeek Bot\boop-start.log
+```
+
+If that file is missing (for example `USERPROFILE` was empty and no home could be derived),
+look in the app's NSH data directory for `boop-start.log`. The log is a plain text file,
+rewritten on each event, with timestamped lines for: the env values used, locate errors,
+the launch command (paths only), spawn errors, every stdout/stderr line from the bot,
+child exit codes, and phase changes. It contains no secrets. Please attach the whole file;
+also tell us your Windows version (10 or 11), whether the username/path has spaces or
+Japanese characters, and the exact message you saw.
+
+Old builds (before 2026-11-18) have no log: the failure was caused by reading
+`$env:LOCALAPPDATA` from a PowerShell child, which NSH does not forward. Upgrade to a
+build with `Boop-windows` and retest before sending a log.

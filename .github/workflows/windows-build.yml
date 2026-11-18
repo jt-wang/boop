@@ -74,10 +74,32 @@ jobs:
             Get-ChildItem windows/.nsh/out -Recurse -File |
               Sort-Object FullName | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 240
           }
+      # upload-artifact trims its single search path from the zip: uploading out\Boop
+      # directly would put Boop.exe at the top level. Stage a folder that *contains* Boop\,
+      # so extracting this artifact once gives Boop\Boop.exe, Boop\nsh\..., Boop\bot\....
+      # Uploading the inner zip instead made GitHub wrap it in a second zip, so a download
+      # had to be extracted twice (2026-11-18 user report).
+      - name: Stage the unpacked artifact
+        if: success()
+        run: |
+          $src = Join-Path $env:GITHUB_WORKSPACE 'boop/windows/.nsh/out/Boop'
+          $stage = Join-Path $env:RUNNER_TEMP 'boop-artifact'
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -LiteralPath $src -Destination (Join-Path $stage 'Boop') -Recurse -Force
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: success()
         with:
-          name: boop-windows
+          name: Boop-windows
+          path: ${{ runner.temp }}/boop-artifact
+          if-no-files-found: error
+          retention-days: 7
+      # The distributable zip, kept for release use. Downloading a single-file artifact still
+      # gives a GitHub wrapper zip containing Boop-windows.zip: extract it once to get the zip.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: success()
+        with:
+          name: Boop-windows-zip
           path: boop/windows/.nsh/out/Boop-windows.zip
           if-no-files-found: error
           retention-days: 7

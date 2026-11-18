@@ -6,6 +6,7 @@ export const ja: MacWords = {
   running: 'アシスタントはこのMacで動作しています。',
   restarting: 'アシスタントが停止しました。再起動しています…',
   failed: 'アシスタントを起動できませんでした。Boopを終了して、もう一度開いてください。',
+  failedReason: '理由：',
   stopped: '停止しました。',
   waiting: 'まもなくコードが表示されます。',
   scanTitle: 'スマートフォンでスキャン',
