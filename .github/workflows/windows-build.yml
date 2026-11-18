@@ -94,12 +94,3 @@ jobs:
           path: ${{ runner.temp }}/boop-artifact
           if-no-files-found: error
           retention-days: 7
-      # The distributable zip, kept for release use. Downloading a single-file artifact still
-      # gives a GitHub wrapper zip containing Boop-windows.zip: extract it once to get the zip.
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: success()
-        with:
-          name: Boop-windows-zip
-          path: boop/windows/.nsh/out/Boop-windows.zip
-          if-no-files-found: error
-          retention-days: 7

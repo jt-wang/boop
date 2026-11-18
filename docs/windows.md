@@ -113,16 +113,16 @@ installer that upgrades in place.
 `.github/workflows/windows-build.yml` runs on `windows-latest` for pushes to
 `windows-build` and by hand (`gh workflow run windows-build.yml --ref windows-build`).
 It downloads NSH 0.5.1, builds TailPocket's Windows helper, runs
-`scripts/windows-build.ps1`, and uploads two artifacts for 7 days:
+`scripts/windows-build.ps1`, and uploads one artifact for 7 days:
 
 | Artifact | What a download contains | Extract times |
 | --- | --- | --- |
 | `Boop-windows` | GitHub's wrapper zip holding one `Boop\` folder (`Boop\Boop.exe`, `Boop\nsh\...`, `Boop\bot\...`) | once |
-| `Boop-windows-zip` | GitHub's wrapper zip holding the distributable `Boop-windows.zip` (for release use) | twice: once for the wrapper, then the inner zip is ready to hand out |
 
-**For normal use download `Boop-windows`, not `Boop-windows-zip`.** Uploading the inner
-zip alone made GitHub wrap it, so a download had to be extracted twice (2026-11-18 user
-report). `Boop-windows` uploads the unpacked folder instead.
+`scripts/windows-build.ps1` also produces `windows\.nsh\out\Boop-windows.zip`, the
+distributable zip. That `.zip` stays a **local** build output for a later release; it is
+not uploaded as an Actions artifact. (An earlier build uploaded both, and downloading the
+inner zip made GitHub wrap it so it had to be extracted twice — 2026-11-18 user report.)
 
 ## Tests
 
@@ -141,9 +141,7 @@ checked by the workflow.
 ## Run
 
 Download the `Boop-windows` artifact, extract it **once**, and open `Boop\Boop.exe`.
-(If you use the release `Boop-windows.zip` instead, extract it once — it already holds
-the `Boop\` folder: do not extract an inner `Boop\` again.) Keep the window open;
-closing it stops the assistant.
+Keep the window open; closing it stops the assistant.
 
 ## Troubleshooting
 
