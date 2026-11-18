@@ -1,0 +1,83 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [windows-build]
+
+permissions:
+  contents: read
+concurrency:
+  group: boop-windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: boop
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: boop
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jt-wang/tailpocket
+          ref: 3c19dca9e2e1ea1208deedc705fb7e4e9bf6fa83
+          path: tailpocket
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tailpocket/go.mod
+          cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: TailPocket helper for Windows
+        working-directory: tailpocket
+        run: |
+          New-Item -ItemType Directory -Force ../boop/vendor/tailpocket/bin | Out-Null
+          $env:CGO_ENABLED = '0'
+          $env:GOOS = 'windows'
+          $env:GOARCH = 'amd64'
+          go build -trimpath -ldflags="-s -w" -tags ts_omit_ssh -o ../boop/vendor/tailpocket/bin/tailpocket-host-windows-amd64.exe ./cmd/tailpocket-host
+          if ($LASTEXITCODE -ne 0) { throw "tailpocket-host build failed ($LASTEXITCODE)" }
+          Get-Item ../boop/vendor/tailpocket/bin/tailpocket-host-windows-amd64.exe | Select-Object Name, Length
+      - name: NSH 0.5.1
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'nsh-windows-x86_64.zip'
+          curl.exe --fail --location --silent --show-error "https://github.com/longbridge/nsh/releases/download/v0.5.1/nsh-windows-x86_64.zip" -o $zip
+          if ($LASTEXITCODE -ne 0) { throw "nsh download failed ($LASTEXITCODE)" }
+          $want = (curl.exe --fail --location --silent --show-error "https://github.com/longbridge/nsh/releases/download/v0.5.1/nsh-windows-x86_64.zip.sha256").Split(' ')[0]
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $want.ToUpperInvariant()) { throw 'nsh archive checksum does not match the release' }
+          Expand-Archive $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'nsh') -Force
+          $exe = Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nsh') -Recurse -Filter nsh.exe | Select-Object -First 1
+          if (-not $exe) { throw 'nsh.exe is not in the downloaded archive' }
+          [IO.File]::AppendAllText($env:GITHUB_PATH, $exe.DirectoryName + [Environment]::NewLine)
+          & $exe.FullName --version
+      - name: Check NSH version
+        run: |
+          $version = (nsh --version | Out-String).Trim()
+          $version
+          if ($version -notmatch '^nsh 0\.5\.') { throw "expected NSH 0.5, got $version" }
+      - name: Package and bundle
+        run: ./scripts/windows-build.ps1
+      - name: Show what was built
+        if: failure()
+        run: |
+          Get-Command nsh -ErrorAction SilentlyContinue | ForEach-Object { nsh --version }
+          if (Test-Path windows/.nsh/out) {
+            Get-ChildItem windows/.nsh/out -Recurse -File |
+              Sort-Object FullName | Select-Object FullName, Length | Format-Table -AutoSize | Out-String -Width 240
+          }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: success()
+        with:
+          name: boop-windows
+          path: boop/windows/.nsh/out/Boop-windows.zip
+          if-no-files-found: error
+          retention-days: 7

@@ -24,6 +24,7 @@ The phone shells and the Mac app also need a TailPocket checkout beside this rep
 - iPhone: [ios.md](ios.md). There is no download yet, so this is the only way to get it.
 - Android: [android.md](android.md).
 - Mac: [mac.md](mac.md).
+- Windows: [windows.md](windows.md). `nsh package --target windows` must run on Windows (the runner is built for the machine it is built on); `.github/workflows/windows-build.yml` does it on `windows-latest`.
 
 ## On a server
 
@@ -43,6 +44,7 @@ Caddy gets the certificate; the phone pairs at `https://bot.example.com/pair?cod
 ```sh
 scripts/android-build.sh                     # android/build/boop.apk
 scripts/mac-build.sh                         # mac/.nsh/out/Boop.dmg
+powershell -File scripts/windows-build.ps1   # windows/.nsh/out/Boop-windows.zip (on Windows)
 scripts/release-pack.sh <tree> <out dir>     # boop-<os>-<arch>.tgz; needs TailPocket's helpers from its scripts/build-host.sh
 ```
 

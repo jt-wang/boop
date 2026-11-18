@@ -1,14 +1,15 @@
 # Boop
 
-An AI assistant on your own DeepSeek Harness: on your Mac, or on a server of your own. You talk to it from your phone, and it keeps working after you close the app. It has a shell, files, web search and a browser that keeps its logins; it comes back when something is done or needs your yes, and answers with real controls (a choice, a form, a table) instead of a wall of text.
+An AI assistant on your own DeepSeek Harness: on your Mac or PC, or on a server of your own. You talk to it from your phone, and it keeps working after you close the app. It has a shell, files, web search and a browser that keeps its logins; it comes back when something is done or needs your yes, and answers with real controls (a choice, a form, a table) instead of a wall of text.
 
-On your Mac it shows a code. Open Boop on your phone, tap Scan the code, and you're connected. No account.
+On your Mac or PC it shows a code. Open Boop on your phone, tap Scan the code, and you're connected. No account.
 
 The phone app: **Android**, [download boop.apk](https://github.com/jt-wang/boop/releases/latest/download/boop.apk); **iPhone**, version 0.1.4 (4) has been uploaded to TestFlight. The public invite link will be announced on [X](https://x.com/thejingtao). You can also [build it with Xcode](docs/ios.md).
 
 Run it on your computer:
 
 - **Mac**: [download Boop.dmg](https://github.com/jt-wang/boop/releases/latest/download/Boop.dmg). Nothing else to install.
+- **Windows**: build `Boop.exe` with [docs/windows.md](docs/windows.md). No release download yet.
 - **In a terminal**: `curl -fsSL https://raw.githubusercontent.com/jt-wang/boop/main/install.sh | sh`, then `cd ~/boop && DEEPSEEK_API_KEY=sk-… npm start` and scan the code it prints from Boop on your phone.
 - **With your AI agent**: point it at [SETUP.md](SETUP.md).
 - **Build it yourself**, or run it on your own server with Docker: [docs/BUILD.md](docs/BUILD.md).
@@ -26,6 +27,7 @@ Fully open source (MIT). Change anything you like. By Jingtao Wang, [@thejingtao
 
 - **Android**: download [boop.apk](https://github.com/jt-wang/boop/releases/latest/download/boop.apk) on the phone and open it to install.
 - **iPhone**: version 0.1.4 (4) has been uploaded to TestFlight; the public invite link will be announced on [X](https://x.com/thejingtao). Building from `ios/` with Xcode remains an option ([docs/ios.md](docs/ios.md)).
+- **Windows**: the zip from [docs/windows.md](docs/windows.md) (built on Windows). Unpack it and open `Boop.exe`; Windows SmartScreen asks once because the executable is not signed.
 
 ### On your Mac
 
