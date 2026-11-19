@@ -13,8 +13,17 @@ export async function createHost(player) {
   // a tapped notification (sw.js) → the app's `notification` event, as the iOS shell sends it
   const sw = typeof navigator !== 'undefined' ? navigator.serviceWorker : undefined
   if (sw) sw.addEventListener('message', (e) => { if (e.data && e.data.type === 'notification') player.hostEvent('notification', { url: e.data.url || '/' }) })
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => player.hostEvent('appState', { state: document.hidden ? 'background' : 'foreground' }))
   return {
     async call(name, args) {
+      if (name === 'diagnostics.share') {
+        if (typeof args?.text !== 'string' || new TextEncoder().encode(args.text).length > 262144) throw new Error('Invalid diagnostic export')
+        const url = URL.createObjectURL(new Blob([args.text], { type: 'application/json' }))
+        const link = document.createElement('a')
+        link.href = url; link.download = 'Boop Diagnostics.json'; link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        return { opened: true }
+      }
       if (name === 'push.request') {
         if (!('Notification' in globalThis) || !sw || !('PushManager' in globalThis)) return { granted: false }
         return { granted: (await Notification.requestPermission()) === 'granted' }

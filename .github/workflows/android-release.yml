@@ -72,6 +72,12 @@ jobs:
           cp -R ../tailpocket/build/android/m2/io/jingtao/tailpocket android/tailpocket-m2/io/jingtao/
           printf 'NSH_HOME=%s\nNSH_BIN=%s\nNSH_AAR=%s\n' "$NSH_HOME" "$NSH_BIN" "$NSH_AAR" >> "$GITHUB_ENV"
           npm ci --no-audit --no-fund
+      - name: Test the candidate before signing
+        run: |
+          npm test
+          python3 -B -m unittest discover -s test -p testflight_ci_test.py
+          "$NSH_BIN" check mobile
+          "$NSH_BIN" test mobile
       - name: Build with the release key and verify upgrade compatibility
         env:
           ANDROID_RELEASE_KEYSTORE: ${{ secrets.ANDROID_RELEASE_KEYSTORE }}

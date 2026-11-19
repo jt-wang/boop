@@ -62,4 +62,46 @@ final class TryItTests: XCTestCase {
         XCTAssertTrue(says("not a Boop pairing code").waitForExistence(timeout: 20), "the words for invalid-invite")
         shot("bad-invite")
     }
+
+    func testLocalDiagnosticsRestartAndExplicitShare() {
+        XCTAssertTrue(id("diagnostics-open").waitForExistence(timeout: 15))
+        id("diagnostics-open").tap()
+        XCTAssertTrue(named("Off").waitForExistence(timeout: 10))
+        shot("diagnostics-off")
+        id("diagnostics-enabled").tap()
+        id("diagnostics-retain").tap()
+        XCTAssertTrue(named("Recording").exists)
+        shot("diagnostics-on")
+        // Real system sampling, not an accelerated clock or a mock bridge.
+        Thread.sleep(forTimeInterval: 65)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(id("diagnostics-open").waitForExistence(timeout: 15))
+        id("diagnostics-open").tap()
+        XCTAssertTrue(named("Off").waitForExistence(timeout: 10))
+        for _ in 0..<5 {
+            if id("diagnostics-share").isHittable { break }
+            app.swipeUp()
+            Thread.sleep(forTimeInterval: 2) // let the scroll decelerate before tapping
+        }
+        id("diagnostics-share").press(forDuration: 0.1)
+        XCTAssertTrue(named("Share diagnostic metadata?").waitForExistence(timeout: 10))
+        XCTAssertFalse(says("No events in this range").exists)
+        shot("diagnostics-confirm")
+        named("Cancel").tap()
+        XCTAssertTrue(id("diagnostics-share").exists)
+        id("diagnostics-share").press(forDuration: 0.1)
+        XCTAssertTrue(named("Share diagnostic metadata?").waitForExistence(timeout: 10))
+        named("Share").tap()
+        XCTAssertTrue(named("Copy").waitForExistence(timeout: 10), "the real system share sheet")
+        XCTAssertTrue(named("Boop Diagnostics").exists, "the full product name in the system share preview")
+        shot("diagnostics-share")
+        named("Copy").tap()
+        for _ in 0..<5 {
+            if id("diagnostics-clear").isHittable { break }
+            app.swipeDown()
+            Thread.sleep(forTimeInterval: 2)
+        }
+        id("diagnostics-clear").tap()
+    }
 }

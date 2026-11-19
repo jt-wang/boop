@@ -20,6 +20,7 @@ import { pairLink } from './native.ts'
 import { canScan, isInvite, pairInvite, pocketPath, refreshPath, scanInvite, viaPocket } from './pocket.ts'
 import { ago } from './library.tsx'
 import { Avatar, Btn, Card, Cell, Empty, Group, Hint, Page, pageClass, Toggle, TopProbe } from './ui.tsx'
+import { diagnosticTitle } from './diagnostics-page.tsx'
 
 const fmt = (iso: string | null) => (iso && formatDateTime(iso, lang())) || '—'
 // every kind the bot logs, in words; one it adds later shows no word rather than its id
@@ -28,7 +29,7 @@ const kindWord = (k: string) => ({ memory: str('kindMemory'), schedule: str('kin
 const fieldClass = 'min-h-[44px] px-4 text-foreground text-[17px] bg-transparent'
 const setupContent = 'px-4 gap-4 pt-[calc(env(safe-area-inset-top)+44px)] pb-[calc(env(safe-area-inset-bottom)+32px)]'
 
-export function ConnectScreen(props: { initial?: { origin?: string; code?: string } }) {
+export function ConnectScreen(props: { initial?: { origin?: string; code?: string }; onDiagnostics?: () => void }) {
   // Two ways in: scan the computer's QR code, or paste the code its window copies. A server's
   // address and six-digit code sit behind one small link; in the browser (no camera) they are all there is.
   type Mode = 'scan' | 'paste' | 'server'
@@ -115,12 +116,13 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       </If>
       {link('try-it', str('tryIt'), () => { startSample().catch(() => {}) })}
       <If when={canScan() && mode() !== 'server'}>{link('connect-server', str('connectServer'), () => { mode.set('server'); error.set('') }, true)}</If>
+      {props.onDiagnostics ? link('diagnostics-open', diagnosticTitle(), props.onDiagnostics, true) : null}
       <View role="button" testID="connect-privacy" onPress={() => openLegal('privacy')} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-muted-foreground text-[13px]">{str('privacyPolicy')}</Text></View>
     </Scroll>
   )
 }
 /** First run. One screen, two ways in: a hosted computer (Start) or your own (address + code). */
-export function WelcomeScreen(props: { onStart: () => void; onOwn: () => void }) {
+export function WelcomeScreen(props: { onStart: () => void; onOwn: () => void; onDiagnostics?: () => void }) {
   return (
     <Scroll class={pageClass} contentClass="grow px-6 pt-[calc(env(safe-area-inset-top)+120px)] pb-[calc(env(safe-area-inset-bottom)+28px)]">
       <View class="flex-1 gap-5">
@@ -131,6 +133,7 @@ export function WelcomeScreen(props: { onStart: () => void; onOwn: () => void })
       <View class="gap-3 pt-10">
         <Btn kind="primary" testID="start" label={str('start')} onPress={props.onStart} />
         <View role="button" testID="own-computer" onPress={props.onOwn} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class="text-primary text-[17px]">{str('ownComputer')}</Text></View>
+        {props.onDiagnostics ? <Btn kind="quiet" testID="diagnostics-open" label={diagnosticTitle()} onPress={props.onDiagnostics} /> : null}
       </View>
     </Scroll>
   )
@@ -399,7 +402,7 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
   )
 }
 
-export function SettingsPage(props: { onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void }) {
+export function SettingsPage(props: { onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void; onDiagnostics?: () => void }) {
   const name = signal(me()?.assistant.name ?? '')
   // a rename elsewhere (the chat, another phone) shows here: the field follows the bot's name
   effect(() => { const n = me()?.assistant.name; if (n) name.set(n) })
@@ -461,6 +464,7 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
         {LANGS.map((l) => <Cell title={LANG_NAMES[l]} right={lang() === l ? <Check /> : undefined} onPress={() => setLang(l)} testID={`lang-${l}`} />)}
       </Group>
       {/* settings groups added by other features go here */}
+      <Group><Cell title={diagnosticTitle()} chevron onPress={props.onDiagnostics} testID="diagnostics-open" /></Group>
       <AboutGroup onAiProvider={() => props.onAiProvider?.()} />
     </Page>
   )

@@ -43,11 +43,13 @@ public final class MainActivity extends Activity {
         InlineModule.register(this, ui, app); // and inside the thread (`boop.module`)
         push = new PushBridge(this);
         push.attach(app); // [push] permission, the FCM token, taps on notifications
+        DiagnosticsBridge.attach(this, app);
         TailPocketNsh.INSTANCE.attach(app, CoroutineScopeKt.MainScope()); // how this phone reaches a computer running Boop (docs/connection.md)
 
         Map<String, Object> params = new HashMap<>();
         // `ui`: this shell runs the modules the assistant writes (UiBridge, `ui.open`); an app without it opens them in the browser
         params.put("ui", true);
+        params.put("diagnostics", true);
         // `inlineUi`: this shell also runs them inside the thread (InlineModule)
         params.put("inlineUi", true);
         // Opened from a deepseekbot://pair link: the app starts on the connect screen with it filled in.

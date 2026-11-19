@@ -2,6 +2,11 @@
 // /events WebSocket (one-time ticket; carries asks and the thread frames).
 // Storage is async in NSH's TSX runtime (measured 2026-10-27).
 import { locale, Storage } from 'nsh'
+import { observeRequest } from './diagnostic-log.ts'
+import { diagnosticLog } from './diagnostics.ts'
+
+const request = (operation: string, url: string, init?: RequestInit) =>
+  observeRequest(diagnosticLog, operation, init?.method ?? 'GET', () => fetch(url, init))
 
 export interface Session { origin: string; token: string }
 
@@ -30,7 +35,7 @@ export function parseAddress(input: string): { origin: string; code?: string } |
 }
 
 export async function pair(origin: string, code: string, name: string): Promise<{ ok: true; token: string } | { ok: false; status: number }> {
-  const r = await fetch(`${origin}/pair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name }) })
+  const r = await request('pair', `${origin}/pair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name }) })
   if (r.status !== 200) return { ok: false, status: r.status }
   return { ok: true, token: (await r.json()).token }
 }
@@ -38,18 +43,18 @@ export async function pair(origin: string, code: string, name: string): Promise<
 export class Bot {
   constructor(public s: Session) {}
   private headers(extra: Record<string, string> = {}) { return { authorization: `Bearer ${this.s.token}`, 'content-type': 'application/json', ...extra } }
-  async get<T>(path: string): Promise<T> { const r = await fetch(this.s.origin + path, { headers: this.headers() }); if (r.status === 401) throw new Error('unpaired'); return r.json() }
+  async get<T>(path: string): Promise<T> { const r = await request('get', this.s.origin + path, { headers: this.headers() }); if (r.status === 401) throw new Error('unpaired'); return r.json() }
   async send<T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, body?: unknown, raw = false): Promise<T> {
-    const r = await fetch(this.s.origin + path, { method, headers: this.headers(raw ? { 'content-type': 'text/plain' } : {}), body: body === undefined ? undefined : raw ? String(body) : JSON.stringify(body) })
+    const r = await request('send', this.s.origin + path, { method, headers: this.headers(raw ? { 'content-type': 'text/plain' } : {}), body: body === undefined ? undefined : raw ? String(body) : JSON.stringify(body) })
     if (r.status === 401) throw new Error('unpaired')
     if (r.status >= 500) throw new Error(`HTTP ${r.status}`)
     const t = await r.text(); try { return JSON.parse(t) } catch { return t as unknown as T }
   }
-  async text(path: string): Promise<string> { const r = await fetch(this.s.origin + path, { headers: this.headers() }); if (r.status === 401) throw new Error('unpaired'); return r.text() }
+  async text(path: string): Promise<string> { const r = await request('text', this.s.origin + path, { headers: this.headers() }); if (r.status === 401) throw new Error('unpaired'); return r.text() }
 
   /** One DSH gateway call through the bot. */
   async rpc<T = unknown>(method: string, args: Record<string, unknown>): Promise<T> {
-    const r = await fetch(`${this.s.origin}/api/${method}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ type: 'client-request', rpcId: uuid(), method, payload: { args } }) })
+    const r = await request('rpc', `${this.s.origin}/api/${method}`, { method: 'POST', headers: this.headers(), body: JSON.stringify({ type: 'client-request', rpcId: uuid(), method, payload: { args } }) })
     if (r.status === 401) throw new Error('unpaired')
     if (r.status === 404) { const e = new Error('capability-unavailable') as Error & { code: string }; e.code = 'capability-unavailable'; throw e }
     const env = await r.json()
@@ -67,14 +72,14 @@ export class Bot {
     const tz = deviceTimeZone()
     const body: { text: string; timeZone?: string; cardId?: string } = tz ? { text, timeZone: tz } : { text }
     if (cardId) body.cardId = cardId
-    const r = await fetch(`${this.s.origin}/threads/${encodeURIComponent(sessionId)}/messages`, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) })
+    const r = await request('prompt', `${this.s.origin}/threads/${encodeURIComponent(sessionId)}/messages`, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) })
     if (r.status === 401) throw new Error('unpaired')
     if (r.status !== 200) throw new Error(`HTTP ${r.status}`)
     return r.json()
   }
 
   /** POST with no body; the status. */
-  async cancel(path: string): Promise<number> { return (await fetch(this.s.origin + path, { method: 'POST', headers: { authorization: `Bearer ${this.s.token}` } })).status }
+  async cancel(path: string): Promise<number> { return (await request('cancel', this.s.origin + path, { method: 'POST', headers: { authorization: `Bearer ${this.s.token}` } })).status }
 
   async ticket(): Promise<string> { return (await this.send<{ ticket: string }>('POST', '/ws-ticket')).ticket }
   wsUrl(path: string, ticket: string) { return `${this.s.origin.replace(/^http/, 'ws')}${path}?ticket=${ticket}` }

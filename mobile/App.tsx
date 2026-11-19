@@ -20,11 +20,13 @@ import { AdultsOnlyScreen, AgeScreen, AiProviderPage, ConsentScreen, InterfacePa
 import { openInterface } from './src/cards.tsx'
 import { notificationTarget, notificationUrl, openLink, pairLink } from './src/native.ts'
 import { isSample, needsAge, needsConsent, openThread, showToast, underAge } from './src/state.ts'
+import { DiagnosticsPage, diagnosticTitle } from './src/diagnostics-page.tsx'
+import { diagnosticLog, loadDiagnostics, runDiagnostics } from './src/diagnostics.ts'
 
 type Route =
   | { name: 'chat' } | { name: 'menu' } | { name: 'identity' } | { name: 'upcoming' } | { name: 'goals' } | { name: 'activity' } | { name: 'devices' } | { name: 'settings' }
   | { name: 'library' } | { name: 'file'; path: string } | { name: 'ideas' } | { name: 'connectors' } | { name: 'connector-add' } | { name: 'memory' } | { name: 'usage' }
-  | { name: 'discover' }
+  | { name: 'discover' } | { name: 'diagnostics' }
   | { name: 'profile'; tab?: ProfileTab; focus?: string } | { name: 'memory-edit'; item: MemoryItem } | { name: 'connector'; id: string }
   | { name: 'report'; target: ReportTarget } | { name: 'interfaces' } | { name: 'interface'; id: string } | { name: 'ai-provider' } // [compliance]
 // routes added by other features go here (extend `Route` and `page()` below)
@@ -33,12 +35,13 @@ type Tab = 'chat' | 'discover'
 const TAB_BAR = 49
 
 function App() {
+  runDiagnostics()
   const nav = createNavStack<Route>([{ name: 'chat' }])
   const discoverNav = createNavStack<Route>([{ name: 'discover' }])
   const tab = signal<Tab>('chat')
   const insets = safeAreaInsets()
   // First run: welcome → Start (a hosted computer: sign in, wait) or own computer (address + code).
-  type Setup = { step: 'welcome' } | { step: 'connect' } | { step: 'sign-in' } | { step: 'preparing'; account: string }
+  type Setup = { step: 'welcome' } | { step: 'connect' } | { step: 'diagnostics' } | { step: 'sign-in' } | { step: 'preparing'; account: string }
   // A native host (the iOS/Android shell) may hand over a pairing link: straight to the connect screen.
   let initial: { origin?: string; code?: string } | undefined
   try { const p = (host.params as { pairUrl?: string } | undefined)?.pairUrl; if (p) { const parsed = parseAddress(p); if (parsed) initial = parsed } } catch {}
@@ -54,19 +57,27 @@ function App() {
   // a pairing link opened while the app runs (the shell's `pair` event): the connect screen, filled in (pages.tsx)
   effect(() => { const p = parseAddress(pairLink() ?? ''); if (!p) return; initial = p; if (step() !== 'connect') setup.set({ step: 'connect' }) })
   const SetupFlow = () => (
+    <If when={step() === 'diagnostics'} else={
     <If when={step() === 'connect'} else={
       <If when={step() === 'sign-in'} else={
-        <If when={step() === 'preparing'} else={<WelcomeScreen onStart={() => setup.set({ step: hosted() ? 'sign-in' : 'connect' })} onOwn={() => setup.set({ step: 'connect' })} />}>
+        <If when={step() === 'preparing'} else={<WelcomeScreen onDiagnostics={() => setup.set({ step: 'diagnostics' })} onStart={() => setup.set({ step: hosted() ? 'sign-in' : 'connect' })} onOwn={() => setup.set({ step: 'connect' })} />}>
           {() => <PreparingScreen hostUrl={hosted()!} accountToken={(setup() as { account: string }).account} onReady={(s) => { connect(s, { hostedBy: hosted() }).catch(() => {}) }} onBack={() => setup.set({ step: 'connect' })} />}
         </If>
       }>
         {() => <SignInScreen hostUrl={hosted()!} onSignedIn={(account) => setup.set({ step: 'preparing', account })} />}
       </If>
     }>
-      {() => <ConnectScreen initial={initial} />}
+      {() => <ConnectScreen initial={initial} onDiagnostics={() => setup.set({ step: 'diagnostics' })} />}
     </If>
+    }><DiagnosticsPage onBack={() => setup.set({ step: 'welcome' })} /></If>
   )
-  boot().catch(() => {}) // boot() loads prefs first
+  loadDiagnostics().then(() => boot()).catch(() => {}) // boot() loads prefs first
+
+  effect(() => {
+    // Only the fixed route name is passed, never route arguments or view text.
+    const screen = session() ? (tab() === 'chat' ? nav : discoverNav).routes().at(-1)?.name : step()
+    diagnosticLog.record('ui.navigation', { screen })
+  })
 
   // Headless tests have no system tab bar: the embedding host can pick a tab (`app.host.send('tab', 1)`).
   try { host.on('tab', (i) => pick(Number(i))) } catch {}
@@ -126,7 +137,8 @@ function App() {
       case 'interfaces': return <NavPage headerClass={HEADER} title={str('interfaces')} headerLargeTitle={largeTitles} class={grouped}><InterfacesPage onOpen={(id) => nav.push({ name: 'interface', id })} /></NavPage>
       case 'interface': return <NavPage headerClass={HEADER} title="" class={grouped}><InterfacePage id={route.id} onOpen={(i) => openInterface({ moduleId: i.id, title: i.title })} onReport={(target) => nav.push({ name: 'report', target })} /></NavPage>
       case 'ai-provider': return <NavPage headerClass={HEADER} title={str('aiProvider')} class={grouped}><AiProviderPage onStopped={() => nav.popToRoot()} /></NavPage>
-      case 'settings': return <NavPage headerClass={HEADER} title={str('settings')} headerLargeTitle={largeTitles} class={grouped}><SettingsPage onAiProvider={() => nav.push({ name: 'ai-provider' })} onIdentity={() => nav.push({ name: 'identity' })} onMemory={() => nav.push({ name: 'memory' })} onConnectors={() => nav.push({ name: 'connectors' })} onUsage={() => nav.push({ name: 'usage' })} onDevices={() => nav.push({ name: 'devices' })} onActivity={() => nav.push({ name: 'activity' })} /></NavPage>
+      case 'diagnostics': return <NavPage headerClass={HEADER} title={diagnosticTitle()} class={grouped}><DiagnosticsPage /></NavPage>
+      case 'settings': return <NavPage headerClass={HEADER} title={str('settings')} headerLargeTitle={largeTitles} class={grouped}><SettingsPage onDiagnostics={() => nav.push({ name: 'diagnostics' })} onAiProvider={() => nav.push({ name: 'ai-provider' })} onIdentity={() => nav.push({ name: 'identity' })} onMemory={() => nav.push({ name: 'memory' })} onConnectors={() => nav.push({ name: 'connectors' })} onUsage={() => nav.push({ name: 'usage' })} onDevices={() => nav.push({ name: 'devices' })} onActivity={() => nav.push({ name: 'activity' })} /></NavPage>
       // routes added by other features go here
     }
   }

@@ -1,0 +1,33 @@
+name: TestFlight status
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read:
+    if: github.repository == 'jt-wang/boop' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: testflight
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare Apple API client
+        run: |
+          python3 -m venv "$RUNNER_TEMP/asc-client"
+          "$RUNNER_TEMP/asc-client/bin/pip" install PyJWT==2.10.1 cryptography==46.0.3
+      - name: Read build numbers and TestFlight availability
+        run: '"$RUNNER_TEMP/asc-client/bin/python" -B scripts/testflight-status.py'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: boop-testflight-status
+          path: ${{ runner.temp }}/boop-testflight-status.json
+          retention-days: 7

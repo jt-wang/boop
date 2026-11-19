@@ -249,6 +249,27 @@ class ShellBoundaryTests(unittest.TestCase):
         self.assertTrue(export[export.index("-exportOptionsPlist") + 1].endswith("options.plist"))
 
 
+class StatusTests(unittest.TestCase):
+    def test_next_build_uses_all_pages_and_does_not_export_unselected_app_fields(self):
+        spec = importlib.util.spec_from_file_location("testflight_status", ROOT / "scripts/testflight-status.py")
+        status = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(status)
+        pages = iter([
+            {"data": [{"id": "app", "attributes": {"name": "Boop", "private": "CANARY"}}]},
+            {"data": [{"id": "new", "attributes": {"version": "4", "processingState": "VALID"},
+                       "relationships": {"preReleaseVersion": {"data": {"id": "version"}}}}],
+             "included": [{"id": "version", "attributes": {"version": "0.1.4"}}],
+             "links": {"next": "https://api.appstoreconnect.apple.com/next"}},
+            {"data": [{"id": "old", "attributes": {"version": "19", "processingState": "INVALID"}}]},
+            {"data": [{"id": "group", "attributes": {"name": "Internal", "isInternalGroup": True, "private": "CANARY"}}]},
+        ])
+        result = status.read_status(lambda path: next(pages))
+        self.assertEqual(result["nextBuild"], 20)
+        self.assertEqual(result["builds"][0]["version"], "0.1.4")
+        self.assertTrue(result["groups"][0]["isInternalGroup"])
+        self.assertNotIn("CANARY", json.dumps(result))
+
+
 class DependencyTests(unittest.TestCase):
     def test_download_keeps_only_the_exact_pinned_bytes(self):
         spec = importlib.util.spec_from_file_location("testflight_deps", ROOT / "scripts/testflight-deps.py")
