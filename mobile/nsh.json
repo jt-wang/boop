@@ -2,7 +2,7 @@
   "name": "Boop",
   "id": "io.jingtao.boop",
   "version": "0.1.4",
-  "build": 4,
+  "build": 5,
   "icon": "assets/icon.png",
   "appearance": "system",
   "theme": {
