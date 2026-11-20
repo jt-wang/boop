@@ -13,7 +13,7 @@
 // the first row and wherever 15 minutes pass; the gap between rows depends on
 // who spoke before.
 import { formatDate, formatTime, labelSeparator, type Lang } from './locale.ts'
-import { Clipboard, computed, createMotion, effect, Image, Keyboard, keyboardFrame, List, safeAreaInsets, Scroll, signal, Text, View, type InputRef, type ListRef } from 'nsh'
+import { Clipboard, computed, createMotion, effect, Image, Keyboard, keyboardFrame, List, platform, safeAreaInsets, Scroll, signal, Text, View, type InputRef, type ListRef } from 'nsh'
 import { Input, TextView } from 'nsh/base'
 import { BackHandler } from 'nsh/mobile'
 import { connectorOf, serviceName, toolWord, type CardRow, type FileRow, type ModuleRow, type Row } from './fold.ts'
@@ -172,7 +172,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
     if (!(await trySend(text))) draft.set(text)
   }
   // Android's back button closes an open step list first; before, it left the app (Android pass, 2026-11-02)
-  BackHandler.on('press', () => { if (!openActivities().size) return false; openActivities.set(new Set()); return true })
+  if (platform.os === 'android') BackHandler.on('press', () => { if (!openActivities().size) return false; openActivities.set(new Set()); return true })
   const toggleActivity = (id: string) => { openActivities.update((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n }); if (atBottom()) setTimeout(() => list?.scrollToEnd({ animated: true }), 60) }
   const copy = async (text: string) => { try { await Clipboard.writeText(text); copiedToast(str('copied')) } catch {} }
   const refresh = async () => { const id = sessionId(); if (!id) return; refreshing.set(true); try { await follow(id) } catch {} finally { refreshing.set(false) } }

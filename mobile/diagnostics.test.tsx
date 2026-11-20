@@ -9,6 +9,56 @@ const enter = async (app: Awaited<ReturnType<typeof open>>) => {
   await app.waitFor('id:diagnostics-enabled')
 }
 
+for (const platform of ['ios', 'android'] as const) {
+  for (const upgrade of [false, true]) test(`${platform}: ${upgrade ? 'unused upgrade' : 'fresh install'} needs both master and category opt-in`, async () => {
+    let samples = 0, output = ''
+    const app = await open('./App.tsx', { platform, storage: upgrade ? { lang: 'en' } : {}, clock: {}, host: { handlers: {
+      'diagnostics.sample': () => { samples++; return { batteryLevel: 0.5 } },
+      'diagnostics.share': (data: { text: string }) => { output = data.text; return {} },
+    } } })
+    await enter(app)
+    for (const c of ['interaction', 'performance', 'network', 'resources']) {
+      expect(app.enabled(`id:diagnostics-${c}`)).toBe(false)
+      await expect(() => app.press(`id:diagnostics-${c}`)).rejects.toThrow('disabled')
+    }
+    await app.clock!.fastForward(120000)
+    expect(app.storage()[key]).toBe(undefined)
+    await app.press('id:diagnostics-enabled')
+    await app.press('id:diagnostics-retain')
+    await app.clock!.fastForward(120000)
+    const saved = JSON.parse(app.storage()[key])
+    expect(saved.categories).toEqual({ interaction: false, performance: false, network: false, resources: false })
+    expect(saved.events).toEqual([])
+    expect(samples).toBe(0)
+    for (const c of ['interaction', 'performance', 'network', 'resources']) await app.press(`id:diagnostics-export-${c}`)
+    app.onDialog(() => 'Share')
+    await app.press('id:diagnostics-share')
+    await app.waitUntil(() => output !== '')
+    expect(JSON.parse(output).events).toEqual([])
+    expect(app.requests().length).toBe(0)
+  })
+
+  test(`${platform}: upgrade keeps the old journal without resuming capture`, async () => {
+    const journal = JSON.stringify({ categories: { interaction: true, performance: false, network: true, resources: true }, events: [{ at: 1000, category: 'interaction', event: 'ui.navigation', fields: { screen: 'chat' } }] })
+    let samples = 0
+    const app = await open('./App.tsx', { platform, storage: { [key]: journal }, clock: {}, host: { handlers: {
+      'diagnostics.sample': () => { samples++; return {} },
+    } } })
+    await enter(app)
+    expect(app.shows('text:Off')).toBe(true)
+    for (const c of ['interaction', 'performance', 'network', 'resources']) expect(app.enabled(`id:diagnostics-${c}`)).toBe(false)
+    await app.clock!.fastForward(120000)
+    expect(app.storage()[key]).toBe(journal)
+    await app.press('id:diagnostics-enabled')
+    await app.clock!.fastForward(120000)
+    const restarted = JSON.parse(app.storage()[key])
+    expect(restarted.categories).toEqual({ interaction: false, performance: false, network: false, resources: false })
+    expect(restarted.events).toEqual(JSON.parse(journal).events)
+    expect(samples).toBe(0)
+    expect(app.requests().length).toBe(0)
+  })
+}
+
 test('Bot operations retain their responses but export no credentials, content, paths or raw errors', async () => {
   const bait = { token: 'BAIT_TOKEN_AUTH', query: 'BAIT_QUERY', fragment: 'BAIT_FRAGMENT', path: '/Users/BAIT_USER/private', prompt: 'BAIT_PROMPT', reply: 'BAIT_REPLY', terminal: 'BAIT_TERMINAL', input: 'BAIT_KEYBOARD', error: 'BAIT_ERROR', session: 'BAIT_SESSION', name: 'BAIT_NAME' }
   const all = { interaction: true, performance: true, network: true, resources: true }
@@ -52,12 +102,14 @@ test('diagnostics opt-in, restart retention, clear and explicit export work with
   expect(app.storage()[key]).toBe(undefined)
   expect(app.requests().length).toBe(0)
   await app.press('id:diagnostics-enabled')
+  await app.press('id:diagnostics-interaction')
   await app.press('id:diagnostics-retain')
   await app.press('id:diagnostics-back')
   await enter(app)
   await app.press('id:diagnostics-enabled')
   const saved = app.storage()
   expect(JSON.parse(saved[key]).events.some((e: { event: string }) => e.event === 'ui.navigation')).toBe(true)
+  await app.press('id:diagnostics-export-interaction')
   await app.press('id:diagnostics-share') // Cancel is the default; no host export.
   await app.waitFor('text:Review & share…')
   expect(exports.length).toBe(0)
@@ -76,6 +128,7 @@ test('diagnostics opt-in, restart retention, clear and explicit export work with
   restored.clock!.setSystemTime(first.range.to)
   await enter(restored)
   expect(restored.shows('text:Off')).toBe(true)
+  await restored.press('id:diagnostics-export-interaction')
   restored.onDialog(() => 'Share')
   await restored.press('id:diagnostics-share')
   await restored.waitFor('text:Review & share…')
@@ -100,6 +153,8 @@ test('failed real pairing operation exports only metadata, with category selecti
   })
   await enter(app)
   await app.press('id:diagnostics-enabled')
+  await app.press('id:diagnostics-network')
+  await app.press('id:diagnostics-interaction')
   await app.press('id:diagnostics-back')
   await app.press('id:own-computer')
   if (app.shows('id:connect-server')) await app.press('id:connect-server')
@@ -109,7 +164,7 @@ test('failed real pairing operation exports only metadata, with category selecti
   await app.waitFor('id:connect-error')
   expect(output).toBe('')
   await enter(app)
-  await app.press('id:diagnostics-export-interaction')
+  await app.press('id:diagnostics-export-network')
   app.onDialog(() => 'Share')
   await app.press('id:diagnostics-share')
   await app.waitFor('text:Review & share…')
@@ -117,7 +172,7 @@ test('failed real pairing operation exports only metadata, with category selecti
   expect(report.events.length).toBe(1)
   expect(report.events[0].fields.operation).toBe('pair')
   expect(report.events[0].fields.status).toBe(403)
-  expect(report.categories).toEqual(['performance', 'network', 'resources'])
+  expect(report.categories).toEqual(['network'])
   for (const bait of ['canary-host', 'CANARY_QUERY', 'CANARY_FRAGMENT', '983271', 'CANARY_ERROR_BODY']) expect(output.includes(bait)).toBe(false)
   expect(requests).toBe(1)
   expect(app.requests().length).toBe(1)
@@ -131,13 +186,19 @@ test('performance and resource sampling stop in background and when disabled', a
   } } })
   await enter(app)
   await app.press('id:diagnostics-enabled')
+  await app.press('id:diagnostics-performance')
+  await app.press('id:diagnostics-resources')
   await app.clock!.fastForward(60000)
+  await app.wait(100) // Deliver the async native sample before changing its capture generation.
   await app.host.send('appState', { state: 'background' })
   await app.clock!.fastForward(180000)
   await app.host.send('appState', { state: 'foreground' })
   await app.clock!.fastForward(60000)
+  await app.wait(100)
   await app.press('id:diagnostics-enabled')
   await app.clock!.fastForward(180000)
+  await app.press('id:diagnostics-export-performance')
+  await app.press('id:diagnostics-export-resources')
   app.onDialog(() => 'Share')
   await app.press('id:diagnostics-share')
   await app.waitFor('text:Review & share…')
@@ -159,8 +220,8 @@ test('failed native persistence disables collection and clear failures remain vi
     'diagnostics.sample': () => { samples++; return {} },
   } } })
   await enter(app)
-  await app.press('id:diagnostics-retain')
   await app.press('id:diagnostics-enabled')
+  await app.press('id:diagnostics-retain')
   await app.waitFor('text:Off')
   await app.clock!.fastForward(120000)
   expect(samples).toBe(0)

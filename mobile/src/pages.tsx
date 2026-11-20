@@ -20,7 +20,7 @@ import { pairLink } from './native.ts'
 import { canScan, isInvite, pairEmoji, pairInvite, pocketPath, refreshPath, scanInvite, tailcatOnly, viaPocket } from './pocket.ts'
 import { ago } from './library.tsx'
 import { Avatar, Btn, Card, Cell, Empty, Group, Hint, Page, pageClass, Toggle, TopProbe } from './ui.tsx'
-import { diagnosticTitle } from './diagnostics-page.tsx'
+import { diagnosticStatus, diagnosticTitle } from './diagnostics-page.tsx'
 
 const fmt = (iso: string | null) => (iso && formatDateTime(iso, lang())) || '—'
 // every kind the bot logs, in words; one it adds later shows no word rather than its id
@@ -476,7 +476,7 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
         {LANGS.map((l) => <Cell title={LANG_NAMES[l]} right={lang() === l ? <Check /> : undefined} onPress={() => setLang(l)} testID={`lang-${l}`} />)}
       </Group>
       {/* settings groups added by other features go here */}
-      <Group><Cell title={diagnosticTitle()} chevron onPress={props.onDiagnostics} testID="diagnostics-open" /></Group>
+      <Group><Cell title={diagnosticTitle()} value={diagnosticStatus()} chevron onPress={props.onDiagnostics} testID="diagnostics-open" /></Group>
       <AboutGroup onAiProvider={() => props.onAiProvider?.()} />
     </Page>
   )

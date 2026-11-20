@@ -22,7 +22,7 @@ export interface DiagnosticStorage { getItem(key: string): Promise<string | null
 export const MAX_EVENTS = 512
 export const MAX_BYTES = 256 * 1024
 const KEY = 'boop.diagnostics.v1' // gitleaks:allow -- local storage name, not a credential
-const allCategories = () => Object.fromEntries(categories.map(c => [c, true])) as Record<Category, boolean>
+export const noCategories = () => Object.fromEntries(categories.map(c => [c, false])) as Record<Category, boolean>
 
 function project(event: string, input: Record<string, unknown>, at: number): DiagnosticEvent | null {
   const spec = Object.hasOwn(schema, event) ? schema[event] : null
@@ -40,7 +40,7 @@ function project(event: string, input: Record<string, unknown>, at: number): Dia
 export class DiagnosticLog {
   enabled = false
   retain = false
-  selected = allCategories()
+  selected = noCategories()
   error: 'storage' | 'invalid-journal' | null = null
   private events: DiagnosticEvent[] = []
   private bytes = 2

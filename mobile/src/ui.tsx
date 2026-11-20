@@ -293,10 +293,10 @@ export function RowItem(props: { title: string; subtitle?: string; right?: JSX.E
 }
 
 /** An iOS-style switch (51×31, green when on). */
-export function Toggle(props: { checked: boolean; onChange: (v: boolean) => void; label?: string; testID?: string }) {
+export function Toggle(props: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; label?: string; testID?: string }) {
   return (
-    <Switch checked={props.checked} onChange={({ checked }) => props.onChange(checked)} accessibilityLabel={props.label} testID={props.testID}
-      trackClass="w-[51px] h-[31px] rounded-full bg-input checked:bg-primary justify-center px-[2px]"
+    <Switch checked={props.checked} disabled={props.disabled} onChange={({ checked }) => props.onChange(checked)} accessibilityLabel={props.label} testID={props.testID}
+      trackClass="w-[51px] h-[31px] rounded-full bg-input checked:bg-primary disabled:opacity-40 justify-center px-[2px]"
       thumbClass="w-[27px] h-[27px] rounded-full bg-white shadow-sm checked:translate-x-5" style={{ transitionProperty: 'all', transitionDuration: 200 }} />
   )
 }

@@ -2,16 +2,17 @@ import { host, platform, signal, Text, View } from 'nsh'
 import { AlertDialog } from 'nsh/base'
 import { lang, str } from './state.ts'
 import { Cell, Group, Page, pageClass, Toggle } from './ui.tsx'
-import { categories, type Category } from './diagnostic-log.ts'
+import { categories, noCategories, type Category } from './diagnostic-log.ts'
 import { clearDiagnostics, configureDiagnostics, diagnosticError, diagnosticLog, diagnosticState, exportDiagnostics, flushDiagnostics } from './diagnostics.ts'
 import { DIAGNOSTIC_WORDS } from './locales/diagnostics.ts'
 
 export const diagnosticTitle = () => DIAGNOSTIC_WORDS[lang()].title
+export const diagnosticStatus = () => { diagnosticState(); return DIAGNOSTIC_WORDS[lang()][diagnosticLog.enabled ? 'recording' : 'off'] }
 export function DiagnosticsPage(props: { onBack?: () => void }) {
   const words = () => DIAGNOSTIC_WORDS[lang()]
   const current = () => { diagnosticState(); return diagnosticLog }
   const minutes = signal(15)
-  const selected = signal<Record<Category, boolean>>({ ...diagnosticLog.selected })
+  const selected = signal<Record<Category, boolean>>(noCategories())
   const status = signal('')
   const busy = signal(false)
   const share = async () => {
@@ -34,11 +35,11 @@ export function DiagnosticsPage(props: { onBack?: () => void }) {
   return <Page page="DiagnosticsPage" class={`${pageClass} ${props.onBack ? 'pt-[env(safe-area-inset-top)]' : ''}`}>
     {props.onBack ? <Group><Cell title={str('back')} onPress={props.onBack} testID="diagnostics-back" /></Group> : null}
     <Group header={diagnosticTitle()} footer={words().privacy}>
-      <Cell title={words().record} value={current().enabled ? words().recording : words().off} right={<Toggle label={words().record} testID="diagnostics-enabled" checked={current().enabled} onChange={v => { void configureDiagnostics(v) }} />} />
-      <Cell title={words().retain} right={<Toggle label={words().retain} testID="diagnostics-retain" checked={current().retain} onChange={v => { void configureDiagnostics(current().enabled, current().selected, v) }} />} />
+      <Cell title={words().record} value={current().enabled ? words().recording : words().off} right={<Toggle label={words().record} testID="diagnostics-enabled" checked={current().enabled} onChange={v => { void configureDiagnostics(v, v ? noCategories() : current().selected) }} />} />
+      <Cell title={words().retain} right={<Toggle label={words().retain} testID="diagnostics-retain" disabled={!current().enabled} checked={current().enabled && current().retain} onChange={v => { void configureDiagnostics(current().enabled, current().selected, v) }} />} />
     </Group>
     <Group header={words().capture} footer={words().bounds}>
-      {categories.map(c => <Cell title={words()[c]} right={<Toggle label={words()[c]} testID={`diagnostics-${c}`} checked={current().selected[c]} onChange={v => { void configureDiagnostics(current().enabled, { ...current().selected, [c]: v }) }} />} />)}
+      {categories.map(c => <Cell title={words()[c]} right={<Toggle label={words()[c]} testID={`diagnostics-${c}`} disabled={!current().enabled} checked={current().enabled && current().selected[c]} onChange={v => { void configureDiagnostics(current().enabled, { ...current().selected, [c]: v }) }} />} />)}
     </Group>
     <Group footer={words().measures}>
       <Cell title={words().clear} destructive onPress={() => { void clearDiagnostics().then(() => status.set(diagnosticLog.error ? words().clearFailed : words().cleared)) }} testID="diagnostics-clear" />

@@ -16,8 +16,15 @@ export interface TailPocketInvite2 { v: 2; name?: string; exp: number; pk?: stri
 /** Store like a password: it holds the phone's private key. `pk` and `via` (v0.3) arrive with `sync()` for links paired before v0.3;
  *  a link paired over a relay may have no `address`. */
 export interface TailPocketHostLink { address?: string; port?: number; name: string; payload?: string | null; key: string; pk?: string; via?: TailPocketRoute[] }
-/** `direct` or `relay` over Tailcat, `relay` over your tailpocket-relay (`relay` is its host name), or `lan`. */
-export interface TailPocketPath { route: "direct" | "relay" | "lan" | string; relay: string }
+/**
+ * `direct` or `relay` over Tailcat, `relay` over your tailpocket-relay (`relay` is its host name), or `lan`.
+ * Since v0.3.1 `kind` tells them apart: `lan`, `direct` (Tailcat peer to peer), `derp` (Tailcat through a DERP relay:
+ * `derpRegion`, and `derpCode` and `derpHost` when known) or `relay` (tailpocket-relay: `relayHost`).
+ */
+export interface TailPocketPath {
+  route: "direct" | "relay" | "lan" | string; relay: string;
+  kind?: "lan" | "direct" | "derp" | "relay" | string; derpRegion?: number; derpCode?: string; derpHost?: string; relayHost?: string;
+}
 export interface TailPocketConnection {
   /** `http://127.0.0.1:<port>/_tailpocket/<token>`: requests under it reach the computer's forwarded port, without the prefix.
    *  Build every URL by appending to it (`${baseUrl}/api/info`); a URL resolved against "/" (`new URL("/api/info", baseUrl)`)

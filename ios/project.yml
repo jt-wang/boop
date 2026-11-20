@@ -16,10 +16,10 @@ settings:
   base:
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.9"
-    MARKETING_VERSION: 0.1.6
+    MARKETING_VERSION: 0.1.7
     DEEPSEEK_BOT_HOST_URL: ""   # the host for hosted accounts (docs/hosting.md); empty = self-hosting only
     DEEPSEEK_BOT_LINK_DOMAIN: "deepseek-bot.example"   # [compliance] the host's domain for universal links (applinks:); set it with DEEPSEEK_BOT_HOST_URL
-    CURRENT_PROJECT_VERSION: 7
+    CURRENT_PROJECT_VERSION: 8
     IPHONEOS_DEPLOYMENT_TARGET: "15.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SWIFT_STRICT_CONCURRENCY: minimal

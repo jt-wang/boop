@@ -47,6 +47,21 @@ final class TryItTests: XCTestCase {
         named("Settings").tap()
         XCTAssertTrue(id("demo-leave").waitForExistence(timeout: 10), "Settings on the sample")
         shot("settings")
+        for _ in 0..<6 {
+            if id("diagnostics-open").isHittable { break }
+            app.swipeUp()
+        }
+        Thread.sleep(forTimeInterval: 2) // Quiescence is disabled; let the scroll stop before reading/tapping rows.
+        XCTAssertTrue(id("diagnostics-open").exists)
+        XCTAssertTrue(id("diagnostics-open").label.contains("Off"))
+        XCTAssertFalse(id("diagnostics-enabled").exists)
+        XCTAssertFalse(id("diagnostics-share").exists)
+        shot("settings-diagnostics-entry")
+        for _ in 0..<6 {
+            if id("demo-leave").isHittable { break }
+            app.swipeDown()
+        }
+        Thread.sleep(forTimeInterval: 2)
         id("demo-leave").tap()
         XCTAssertTrue(id("try-it").waitForExistence(timeout: 10), "back at the connect screen")
     }
@@ -67,8 +82,19 @@ final class TryItTests: XCTestCase {
         XCTAssertTrue(id("diagnostics-open").waitForExistence(timeout: 15))
         id("diagnostics-open").tap()
         XCTAssertTrue(named("Off").waitForExistence(timeout: 10))
+        for category in ["interaction", "performance", "network", "resources"] {
+            XCTAssertFalse(id("diagnostics-\(category)").isEnabled)
+            XCTAssertEqual(id("diagnostics-\(category)").value as? String, "not checked")
+        }
         shot("diagnostics-off")
         id("diagnostics-enabled").tap()
+        for category in ["interaction", "performance", "network", "resources"] {
+            XCTAssertTrue(id("diagnostics-\(category)").isEnabled)
+            XCTAssertEqual(id("diagnostics-\(category)").value as? String, "not checked")
+        }
+        shot("diagnostics-no-categories")
+        id("diagnostics-interaction").tap()
+        id("diagnostics-resources").tap()
         id("diagnostics-retain").tap()
         XCTAssertTrue(named("Recording").exists)
         shot("diagnostics-on")
@@ -79,6 +105,15 @@ final class TryItTests: XCTestCase {
         XCTAssertTrue(id("diagnostics-open").waitForExistence(timeout: 15))
         id("diagnostics-open").tap()
         XCTAssertTrue(named("Off").waitForExistence(timeout: 10))
+        for category in ["interaction", "performance", "network", "resources"] {
+            XCTAssertFalse(id("diagnostics-\(category)").isEnabled)
+            XCTAssertEqual(id("diagnostics-\(category)").value as? String, "not checked")
+        }
+        shot("diagnostics-restored-off")
+        app.swipeUp()
+        Thread.sleep(forTimeInterval: 2)
+        id("diagnostics-export-interaction").tap()
+        id("diagnostics-export-resources").tap()
         for _ in 0..<5 {
             if id("diagnostics-share").isHittable { break }
             app.swipeUp()

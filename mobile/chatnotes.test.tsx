@@ -113,7 +113,7 @@ test('the same words twice in a row are one line, and the count agrees', async (
 
 // Android pass of 2026-11-02: with a turn's steps open, the back button left the app. Back closes the open steps first.
 test('the back button closes an open step list before anything else', async () => {
-  const app = await open('./chat.fixture.tsx', { storage: { lang: 'en' }, network: net })
+  const app = await open('./chat.fixture.tsx', { platform: 'android', storage: { lang: 'en' }, network: net })
   await app.host.send('thread', [snapshot(turn(false))])
   await app.press('text:/Did 2 things/')
   await app.waitFor('id:step-s3-done')

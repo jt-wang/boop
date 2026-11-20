@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.7
+
+- TailPocket v0.3.1 on every platform. Removing a paired phone closes its open connections immediately, including when it was the last phone. Helper shutdown is bounded; phones can move to a better connection without interrupting existing requests.
+- Settings shows only the diagnostics entry and its current state. Recording and explicit export stay on the diagnostics subpage. Recording and every category default to off; turning recording on still requires selecting each category. Disabled categories appear off and cannot be selected. Existing retained logs are preserved, and recording does not resume after restart or upgrade.
+- Diagnostics remain local, bounded and opt-in, with no conversation content or automatic upload. Exports are named Boop Diagnostics.
+- Fix entering demo mode on the web app: only Android registers the Android back-button handler.
+- Version 0.1.7: phone build 8, Mac build 6. iOS is distributed through TestFlight Internal, not the App Store.
+
 ## v0.1.6
 
 The same app as the v0.1.5 pre-release, which was for internal testing on TailPocket v0.3.0-pre.9, now built on the TailPocket v0.3.0 release.
