@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.1.5-pre.1
+## v0.1.5
 
 - TailPocket v0.3. Phones still connect through Tailcat. With `DEEPSEEK_BOT_RELAY_URL` and `DEEPSEEK_BOT_RELAY_TOKEN` set, they can also connect through your own tailpocket-relay, end-to-end encrypted with Noise, and the QR becomes `tailpocket2:…`. The relay sees only ciphertext.
 - Phones paired before this do not scan again: the new app fetches the computer's key over Tailcat the first time it opens. If the computer is not on v0.3 yet, the phone keeps using Tailcat and shows no error.
