@@ -1,7 +1,7 @@
 {
   "name": "Boop",
   "id": "io.jingtao.boop.mac",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "build": 5,
   "icon": "assets/icon.png",
   "appearance": "system",

@@ -69,7 +69,7 @@ test('local use: pair by QR, reach the bot through the tunnel, nothing on the lo
     // a no pairs nobody, and spends that code: the next one comes up
     const refused = await pairPhone(first, 'n')
     assert.notEqual(refused.status, 0)
-    // connectphone.ErrUnauthorized, which the bridges report as `unauthorized`, right after the no (TailPocket v0.3.0-pre.9)
+    // connectphone.ErrUnauthorized, which the bridges report as `unauthorized`, right after the no (TailPocket v0.3.0)
     assert.match(refused.err, /the host rejected the invite/)
     const qr = await until('a new code after the refusal', 30_000, () => { const all = bot.out.match(/tailpocket2:\S+/g) ?? []; return all.at(-1) !== first ? all.at(-1) : undefined })
     const paired = await pairPhone(qr, 'y')
