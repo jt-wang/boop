@@ -18,14 +18,15 @@ export async function loadSession(): Promise<Session | null> {
 }
 export async function saveSession(s: Session | null) {
   if (!s) { await Storage.removeItem('origin'); await Storage.removeItem('token'); return }
-  await Storage.setItem('origin', s.origin); await Storage.setItem('token', s.token)
+  // a tunnel's address carries its forward token, which stays in memory (src/pocket.ts); the next launch opens a new one
+  await Storage.setItem('origin', s.origin.replace(/\/_tailpocket\/[A-Za-z0-9_-]*(?=\/|$)/, '')); await Storage.setItem('token', s.token)
 }
 
 /** Accepts a bare origin or a whole pairing link; returns {origin, code?}. A TailPocket code stays as it is, for the connect screen. */
 export function parseAddress(input: string): { origin: string; code?: string } | null {
   let s = input.trim()
   if (!s) return null
-  if (/^tailpocket1:/.test(s)) return { origin: s }
+  if (/^tailpocket[12]:/.test(s)) return { origin: s }
   if (!/^https?:\/\//i.test(s)) s = `http://${s}`
   try {
     const u = new URL(s)

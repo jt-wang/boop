@@ -52,6 +52,8 @@ public class PairLinkTest {
 
     @org.junit.Test public void aTailPocketCodeComesThroughAsItIs() {
         org.junit.Assert.assertEquals("tailpocket1:abc_-1", PairLink.pairUrl("deepseekbot://pair?invite=tailpocket1%3Aabc_-1"));
+        org.junit.Assert.assertEquals("tailpocket2:abc_-2", PairLink.pairUrl("deepseekbot://pair?invite=tailpocket2%3Aabc_-2")); // a computer with a relay (TailPocket v0.3)
+        org.junit.Assert.assertNull(PairLink.pairUrl("deepseekbot://pair?invite=tailpocket3%3Aabc"));
         org.junit.Assert.assertNull(PairLink.pairUrl("deepseekbot://pair?invite=http://evil.example"));
     }
 }

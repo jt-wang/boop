@@ -37,7 +37,7 @@ export function App(props: { locate: () => Promise<string> }) {
 
   const sup = createSupervisor({
     locate: async () => (resources = await props.locate()),
-    spawn: (command, args) => process.spawn(command, args, { lines: true }),
+    spawn: (command, args) => process.spawn(command, args, { lines: true, stdin: 'pipe' }), // stdin: the answer to a pairing request
     onChange: (s) => {
       state.set(s)
       if (s.pairUrl !== shownUrl) { shownUrl = s.pairUrl; matrix.set(null); if (s.pairUrl) showQr(s.pairUrl).catch(() => {}) }
@@ -49,5 +49,5 @@ export function App(props: { locate: () => Promise<string> }) {
   // The content is about 800 pt tall at 520 wide (measured 2026-10-27: at 760 the mark and Quit were cut off).
   DesktopWindow.setFrame({ size: { width: 520, height: 860 } })
 
-  return <Window state={state} matrix={matrix} onQuit={() => { sup.stop(); process.exit(0) }} />
+  return <Window state={state} matrix={matrix} onAnswer={(yes) => sup.answer(yes)} onQuit={() => { sup.stop(); process.exit(0) }} />
 }

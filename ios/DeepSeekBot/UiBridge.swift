@@ -86,7 +86,10 @@ final class UiBridge {
     }
 
     /// One trust store per bot origin under Application Support; the root is added on first use (adding it again is harmless).
-    private func trust(for origin: String, rootKey: String) throws -> NshTrust {
+    /// Through TailPocket the origin carries the tunnel's forward token (`/_tailpocket/<token>`), which must stay in memory:
+    /// the store is named after the origin without it.
+    private func trust(for fullOrigin: String, rootKey: String) throws -> NshTrust {
+        let origin = fullOrigin.replacingOccurrences(of: "/_tailpocket/[A-Za-z0-9_-]*", with: "", options: .regularExpression)
         if let t = trusts[origin] { try t.addRoot(rootKey); return t }
         let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let name = origin.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? String($0) : "_" }.joined()

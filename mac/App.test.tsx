@@ -44,6 +44,19 @@ test('a TailPocket code: the phone scans it from inside Boop; the code is too lo
   expect(app.clipboard()).toBe(invite)
 })
 
+test('a phone asks to pair: its name and emoji, and the answer is the person\'s to give here', async () => {
+  const ask = JSON.stringify({ phase: 'running', pairUrl: 'tailpocket2:eNo_synthetic-invite', code: null, port: 3850, failures: 0, restarts: 0, ask: { device: 'Pixel 9', emoji: ['🐶', '🌙', '🍕', '🔑'] } })
+  const app = await open('./window.fixture.tsx', { storage: { state: ask } })
+  await app.waitFor('text:A phone asks to pair')
+  await app.waitFor('text:Pixel 9')
+  await app.waitFor('text:🐶 🌙 🍕 🔑')
+  await app.waitFor('text:Pair it only if your phone shows the same four emoji.')
+  await app.press('id:ask-no')
+  await app.waitUntil(() => app.storage().answer === 'no')
+  await app.press('id:ask-yes')
+  await app.waitUntil(() => app.storage().answer === 'yes')
+})
+
 test('restarting and failed are said in plain words', async () => {
   const a = await open('./window.fixture.tsx', { storage: { state: state('restarting', { restarts: 1 }) } })
   await a.waitFor('text:Your assistant stopped. Starting it again…')

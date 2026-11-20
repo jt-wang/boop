@@ -17,12 +17,12 @@ function Btn(props: { label: string; kind: 'soft' | 'quiet'; onPress: () => void
   )
 }
 
-export function Window(props: { state: Accessor<BotState>; matrix: Accessor<number[][] | null>; onQuit: () => void }) {
+export function Window(props: { state: Accessor<BotState>; matrix: Accessor<number[][] | null>; onAnswer?: (yes: boolean) => void; onQuit: () => void }) {
   const s = props.state
   const copied = signal(false)
   const running = () => s().phase === 'running'
   // A TailPocket code is scanned from inside Boop on the phone and runs to hundreds of characters; a link is scanned by the camera.
-  const invite = () => (s().pairUrl ?? '').startsWith('tailpocket1:')
+  const invite = () => /^tailpocket[12]:/.test(s().pairUrl ?? '')
   const status = () => str(s().phase)
   const copy = async () => {
     const url = s().pairUrl
@@ -41,6 +41,20 @@ export function Window(props: { state: Accessor<BotState>; matrix: Accessor<numb
           <Text testID="status" class="text-foreground text-[15px] text-center">{status()}</Text>
         </View>
 
+        <If when={running() ? s().ask : null}>
+          {(a) => (
+            <View testID="ask" class="items-center gap-3 rounded-[20px] bg-card px-6 py-5 mt-2" style={{ width: QR + 24 }}>
+              <Text class="text-foreground text-[17px] font-semibold text-center">{str('askTitle')}</Text>
+              <Text testID="ask-device" class="text-foreground text-[15px] text-center" style={{ numberOfLines: 1 }}>{a().device}</Text>
+              <Text testID="ask-emoji" class="text-foreground text-[40px] text-center">{a().emoji.join(' ')}</Text>
+              <Text class="text-muted-foreground text-[13px] text-center leading-5">{str('askBody')}</Text>
+              <View class="flex-row gap-2">
+                <Btn kind="soft" testID="ask-yes" label={str('askYes')} onPress={() => props.onAnswer?.(true)} />
+                <Btn kind="quiet" testID="ask-no" label={str('askNo')} onPress={() => props.onAnswer?.(false)} />
+              </View>
+            </View>
+          )}
+        </If>
         <View class="items-center justify-center rounded-[20px] bg-card overflow-hidden mt-2" style={{ width: QR + 24, height: QR + 24 }}>
           <If when={running() ? props.matrix() : null} else={<Text class="text-muted-foreground text-[15px] text-center px-8 leading-5">{s().phase === 'failed' ? str('failed') : str('waiting')}</Text>}>
             {(m) => <View class="bg-white rounded-[12px] overflow-hidden"><QrCanvas testID="qr" matrix={m()} size={QR} /></View>}

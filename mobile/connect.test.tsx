@@ -7,13 +7,15 @@ const invite = 'tailpocket1:synthetic'
 const ORIGIN = 'http://127.0.0.1:3850'
 const TOKEN = 'tok_abcdefghijklmnopqrstuvwxyz0123456789'
 const link = { address: '2001:db8::1', port: 48931, name: 'Studio Mac', payload: '123456', key: 'privkey:synthetic' }
-const tunnel = (port: number) => ({ handle: port, port, baseUrl: `http://127.0.0.1:${port}` })
+// as TailPocket v0.3.0-pre.4 answers connect: the forward lets through only requests under `baseUrl`, which carries its token
+const base = (port: number) => `http://127.0.0.1:${port}/_tailpocket/fwd${port}`
+const tunnel = (port: number) => ({ handle: port, port, baseUrl: base(port), token: `fwd${port}` })
 const body = { device: { id: 'd1', name: 'iPhone' }, assistant: { name: 'Nori' }, mainSessionId: 'main', computer: { name: 'Studio Mac', version: '9.8.7' } }
 const reachable = (port: number) => ({
-  [`GET http://127.0.0.1:${port}/me`]: { body },
-  [`GET http://127.0.0.1:${port}/threads`]: { body: [{ sessionId: 'main', title: '', updatedAt: 1700000000000, running: false, blank: false }] },
-  [`POST http://127.0.0.1:${port}/ws-ticket`]: { body: { ticket: 't' } },
-  [`POST http://127.0.0.1:${port}/pair`]: { body: { token: TOKEN } },
+  [`GET ${base(port)}/me`]: { body },
+  [`GET ${base(port)}/threads`]: { body: [{ sessionId: 'main', title: '', updatedAt: 1700000000000, running: false, blank: false }] },
+  [`POST ${base(port)}/ws-ticket`]: { body: { ticket: 't' } },
+  [`POST ${base(port)}/pair`]: { body: { token: TOKEN } },
 })
 const toConnect = async (app: Awaited<ReturnType<typeof open>>) => { await app.waitFor('id:own-computer'); await app.press('id:own-computer'); await app.waitFor('id:scan') }
 

@@ -63,11 +63,12 @@ curl -s http://127.0.0.1:3850/health      # → {"ok":true,"dsh":true}
 Show the person the QR (the same text is saved in `~/.deepseek-bot/pairing.txt`). Tell them:
 
 1. Open the Boop app on the phone and tap Scan the code.
-2. Name the assistant.
+2. The phone shows four emoji, and the terminal shows the phone's name with four emoji. If they are the same, type `y` and Enter in the terminal (`n` refuses; a new code follows).
+3. Name the assistant.
 
 They pair once; after that it works from any network. A code lasts 15 minutes, and a new one follows while no phone is paired. For another one sooner, press `p` then Enter in the terminal.
 
-To use a phone's browser instead of the app, start with `npm start -- --host 0.0.0.0`. It prints a pairing URL to open on the same Wi-Fi, valid for 12 hours, over plain HTTP (`docs/connection.md`). Then Share → Add to Home Screen.
+Only the phone app connects through TailPocket. `npm start -- --host 0.0.0.0` (or `--no-tailpocket`) is a plain HTTP address on the same Wi-Fi instead, for a person who asks for it: it prints a pairing URL valid for 12 hours, anyone on that network can read the traffic, the token included, and the bot prints a warning saying so (`docs/connection.md`).
 
 ## 6. Keep it running (optional)
 

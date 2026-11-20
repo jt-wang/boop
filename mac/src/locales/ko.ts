@@ -17,4 +17,8 @@ export const ko: MacWords = {
   copied: '복사됨',
   keepOpen: '이 창을 열어 두세요. 닫으면 비서가 멈춰요.',
   quit: '종료',
+  askTitle: '휴대폰이 페어링을 요청합니다',
+  askBody: '휴대폰에 같은 이모지 네 개가 보일 때만 페어링하세요.',
+  askYes: '같아요, 페어링',
+  askNo: '달라요',
 }

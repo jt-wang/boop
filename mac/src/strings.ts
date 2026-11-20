@@ -22,6 +22,10 @@ const en = {
   copied: 'Copied',
   keepOpen: 'Keep this window open. Closing it stops the assistant.',
   quit: 'Quit',
+  askTitle: 'A phone asks to pair',
+  askBody: 'Pair it only if your phone shows the same four emoji.',
+  askYes: 'Same, pair it',
+  askNo: 'Not the same',
 }
 
 export type MacWords = typeof en
@@ -41,6 +45,10 @@ const zh: MacWords = {
   copied: '已复制',
   keepOpen: '让这个窗口开着。关掉它，助理就停了。',
   quit: '退出',
+  askTitle: '有手机请求配对',
+  askBody: '只有手机上显示的是同样四个表情时才配对。',
+  askYes: '一样，配对',
+  askNo: '不一样',
 }
 
 export type Key = keyof typeof en

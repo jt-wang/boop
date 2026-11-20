@@ -1,6 +1,6 @@
 // Test host for the Mac window (mac/App.test.tsx): the window with a state the
 // test puts in storage (`state`, JSON of BotState) and a fixed 21×21 pattern in
-// place of a real QR code. Quit is recorded in storage (`quit` = '1').
+// place of a real QR code. Quit is recorded in storage (`quit` = '1'), an answer to a pairing request as `answer`.
 import { mount, signal, Storage } from 'nsh'
 import { Window } from './src/window.tsx'
 import type { BotState } from './src/supervisor.ts'
@@ -16,7 +16,7 @@ function Fixture() {
     state.set(s)
     if (s.pairUrl) matrix.set(pattern())
   })
-  return <Window state={state} matrix={matrix} onQuit={() => { Storage.setItem('quit', '1') }} />
+  return <Window state={state} matrix={matrix} onAnswer={(yes) => { Storage.setItem('answer', yes ? 'yes' : 'no') }} onQuit={() => { Storage.setItem('quit', '1') }} />
 }
 
 mount(Fixture)

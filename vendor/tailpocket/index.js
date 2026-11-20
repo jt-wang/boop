@@ -71,6 +71,8 @@ export class TailPocketHost extends EventEmitter {
     this.#send({
       v: 1, name: options.name, identity: options.identity ?? '', allowed: this.allowed, forward: options.forward,
       port: options.port, pairingPort: options.pairingPort, derpMapUrl: options.derpMapUrl, identifyPhone: !!options.identifyPhone,
+      keys: options.keys, relays: options.relays, listen: options.listen, tailcatOnly: !!options.tailcatOnly, noLan: !!options.noLan,
+      authorize: typeof options.authorize === 'function', audit: typeof options.audit === 'function',
     });
   }
 
@@ -101,6 +103,18 @@ export class TailPocketHost extends EventEmitter {
         break;
       }
       case 'allowed': this.allowed = e.allowed; this.address = e.address; this.#settle(e.id, null, e.allowed); break;
+      case 'authorize': {
+        let ok = false;
+        try { ok = !!(await this.options.authorize(e.phone, e.route)); } catch {}
+        this.#send({ cmd: 'authorized', id: e.id, ok });
+        break;
+      }
+      case 'audit': {
+        try { this.options.audit?.({ kind: e.kind, phone: e.phone, route: e.route, reason: e.reason, time: new Date(e.time) }); } catch {}
+        break;
+      }
+      case 'status': this.#settle(e.id, null, { address: e.address, routes: e.routes, relays: e.relays }); break;
+      case 'disconnected': this.#settle(e.id, null); break;
       case 'pairing': this.#settle(e.id, null, e); break;
       case 'paired': {
         this.address = e.address;
@@ -110,6 +124,8 @@ export class TailPocketHost extends EventEmitter {
         break;
       }
       case 'pairingClosed': this.#pairings.get(e.id)?.ended(e.reason); this.#pairings.delete(e.id); break;
+      case 'pairRequest': this.#pairings.get(e.id)?.request({ phone: e.phone, device: e.device, route: e.route, emoji: e.emoji ?? null }); break;
+      case 'pairRequestCancelled': this.#pairings.get(e.id)?.requestCancelled(); break;
       case 'localCode': this.#pairings.get(e.id)?.code(e.code, e.device); break;
       case 'localCancelled': this.#pairings.get(e.id)?.cancelled(); break;
       case 'localDelivered': this.#pairings.get(e.id)?.delivered(); break;
@@ -140,9 +156,10 @@ export class TailPocketHost extends EventEmitter {
   }
 
   /**
-   * Open a pairing window. Show `pairing.qr` as a QR code (or a link); `pairing.paired` resolves
-   * with the phone that joined.
-   * @param {import('./index.d.ts').PairOptions} [options]
+   * Open a pairing window. Show `pairing.qr` (or, with `emoji: true`, `pairing.qr2`) as a QR code or
+   * a link; `pairing.paired` resolves with the phone that joined. With `emoji: true` every phone that
+   * pairs first comes as a `request` event: show its emoji, then `pairing.confirm(true | false)`.
+   * @param {import('./index.d.ts').TailPocketPairOptions} [options]
    */
   async pair(options = {}) {
     const id = nextId();
@@ -151,7 +168,15 @@ export class TailPocketHost extends EventEmitter {
     paired.catch(() => {});
     const closed = new Promise((resolve) => { closedResolve = resolve; });
     let didJoin = false;
+    const pairing = new EventEmitter();
     this.#pairings.set(id, {
+      // Delivered after pair() has returned, so a listener added right after `await host.pair()` sees it.
+      // Nobody listening means nobody can compare the emoji: refuse at once rather than let it time out.
+      request: (req) => setImmediate(() => {
+        if (pairing.listenerCount('request') === 0) this.#send({ cmd: 'confirm', id, approve: false });
+        else pairing.emit('request', req);
+      }),
+      requestCancelled: () => setImmediate(() => pairing.emit('requestCancelled')),
       joined: (phone) => { didJoin = true; joined(phone); },
       ended: (reason) => {
         if (!didJoin) failed(new TailPocketHostError(reason === 'expired' ? 'expired' : reason));
@@ -167,13 +192,16 @@ export class TailPocketHost extends EventEmitter {
       delivered: () => { local?.resolve(); local = undefined; },
       localError: (err) => { if (!local) return false; local.reject(err); local = undefined; return true; },
     });
-    const e = await this.#request({ cmd: 'pair', id, ttl: options.ttl, payload: options.payload, qrPrefix: options.qrPrefix }).catch((err) => {
+    const e = await this.#request({ cmd: 'pair', id, ttl: options.ttl, payload: options.payload, qrPrefix: options.qrPrefix, qrPrefix2: options.qrPrefix2,
+      emoji: !!options.emoji }).catch((err) => {
       this.#pairings.delete(id);
       throw err;
     });
     const host = this;
-    return {
-      id, qr: e.qr, invite: e.invite, expiresAt: new Date(e.expiresAt * 1000), paired, closed,
+    return Object.assign(pairing, {
+      id, qr: e.qr, invite: e.invite, qr2: e.qr2, invite2: e.invite2, expiresAt: new Date(e.expiresAt * 1000), paired, closed,
+      /** Answer the current `request`: true once the computer's user saw the same emoji as the phone. */
+      confirm(approve) { host.#send({ cmd: 'confirm', id, approve: !!approve }); },
       /** Advertise this window on the Wi-Fi; resolves once a phone you approved has the invite. */
       local({ service, confirm, label, instance, onCancel }) {
         if (typeof confirm !== 'function') return Promise.reject(new TypeError('confirm(code, device) is required'));
@@ -183,14 +211,20 @@ export class TailPocketHost extends EventEmitter {
         });
       },
       cancel() { host.#send({ cmd: 'cancel', id }); },
-    };
+    });
   }
 
   /** Replace the paired phones (removing one restarts the node; other phones reconnect). */
   async setAllowed(phones) { await this.#request({ cmd: 'setAllowed', allowed: phones }); }
 
-  /** Remove one phone. */
+  /** Remove one phone: its connections close; other phones stay connected. */
   async revoke(phone) { await this.#request({ cmd: 'revoke', phone }); }
+
+  /** Close one phone's connections and keep it paired, e.g. when its sign-in ran out. */
+  async disconnect(phone) { await this.#request({ cmd: 'disconnect', phone }); }
+
+  /** The address, the routes phones use, and each relay: "up" or why not. */
+  async status() { return this.#request({ cmd: 'status' }); }
 
   /** Stop the helper. */
   async close() {

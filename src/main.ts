@@ -15,7 +15,7 @@ import { personZone, setComputerZone } from './clock.ts'
 import { loadSecrets, ModelSwitch } from './modelswitch.ts'
 import { FileDeviceStore } from './devices.ts'
 import { Pairing } from './pairing.ts'
-import { Pocket, pocketWanted, windowSeconds } from './pocket.ts' // the local connection, docs/connection.md
+import { listenPlan, Pocket, pocketWanted, windowSeconds, type PocketWanted } from './pocket.ts' // the local connection, docs/connection.md
 import { PushService, type Notification } from './push.ts'
 import { ApnsSender, RelayApnsSender, type ApnsConfig } from './push-apns.ts' // [agent:ios] [host]
 import { FcmSender, RelayFcmSender, type FcmConfig } from './push-fcm.ts' // [push]
@@ -60,6 +60,8 @@ const overrides: Partial<BotConfig> = {}
 if (flag('--port')) overrides.port = Number(flag('--port'))
 if (flag('--host')) overrides.host = flag('--host')!
 if (argv.includes('--tunnel')) overrides.tunnel = 'cloudflared'
+if (argv.includes('--no-lan')) overrides.noLan = true
+if (argv.includes('--tailcat-only')) overrides.tailcatOnly = true
 // [host] a hosted sandbox gets the same three as env vars (DEEPSEEK_BOT_MODEL / _BASE_URL / _API_KEY_ENV); flags win
 const modelFlag = flag('--model') ?? process.env.DEEPSEEK_BOT_MODEL
 if (modelFlag) {
@@ -72,15 +74,22 @@ if (modelFlag) {
 
 const config = await ConfigFile.open(join(root, 'config.json'), overrides)
 const cfg = config.get()
-// Local use goes through TailPocket and the bot stays on loopback; without its helper (a checkout that has not run
-// scripts/tailpocket-sync.sh) it stays as it was, on the local network, and says so.
-const localPocket = pocketWanted({ inContainer: process.env.DEEPSEEK_BOT_IN_CONTAINER === '1', publicUrl: process.env.DEEPSEEK_BOT_PUBLIC_URL || undefined, tunnel: cfg.tunnel, configHost: cfg.host, argv }) && await (async () => {
-  const { tailPocketHelperPath } = await import('../vendor/tailpocket/index.js')
-  const ok = existsSync(process.env.TAILPOCKET_HOST || tailPocketHelperPath())
-  if (!ok) console.log('[bot] No TailPocket helper: phones reach this computer in plain HTTP over the local network only. scripts/tailpocket-sync.sh sets it up.')
-  return ok
-})()
-if (localPocket) cfg.host = '127.0.0.1'
+// Local use goes through TailPocket and the bot stays on loopback. Without its helper (a checkout that has not run
+// scripts/tailpocket-sync.sh) it stays on loopback too and says no phone can connect: plain HTTP on the local network is
+// only ever chosen (--host, --no-tailpocket, a config host), never the default.
+const wanted: PocketWanted = { inContainer: process.env.DEEPSEEK_BOT_IN_CONTAINER === '1', publicUrl: process.env.DEEPSEEK_BOT_PUBLIC_URL || undefined, tunnel: cfg.tunnel, configHost: cfg.host, argv }
+const helper = pocketWanted(wanted) && existsSync(process.env.TAILPOCKET_HOST || (await import('../vendor/tailpocket/index.js')).tailPocketHelperPath())
+const plan = listenPlan(wanted, helper)
+const localPocket = plan.pocket
+const helperMissing = pocketWanted(wanted) && !helper
+cfg.host = plan.host
+// the Mac window reads "TailPocket did not start" as failed (mac/src/supervisor.ts)
+if (helperMissing) console.error('[bot] TailPocket did not start (no helper installed), so no phone can connect: the bot listens on this computer only (127.0.0.1). Install the helper first: scripts/tailpocket-sync.sh in a checkout, or the installer package. Plain HTTP on the local network only if you start with --host 0.0.0.0.')
+if (plan.plain) console.warn(`[bot] WARNING: listening on ${cfg.host} in plain HTTP. Anyone on the same network can see all traffic between the phone and this computer, the device token included.`)
+// [tailpocket] an optional tailpocket-relay: phones also come in through it, end-to-end encrypted (Noise), and the QR carries it (docs/connection.md)
+const pocketRelay = process.env.DEEPSEEK_BOT_RELAY_URL && process.env.DEEPSEEK_BOT_RELAY_TOKEN ? { url: process.env.DEEPSEEK_BOT_RELAY_URL, token: process.env.DEEPSEEK_BOT_RELAY_TOKEN } : undefined
+if (!pocketRelay && (process.env.DEEPSEEK_BOT_RELAY_URL || process.env.DEEPSEEK_BOT_RELAY_TOKEN)) console.error('[bot] DEEPSEEK_BOT_RELAY_URL and DEEPSEEK_BOT_RELAY_TOKEN go together; the relay is off')
+if (pocketRelay && cfg.tailcatOnly) console.error('[bot] Tailcat only (tailcatOnly / --tailcat-only): the relay is off')
 // [compliance] Nothing reaches the model until the person (18+) agreed to its provider; reports
 // go to the host on a hosted computer. `publicOrigin` is known once the server listens.
 const moderator = moderatorFromEnv()
@@ -382,9 +391,23 @@ const printPairing = (ttlMs = 10 * 60_000) => {
 // minutes, so one is kept open while no phone has paired, and always under the Mac window, which has nobody to press p.
 let windowOpen = false
 const wantsQr = async () => !process.stdin.isTTY || !(await devices.list()).some((d) => !d.revokedAt)
+// A phone asking to pair shows four emoji; the person compares them with these and answers here (y/n, or the Mac window's
+// buttons, which read the `[bot] pair-request` line and write the same answer). Only one question is open at a time.
+let answerAsk: ((yes: boolean) => void) | null = null
+// The name comes from the phone: no control characters reach the terminal.
+const printable = (s: string) => s.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, '').slice(0, 64)
 const printPocketPairing = async (p: Pocket, ttlMs = 15 * 60_000) => {
   const code = pairing.create(ttlMs)
-  const w = await p.window(code, windowSeconds(ttlMs))
+  const w = await p.window(code, windowSeconds(ttlMs), {
+    ask: (a) => {
+      const device = printable(a.device) || 'A phone'
+      answerAsk = (yes) => { answerAsk = null; console.log(`[bot] pair-request answered ${yes ? 'yes' : 'no'}`); w.confirm(yes) }
+      console.log(`\n\u201c${device}\u201d asks to pair (${a.route}). Your phone shows:\n\n    ${a.emoji.length ? a.emoji.join('  ') : '(no emoji)'}\n`)
+      console.log('Same four emoji on the phone? Type y\u23ce to pair it, n\u23ce to refuse (within 55 s).')
+      console.log(`[bot] pair-request ${JSON.stringify({ device, route: a.route, emoji: a.emoji })}`)
+    },
+    askEnded: () => { if (!answerAsk) return; answerAsk = null; console.log('[bot] pair-request ended: the phone left or the time ran out') },
+  })
   console.log('\nScan this with the Boop app on your phone. It pairs once, then works from any network:\n')
   qrcode.generate(w.qr, { small: true }, (q: string) => console.log(q))
   console.log(`  ${w.qr}\n  valid until ${w.expiresAt.toLocaleTimeString()}. Whoever holds this code can pair, so keep it to yourself.\n`)
@@ -392,18 +415,22 @@ const printPocketPairing = async (p: Pocket, ttlMs = 15 * 60_000) => {
   windowOpen = true
   w.closed.then(async () => {
     windowOpen = false
+    if (answerAsk) { answerAsk = null; console.log('[bot] pair-request ended') }
     if (!stopping && await wantsQr()) await printPocketPairing(p, ttlMs)
   }).catch(() => {})
 }
 let stopping = false
 if (localPocket) {
   try {
-    pocket = await Pocket.open({ statePath: join(root, 'tailpocket.json'), forward: `127.0.0.1:${boundPort}`, name: hostname() })
+    pocket = await Pocket.open({ statePath: join(root, 'tailpocket.json'), forward: `127.0.0.1:${boundPort}`, name: hostname(), relay: pocketRelay, noLan: cfg.noLan, tailcatOnly: cfg.tailcatOnly })
     if (await wantsQr()) await printPocketPairing(pocket)
     else console.log('[bot] TailPocket is on. Press p⏎ to pair another phone.')
   } catch (e) { console.error(`[bot] TailPocket did not start (${(e as Error).message}). No phone can reach this computer; start with --host 0.0.0.0 for the local network.`) }
-} else printPairing(12 * 60 * 60_000)
-process.stdin.on('data', (d) => { if (d.toString().trim() !== 'p') return; if (pocket) printPocketPairing(pocket).catch((e) => console.error(`[bot] ${(e as Error).message}`)); else if (!localPocket) printPairing() })
+} else if (!helperMissing) printPairing(12 * 60 * 60_000) // a code for 127.0.0.1 would reach no phone
+process.stdin.on('data', (d) => {
+  const said = d.toString().trim().toLowerCase()
+  if (answerAsk && /^(y|yes|n|no)$/.test(said)) { answerAsk(said.startsWith('y')); return }
+  if (said !== 'p') return; if (pocket) printPocketPairing(pocket).catch((e) => console.error(`[bot] ${(e as Error).message}`)); else if (!localPocket && !helperMissing) printPairing() })
 if (process.stdin.isTTY) { process.stdin.setRawMode?.(false); console.log('Press p⏎ for a new pairing code, Ctrl-C to stop.') }
 
 const shutdown = async () => { console.log('\n[bot] stopping'); stopping = true; await pocket?.close().catch(() => {}); scheduler.stop(); await bot.close(); await watcher.stop(); await dsh.stop(); await egress?.close(); await removeEgressFirewall?.(); await browserBroker?.close(); await tools.close(); await connectorProxy.close(); await modelProxy.close(); await guard.close(); if (modelGuard !== guard) await modelGuard.close(); process.exit(0) }

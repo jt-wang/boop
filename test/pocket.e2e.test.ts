@@ -1,13 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { networkInterfaces, platform, tmpdir, arch } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from 'node:net'
 
 // The real bot started the way a person starts it, the real helper, the real Tailcat network, and TailPocket's test phone
-// standing in for the app: pair by QR, reach the bot through the tunnel, restart, remove the device. Needs a built checkout
+// standing in for the app: pair by QR (TailPocket v0.3.0-pre.4: the person compares four emoji and answers on the computer),
+// reach the bot through the tunnel's forward (only under its base, which carries a token), restart, remove the device. Needs a built checkout
 // (scripts/tailpocket-sync.sh) and the internet; TAILPOCKET_DIR says where the checkout is.
 const T = process.env.TAILPOCKET_DIR ?? join(import.meta.dirname, '..', '..', 'tailpocket')
 const suffix = `${platform()}-${arch() === 'x64' ? 'amd64' : arch()}`
@@ -38,27 +39,49 @@ test('local use: pair by QR, reach the bot through the tunnel, nothing on the lo
   const children: ChildProcess[] = []
   let bot = start(); children.push(bot.c)
   try {
-    const qr = await until('the bot prints a pairing code', 90_000, () => /tailpocket1:\S+/.exec(bot.out)?.[0])
+    const first = await until('the bot prints a pairing code', 90_000, () => /tailpocket2:\S+/.exec(bot.out)?.[0])
     assert.doesNotMatch(bot.out, /\/pair\?code=/, 'no plain pairing link')
     assert.equal(statSync(join(home, 'pairing.txt')).mode & 0o777, 0o600)
-    assert.equal(readFileSync(join(home, 'pairing.txt'), 'utf8').trim(), qr)
+    assert.equal(readFileSync(join(home, 'pairing.txt'), 'utf8').trim(), first)
 
     // the bot listens on loopback only: the local network gets nothing
     const lan = lanIp()
     if (lan) await assert.rejects(fetch(`http://${lan}:${port}/me`, { signal: AbortSignal.timeout(3000) }), 'nothing listens on the local network')
 
-    const qrFile = join(keys, 'qr.txt'); writeFileSync(qrFile, qr, { mode: 0o600 })
+    const qrFile = join(keys, 'qr.txt')
     const key = join(keys, 'phone.key'); const linkFile = join(keys, 'link.json')
-    const paired = spawnSync('sh', ['-c', `"${PHONE}" pair -key "${key}" -out "${linkFile}" - < "${qrFile}"`], { encoding: 'utf8', timeout: 120_000 })
-    assert.equal(paired.status, 0, paired.stderr)
+    // The phone shows four emoji; the bot shows the same with the phone's name and waits for y or n on its stdin.
+    const pairPhone = async (qr: string, answer: 'y' | 'n') => {
+      writeFileSync(qrFile, qr, { mode: 0o600 })
+      const asked = (bot.out.match(/\[bot\] pair-request \{.*\}/g) ?? []).length
+      const p = spawn('sh', ['-c', `"${PHONE}" pair -device "Test phone" -key "${key}" -out "${linkFile}" - < "${qrFile}"`], { stdio: ['ignore', 'pipe', 'pipe'] }); children.push(p)
+      let err = ''; p.stderr!.on('data', (d) => { err += d })
+      const exited = new Promise<number | null>((r) => p.once('exit', (c) => r(c)))
+      const ask = await until('the bot asks whether the emoji are the same', 120_000, () => (bot.out.match(/\[bot\] pair-request (\{.*\})/g) ?? [])[asked])
+      const shown = JSON.parse(ask.replace('[bot] pair-request ', '')) as { device: string; emoji: string[] }
+      const onPhone = await until('the phone shows its emoji', 10_000, () => /emoji: (.+?) \(check/.exec(err)?.[1])
+      assert.equal(shown.device, 'Test phone')
+      assert.equal(shown.emoji.length, 4)
+      assert.equal(onPhone, shown.emoji.join(' '), 'both screens show the same four emoji')
+      bot.c.stdin!.write(`${answer}\n`)
+      return { status: await exited, err }
+    }
+    // a no pairs nobody, and spends that code: the next one comes up
+    const refused = await pairPhone(first, 'n')
+    assert.notEqual(refused.status, 0)
+    // connectphone.ErrUnauthorized, which the bridges report as `unauthorized`, right after the no (TailPocket v0.3.0-pre.9)
+    assert.match(refused.err, /the host rejected the invite/)
+    const qr = await until('a new code after the refusal', 30_000, () => { const all = bot.out.match(/tailpocket2:\S+/g) ?? []; return all.at(-1) !== first ? all.at(-1) : undefined })
+    const paired = await pairPhone(qr, 'y')
+    assert.equal(paired.status, 0, paired.err)
     const code = JSON.parse(readFileSync(linkFile, 'utf8')).payload as string
     assert.match(code, /^\d{6}$/, 'the Boop code came inside the tunnel')
 
     const connect = async () => {
       const p = spawn(PHONE, ['connect', '-link', linkFile], { stdio: ['ignore', 'pipe', 'pipe'] }); children.push(p)
       let out = ''; p.stdout!.on('data', (d) => { out += d }); p.stderr!.on('data', (d) => { out += d })
-      const addr = await until('the test phone listens', 60_000, () => /listening (127\.0\.0\.1:\d+)/.exec(out)?.[1])
-      return { p, origin: `http://${addr}` }
+      const m = await until('the test phone listens', 60_000, () => /listening (127\.0\.0\.1:\d+) base (http:\/\/\S+\/_tailpocket\/\S+) token/.exec(out))
+      return { p, addr: m[1], origin: m[2] }
     }
     let phone = await connect()
     const pair = await until('POST /pair through the tunnel', 120_000, async () => {
@@ -69,6 +92,7 @@ test('local use: pair by QR, reach the bot through the tunnel, nothing on the lo
     const me = await (await fetch(`${phone.origin}/me`, { headers: h })).json() as { device: { id: string; name: string } }
     assert.equal(me.device.name, 'Test phone')
     assert.equal((await fetch(`${phone.origin}/me`)).status, 401, 'the tunnel alone buys nothing: no token, no answer')
+    assert.equal((await fetch(`http://${phone.addr}/me`, { headers: h })).status, 403, 'any program on the phone reaches the port: without the forward token it gets nothing')
 
     // a restarted computer keeps its phones
     await stop(phone.p); await stop(bot.c)
@@ -84,10 +108,8 @@ test('local use: pair by QR, reach the bot through the tunnel, nothing on the lo
       return r === null
     })
     // with no phone left, the way back in is on the screen again: a new code, which pairs
-    const again = await until('a new code after the last phone went', 30_000, () => { const all = bot.out.match(/tailpocket1:\S+/g) ?? []; return all.at(-1) })
-    assert.notEqual(again, qr)
-    writeFileSync(qrFile, again, { mode: 0o600 })
-    const repaired = spawnSync('sh', ['-c', `"${PHONE}" pair -key "${key}" -out "${linkFile}" - < "${qrFile}"`], { encoding: 'utf8', timeout: 120_000 })
-    assert.equal(repaired.status, 0, repaired.stderr)
+    const again = await until('a new code after the last phone went', 30_000, () => { const all = bot.out.match(/tailpocket2:\S+/g) ?? []; return all.at(-1) !== qr ? all.at(-1) : undefined })
+    const repaired = await pairPhone(again, 'y')
+    assert.equal(repaired.status, 0, repaired.err)
   } finally { for (const c of children) c.kill('SIGTERM') }
 })

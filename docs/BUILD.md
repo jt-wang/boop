@@ -15,7 +15,7 @@ TAILPOCKET_DIR="$PWD/.tailpocket" scripts/tailpocket-sync.sh helper
 DEEPSEEK_API_KEY=sk-… npm start
 ```
 
-Without the helper it prints `http://<lan-ip>:3850/pair?code=123456` instead: plain HTTP, same Wi-Fi only.
+Without the helper no phone can connect: the bot stays on `127.0.0.1` and says to install the helper. Plain HTTP on the same Wi-Fi only if you ask for it with `npm start -- --host 0.0.0.0` (`docs/connection.md`).
 
 ## The apps
 

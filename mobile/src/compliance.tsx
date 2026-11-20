@@ -303,7 +303,8 @@ export function interfaceFromLink(url: string, origin: string): string | null | 
       const id = u.host === 'ui' ? /^\/([\w-]{1,40})$/.exec(u.pathname)?.[1] : undefined
       if (!id) return null
       const from = u.searchParams.get('origin')?.replace(/\/$/, '') ?? ''
-      const onLoopback = (o: string) => /^http:\/\/127\.0\.0\.1:\d+$/.test(o) // through TailPocket: the computer's port, and the phone's, new at each launch
+      // through TailPocket: the computer's port, and the phone's tunnel (`/_tailpocket/<token>` since v0.3.0-pre.4), new at each launch
+      const onLoopback = (o: string) => /^http:\/\/127\.0\.0\.1:\d+(\/_tailpocket\/[A-Za-z0-9_-]+)?$/.test(o)
       return from === origin.replace(/\/$/, '') || (onLoopback(from) && onLoopback(origin.replace(/\/$/, ''))) ? id : 'elsewhere'
     }
     const m = /^\/open\/([a-z0-9][a-z0-9-]{2,40})\/ui\/([\w-]{1,40})$/.exec(u.pathname)

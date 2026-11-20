@@ -14,6 +14,10 @@ export interface BotConfig {
   port: number
   /** `cloudflared` starts a quick tunnel so the phone can reach the bot from anywhere over HTTPS. */
   tunnel: 'none' | 'cloudflared'
+  /** TailPocket (local use): no route straight over the local network; phones come in over Tailcat (and a relay). `--no-lan`. */
+  noLan?: boolean
+  /** TailPocket (local use): Tailcat only, as before v0.3: no local network route and no relay. `--tailcat-only`. */
+  tailcatOnly?: boolean
 }
 
 export const DEFAULT_CONFIG: BotConfig = {

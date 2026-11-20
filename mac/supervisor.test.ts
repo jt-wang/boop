@@ -1,7 +1,7 @@
 // The supervisor keeps the bot alive under the Mac window (`nsh test supervisor.test.ts`).
 // `process.spawn` is not available headless, so the tests inject a fake one.
 import { expect, test } from 'nsh/test'
-import { backoffMs, createSupervisor, MAX_FAILURES, parsePairing, resourcesDir, type BotState, type ChildLike } from './src/supervisor.ts'
+import { backoffMs, createSupervisor, MAX_FAILURES, parseAsk, parsePairing, resourcesDir, type BotState, type ChildLike } from './src/supervisor.ts'
 
 const RES = '/Applications/Boop.app/Contents/Resources'
 
@@ -12,6 +12,8 @@ class FakeChild implements ChildLike {
   on(event: string, handler: (payload: never) => void) { (this.handlers[event] ??= []).push(handler as (payload: unknown) => void); return this }
   emit(event: string, payload: unknown) { for (const h of this.handlers[event] ?? []) h(payload) }
   kill() { this.killed = true }
+  written: string[] = []
+  write(text: string) { this.written.push(text) }
 }
 
 function harness(locate: () => Promise<string> = async () => RES) {
@@ -34,8 +36,34 @@ function harness(locate: () => Promise<string> = async () => RES) {
 test('parsePairing reads the link and the code out of the bot\'s line', () => {
   expect(parsePairing('  http://192.168.1.23:3850/pair?code=123456')).toEqual({ url: 'http://192.168.1.23:3850/pair?code=123456', code: '123456' })
   expect(parsePairing('  tailpocket1:eNo_abc-1')).toEqual({ url: 'tailpocket1:eNo_abc-1', code: null }) // src/main.ts printPocketPairing
+  expect(parsePairing('  tailpocket2:eNo_abc-2')).toEqual({ url: 'tailpocket2:eNo_abc-2', code: null }) // the same, with a relay
+  expect(parsePairing('  tailpocket3:eNo_abc-3')).toBe(null)
   expect(parsePairing('[bot] home /x')).toBe(null)
   expect(parsePairing('Open this on your phone (same Wi-Fi), then add it to your home screen:')).toBe(null)
+})
+
+test('parseAsk reads a pairing request and its end out of the bot\'s lines (src/main.ts printPocketPairing)', () => {
+  expect(parseAsk('[bot] pair-request {"device":"Pixel 9","route":"lan","emoji":["🐶","🌙","🍕","🔑"]}')).toEqual({ device: 'Pixel 9', emoji: ['🐶', '🌙', '🍕', '🔑'] })
+  expect(parseAsk('[bot] pair-request answered yes')).toBe(null)
+  expect(parseAsk('[bot] pair-request ended: the phone left or the time ran out')).toBe(null)
+  expect(parseAsk('  tailpocket2:eNo_abc-2')).toBe(undefined)
+})
+
+test('a pairing request shows in the state; the person\'s answer goes to the bot as y or n, once', async () => {
+  const h = harness()
+  await h.sup.start()
+  h.last().child.emit('stdout', '  tailpocket2:eNo_abc-2')
+  h.last().child.emit('stdout', '[bot] pair-request {"device":"Pixel","route":"tailcat","emoji":["🐶","🌙","🍕","🔑"]}')
+  expect(h.state().ask).toEqual({ device: 'Pixel', emoji: ['🐶', '🌙', '🍕', '🔑'] })
+  expect(h.state().pairUrl).toBe('tailpocket2:eNo_abc-2')
+  h.sup.answer(false)
+  expect(h.last().child.written).toEqual(['n\n'])
+  expect(h.state().ask).toBe(null)
+  h.sup.answer(true)
+  expect(h.last().child.written).toEqual(['n\n'])
+  h.last().child.emit('stdout', '[bot] pair-request {"device":"Pixel","route":"lan","emoji":["🐶","🌙","🍕","🔑"]}')
+  h.last().child.emit('stdout', '[bot] pair-request ended')
+  expect(h.state().ask).toBe(null)
 })
 
 test('resourcesDir goes from the app executable to Contents/Resources', () => {

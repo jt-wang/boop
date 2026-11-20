@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Pocket, pocketWanted, windowSeconds } from '../src/pocket.ts'
+import { EventEmitter } from 'node:events'
+import { listenPlan, Pocket, pocketWanted, windowSeconds } from '../src/pocket.ts'
 import { Pairing } from '../src/pairing.ts'
 import { MemoryDeviceStore } from '../src/devices.ts'
 
@@ -20,6 +21,20 @@ test('pocketWanted: on for local use, off for what has its own address or asked 
   assert.equal(pocketWanted({ ...local, argv: ['--no-tailpocket'] }), false)
 })
 
+// No default is plain HTTP on the local network: without the helper local use stays on loopback; a chosen address says so.
+test('listenPlan: local use stays on 127.0.0.1 with or without the helper; only a chosen address is plain on the network', () => {
+  const local = { inContainer: false, configHost: '0.0.0.0', argv: [] as string[] }
+  assert.deepEqual(listenPlan(local, true), { host: '127.0.0.1', pocket: true, plain: false })
+  assert.deepEqual(listenPlan(local, false), { host: '127.0.0.1', pocket: false, plain: false }, 'no helper: no phone gets in, and nothing listens on 0.0.0.0')
+  assert.deepEqual(listenPlan({ ...local, argv: ['--host', '0.0.0.0'] }, false), { host: '0.0.0.0', pocket: false, plain: true })
+  assert.deepEqual(listenPlan({ ...local, argv: ['--no-tailpocket'] }, true), { host: '0.0.0.0', pocket: false, plain: true }, 'no TailPocket, even with the helper there')
+  assert.deepEqual(listenPlan({ ...local, configHost: '192.168.1.5' }, true), { host: '192.168.1.5', pocket: false, plain: true })
+  assert.equal(listenPlan({ ...local, tunnel: 'cloudflared' }, true).plain, true, 'cloudflared reaches it on loopback, but the port is still open on the network')
+  assert.equal(listenPlan({ ...local, configHost: '127.0.0.1', argv: ['--host', '127.0.0.1'] }, false).plain, false, 'loopback is no network')
+  assert.equal(listenPlan({ ...local, inContainer: true }, false).plain, false, 'deploy/ and Fly: TLS in front')
+  assert.equal(listenPlan({ ...local, publicUrl: 'https://bot.example' }, false).plain, false)
+})
+
 test('windowSeconds: TailPocket opens a window for at most 15 minutes, at least one', () => {
   assert.equal(windowSeconds(12 * 60 * 60_000), 900)
   assert.equal(windowSeconds(10 * 60_000), 600)
@@ -27,25 +42,30 @@ test('windowSeconds: TailPocket opens a window for at most 15 minutes, at least 
 })
 
 function fakeHost() {
-  const calls = { revoked: [] as string[], pairs: [] as { ttl?: number; payload?: string }[], closed: 0 }
+  const calls = { revoked: [] as string[], pairs: [] as { ttl?: number; payload?: string; emoji?: boolean }[], closed: 0, confirms: [] as boolean[] }
+  // what the pre.4 helper answers to an emoji window: only the v2 QR, then a `request` per phone, answered with confirm
   let resolvePaired: (p: { phone: string; device: string }) => void = () => {}
+  let window: EventEmitter | null = null
   const host = {
     allowed: [] as string[],
-    async pair(o: { ttl?: number; payload?: string }) {
+    async pair(o: { ttl?: number; payload?: string; emoji?: boolean }) {
       calls.pairs.push(o)
-      return { qr: `tailpocket1:${calls.pairs.length}`, expiresAt: new Date(0), paired: new Promise((r) => { resolvePaired = r as never }), closed: new Promise(() => {}), cancel() {} }
+      window = Object.assign(new EventEmitter(), { qr2: `tailpocket2:${calls.pairs.length}`, expiresAt: new Date(0), paired: new Promise((r) => { resolvePaired = r as never }), closed: new Promise(() => {}), cancel() {}, confirm(yes: boolean) { calls.confirms.push(yes) } })
+      return window as never
     },
     async revoke(p: string) { calls.revoked.push(p) },
     async close() { calls.closed++ },
   }
-  return { host, calls, paired: (phone: string) => resolvePaired({ phone, device: 'Pixel' }) }
+  return { host, calls, paired: (phone: string) => resolvePaired({ phone, device: 'Pixel' }), window: () => window! }
 }
+const quiet = { ask() {}, askEnded() {} }
 
-async function open(start?: (o: Record<string, unknown>) => unknown) {
+type StartOpts = { identity?: string; allowed?: string[]; keys?: Record<string, string>; relays?: { url: string; token: string; opaque?: boolean; appAuth?: boolean }[]; noLan?: boolean; tailcatOnly?: boolean; save?: (s: unknown) => Promise<void>; forward?: string }
+async function open(o: { relay?: { url: string; token: string }; noLan?: boolean; tailcatOnly?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pocket-'))
   const f = fakeHost()
-  let opts: { identity?: string; allowed?: string[]; save?: (s: unknown) => Promise<void>; forward?: string } = {}
-  const pocket = await Pocket.open({ statePath: join(dir, 'tailpocket.json'), forward: '127.0.0.1:3850', name: 'Studio Mac', start: (async (o: typeof opts) => { opts = o; await start?.(o as never); return f.host }) as never })
+  let opts: StartOpts = {}
+  const pocket = await Pocket.open({ statePath: join(dir, 'tailpocket.json'), forward: '127.0.0.1:3850', name: 'Studio Mac', relay: o.relay, noLan: o.noLan, tailcatOnly: o.tailcatOnly, start: (async (x: StartOpts) => { opts = x; return f.host }) as never })
   return { dir, ...f, pocket, opts: () => opts }
 }
 const tick = () => new Promise((r) => setTimeout(r, 5))
@@ -62,18 +82,77 @@ test('the state holds private keys: it stays 0600 and comes back after a restart
   assert.deepEqual(restored.allowed, ['nodekey:a'])
 })
 
+// v0.3: a phone that synced its Noise key (or paired on v0.3) is only known on the encrypted routes through `keys`.
+test('the phones\' Noise keys come back after a restart, saved alongside the rest', async () => {
+  const a = await open()
+  assert.equal(a.opts().keys, undefined, 'nothing saved yet')
+  await a.opts().save!({ identity: 'node-private', allowed: ['nodekey:a'], keys: { 'nodekey:a': 'noise-a' } })
+  await a.pocket.window('123456', 900, quiet); a.paired('nodekey:a'); await tick(); await a.pocket.claimed('123456', 'd1'); await tick()
+  // a later save from the helper (a second phone synced) replaces the keys and keeps which device is which phone
+  await a.opts().save!({ identity: 'node-private', allowed: ['nodekey:a', 'nodekey:b'], keys: { 'nodekey:a': 'noise-a', 'nodekey:b': 'noise-b' } })
+  let restored: StartOpts = {}
+  const f = fakeHost()
+  const again = await Pocket.open({ statePath: join(a.dir, 'tailpocket.json'), forward: '127.0.0.1:3850', start: (async (o: StartOpts) => { restored = o; return f.host }) as never })
+  assert.deepEqual(restored.keys, { 'nodekey:a': 'noise-a', 'nodekey:b': 'noise-b' })
+  assert.deepEqual(restored.allowed, ['nodekey:a', 'nodekey:b'])
+  await again.deviceRevoked('d1')
+  assert.deepEqual(f.calls.revoked, ['nodekey:a'])
+})
+
+test('no relay: no relays for the helper, the local network on, and the QR is the v2 invite of an emoji window', async () => {
+  const a = await open()
+  assert.equal(a.opts().relays, undefined)
+  assert.equal(a.opts().noLan, undefined, 'the local network route is TailPocket\'s default')
+  assert.equal(a.opts().tailcatOnly, undefined)
+  assert.equal((await a.pocket.window('123456', 900, quiet)).qr, 'tailpocket2:1')
+  assert.equal(a.calls.pairs[0].emoji, true)
+})
+
+test('a relay: the helper registers with it end-to-end encrypted (not opaque, so no appAuth), and the QR names it', async () => {
+  const a = await open({ relay: { url: 'wss://relay.example.com', token: 'relay-token' } })
+  assert.deepEqual(a.opts().relays, [{ url: 'wss://relay.example.com', token: 'relay-token' }])
+  assert.equal(a.opts().relays![0].opaque, undefined)
+  assert.equal(a.opts().relays![0].appAuth, undefined)
+  const w = await a.pocket.window('123456', 900, quiet)
+  assert.equal(w.qr, 'tailpocket2:1')
+  assert.deepEqual(a.calls.pairs[0], { ttl: 900, payload: '123456', emoji: true }, 'the Boop code still goes inside the tunnel')
+})
+
+test('the settings: noLan goes to the helper; Tailcat only goes alone, without the relay the helper would refuse with it', async () => {
+  assert.equal((await open({ noLan: true })).opts().noLan, true)
+  const only = await open({ tailcatOnly: true, noLan: true, relay: { url: 'wss://relay.example.com', token: 'relay-token' } })
+  assert.equal(only.opts().tailcatOnly, true)
+  assert.equal(only.opts().relays, undefined)
+  assert.equal(only.opts().noLan, undefined, 'Tailcat only already has no local network route')
+})
+
+test('emoji: the person sees the phone\'s name and emoji, and only their answer pairs it', async () => {
+  const a = await open()
+  const asked: unknown[] = []; let ended = 0
+  const w = await a.pocket.window('123456', 900, { ask: (x) => asked.push(x), askEnded: () => { ended++ } })
+  a.window().emit('request', { phone: 'nodekey:p1', device: 'Pixel', route: 'lan', emoji: ['🐶', '🌙', '🍕', '🔑'] })
+  assert.deepEqual(asked, [{ device: 'Pixel', route: 'lan', emoji: ['🐶', '🌙', '🍕', '🔑'] }])
+  assert.deepEqual(a.calls.confirms, [], 'nothing is answered for the person')
+  w.confirm(false)
+  assert.deepEqual(a.calls.confirms, [false])
+  a.window().emit('requestCancelled')
+  assert.equal(ended, 1)
+  a.window().emit('request', { phone: 'nodekey:p2', device: 'Old', route: 'tailcat', emoji: null })
+  assert.deepEqual(asked.at(-1), { device: 'Old', route: 'tailcat', emoji: [] }, 'no emoji (a v1 phone): an empty list, not null')
+})
+
 test('the Boop pairing code goes to the phone inside the tunnel, never in the QR', async () => {
   const a = await open()
-  const w = await a.pocket.window('123456', 900)
-  assert.equal(w.qr, 'tailpocket1:1')
-  assert.deepEqual(a.calls.pairs[0], { ttl: 900, payload: '123456' })
+  const w = await a.pocket.window('123456', 900, quiet)
+  assert.equal(w.qr, 'tailpocket2:1')
+  assert.deepEqual(a.calls.pairs[0], { ttl: 900, payload: '123456', emoji: true })
   assert.doesNotMatch(w.qr, /123456/)
 })
 
 for (const order of ['phone first', 'device first']) {
   test(`removing a device cuts its phone off the tunnel (${order})`, async () => {
     const a = await open()
-    await a.pocket.window('123456', 900)
+    await a.pocket.window('123456', 900, quiet)
     if (order === 'phone first') { a.paired('nodekey:p1'); await tick(); await a.pocket.claimed('123456', 'd1') }
     else { await a.pocket.claimed('123456', 'd1'); a.paired('nodekey:p1'); await tick() }
     await tick()
@@ -88,7 +167,7 @@ for (const order of ['phone first', 'device first']) {
 
 test('which device is which phone survives a restart, so a device removed later is still cut off', async () => {
   const a = await open()
-  await a.pocket.window('123456', 900)
+  await a.pocket.window('123456', 900, quiet)
   a.paired('nodekey:p1'); await tick()
   await a.pocket.claimed('123456', 'd1'); await tick()
   const f = fakeHost()
@@ -99,8 +178,8 @@ test('which device is which phone survives a restart, so a device removed later 
 
 test('a phone paired again takes over its entry: removing the old device leaves it connected', async () => {
   const a = await open()
-  await a.pocket.window('111111', 900); a.paired('nodekey:p1'); await tick(); await a.pocket.claimed('111111', 'old'); await tick()
-  await a.pocket.window('222222', 900); a.paired('nodekey:p1'); await tick(); await a.pocket.claimed('222222', 'new'); await tick()
+  await a.pocket.window('111111', 900, quiet); a.paired('nodekey:p1'); await tick(); await a.pocket.claimed('111111', 'old'); await tick()
+  await a.pocket.window('222222', 900, quiet); a.paired('nodekey:p1'); await tick(); await a.pocket.claimed('222222', 'new'); await tick()
   await a.pocket.deviceRevoked('old')
   assert.deepEqual(a.calls.revoked, [])
   await a.pocket.deviceRevoked('new')

@@ -162,7 +162,10 @@ final class UiBridge {
     }
 
     /** One trust store per bot origin under the files directory; the root is added on first use (adding it again is harmless). */
-    private synchronized NshTrust trust(String origin, String rootKey) throws IOException {
+    private synchronized NshTrust trust(String fullOrigin, String rootKey) throws IOException {
+        // Through TailPocket the origin carries the tunnel's forward token (/_tailpocket/<token>), which must stay in
+        // memory: the store is named after the origin without it.
+        String origin = fullOrigin.replaceAll("/_tailpocket/[A-Za-z0-9_-]*", "");
         NshTrust t = trusts.get(origin);
         if (t == null) {
             File dir = new File(new File(activity.getFilesDir(), "nsh-trust"), origin.replaceAll("[^A-Za-z0-9]", "_"));

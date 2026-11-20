@@ -17,4 +17,8 @@ export const es: MacWords = {
   copied: 'Copiado',
   keepOpen: 'Deja esta ventana abierta. Si la cierras, el asistente se detiene.',
   quit: 'Salir',
+  askTitle: 'Un teléfono pide vincularse',
+  askBody: 'Vincúlalo solo si tu teléfono muestra los mismos cuatro emojis.',
+  askYes: 'Iguales, vincular',
+  askNo: 'No son iguales',
 }

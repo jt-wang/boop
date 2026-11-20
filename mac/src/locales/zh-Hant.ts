@@ -17,4 +17,8 @@ export const zhHant: MacWords = {
   copied: '已複製',
   keepOpen: '請讓這個視窗保持開啟。關閉視窗，助理就會停止。',
   quit: '結束',
+  askTitle: '有手機請求配對',
+  askBody: '只有手機上顯示的是同樣四個表情符號時才配對。',
+  askYes: '一樣，配對',
+  askNo: '不一樣',
 }

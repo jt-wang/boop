@@ -8,7 +8,7 @@ enum PairLink {
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems
         else { return nil }
         let value = { (name: String) in items.first { $0.name == name }?.value }
-        if let invite = value("invite"), invite.hasPrefix("tailpocket1:") { return invite }
+        if let invite = value("invite"), invite.hasPrefix("tailpocket1:") || invite.hasPrefix("tailpocket2:") { return invite }
         if let full = value("url"), full.lowercased().hasPrefix("http") { return full }
         if let origin = value("origin"), origin.lowercased().hasPrefix("http") {
             var s = origin.hasSuffix("/") ? String(origin.dropLast()) : origin

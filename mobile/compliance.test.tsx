@@ -258,6 +258,8 @@ test('a link to an interface opens it on this account; a link for another accoun
   expect(interfaceFromLink(`deepseekbot://ui/m1?origin=${encodeURIComponent(O)}`, O)).toBe('m1')
   // through TailPocket the computer knows itself by its port, the phone by a new one each launch: both are this computer
   expect(interfaceFromLink(`deepseekbot://ui/m1?origin=${encodeURIComponent('http://127.0.0.1:3850')}`, 'http://127.0.0.1:50999')).toBe('m1')
+  // TailPocket v0.3.0-pre.4: the phone's tunnel address carries its forward token
+  expect(interfaceFromLink(`deepseekbot://ui/m1?origin=${encodeURIComponent('http://127.0.0.1:3850')}`, 'http://127.0.0.1:50999/_tailpocket/fwdTOKEN_-1')).toBe('m1')
   expect(interfaceFromLink(`deepseekbot://ui/m1?origin=${encodeURIComponent('http://192.168.1.9:3850')}`, 'http://127.0.0.1:50999')).toBe('elsewhere')
   expect(interfaceFromLink('deepseekbot://ui/m1?origin=http%3A%2F%2F10.0.0.9%3A3850', O)).toBe('elsewhere')
   expect(interfaceFromLink('https://host.test/privacy', hosted)).toBe(null)

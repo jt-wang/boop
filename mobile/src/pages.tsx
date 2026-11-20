@@ -7,7 +7,7 @@ import { APP_VERSION } from './version.ts'
 import { LANGS, LANG_NAMES, formatDateTime, formatNumber } from './locale.ts'
 import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type InputRef } from 'nsh'
 import { AlertDialog, Input } from 'nsh/base'
-import { api, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
+import { api, changeTailcatOnly, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
 import { activityText } from './plain.ts'
 import { pair, parseAddress, type Session } from './api.ts'
 import { signIn, hostConfig, hostUrl, isHostedOrigin, waitForSandbox } from './hosted.ts'
@@ -17,7 +17,7 @@ import { Progress } from 'nsh/base'
 import mark from '../assets/mark.png'
 import { AboutGroup, openLegal } from './compliance.tsx' // [compliance]
 import { pairLink } from './native.ts'
-import { canScan, isInvite, pairInvite, pocketPath, refreshPath, scanInvite, viaPocket } from './pocket.ts'
+import { canScan, isInvite, pairEmoji, pairInvite, pocketPath, refreshPath, scanInvite, tailcatOnly, viaPocket } from './pocket.ts'
 import { ago } from './library.tsx'
 import { Avatar, Btn, Card, Cell, Empty, Group, Hint, Page, pageClass, Toggle, TopProbe } from './ui.tsx'
 import { diagnosticTitle } from './diagnostics-page.tsx'
@@ -55,7 +55,7 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       await connect(s, { hostedBy: null })
     } catch (e) {
       const code = (e as { code?: string }).code
-      if (code !== 'cancelled') error.set(str(code === 'expired' ? 'pocketExpired' : code === 'invalid-invite' ? 'pocketInvalid' : code === 'denied' ? 'pocketDenied' : code === 'unsupported' ? 'pocketNoCamera' : 'pocketUnreachable'))
+      if (code !== 'cancelled') error.set(str(code === 'expired' ? 'pocketExpired' : code === 'unauthorized' ? 'pocketRefused' : code === 'invalid-invite' ? 'pocketInvalid' : code === 'denied' ? 'pocketDenied' : code === 'unsupported' ? 'pocketNoCamera' : 'pocketUnreachable'))
     } finally { busy.set(false) }
   }
   const go = async () => {
@@ -70,6 +70,13 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       await connect({ origin: parsed.origin, token: r.token }, { hostedBy: null })
     } catch { error.set(str('connectFailed')) } finally { busy.set(false) }
   }
+  // a tailpocket2: pairing waits for the person at the computer to compare these with what it shows (src/pocket.ts)
+  const Emoji = () => <If when={pairEmoji()}>{(e) => (
+    <Card class="items-center gap-2 px-4 py-4 mt-2">
+      <Text testID="pair-emoji" class="text-foreground text-[40px] leading-[52px] text-center">{e().join(' ')}</Text>
+      <Text class="text-muted-foreground text-[15px] leading-[20px] text-center">{str('pocketEmoji')}</Text>
+    </Card>
+  )}</If>
   const ErrorLine = () => <If when={error()}><View class="px-4"><Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text></View></If>
   const link = (testID: string, label: string, onPress: () => void, small = false) => (
     <View role="button" testID={testID} onPress={onPress} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class={small ? 'text-muted-foreground text-[15px]' : 'text-primary text-[17px]'}>{label}</Text></View>
@@ -82,19 +89,21 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       <If when={canScan()}>
         <Btn kind="primary" testID="scan" label={busy() && mode() === 'scan' ? str('connecting') : str('scanCode')} disabled={busy()} onPress={() => { mode.set('scan'); attempt(null).catch(() => {}) }} />
         <If when={mode() === 'scan'}>
+          <Emoji />
           <ErrorLine />
           {link('paste-code', str('pasteCode'), () => { mode.set('paste'); error.set('') })}
         </If>
       </If>
       <If when={mode() === 'paste'}>
         <Card class="overflow-hidden mt-2">
-          <Input testID="invite" placeholder="tailpocket1:…" value={invite()} onChange={({ value: v }) => { invite.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} autoFocus={!invite()} returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
+          <Input testID="invite" placeholder="tailpocket1:… / tailpocket2:…" value={invite()} onChange={({ value: v }) => { invite.set(v); error.set('') }} autoCapitalize="none" autoCorrect={false} autoFocus={!invite()} returnKeyType="go" submitBehavior="blurAndSubmit" onSubmit={go} class={fieldClass} />
         </Card>
         <View class="px-4 -mt-2">
           <If when={error()} else={<Text class="text-muted-foreground text-[13px] leading-[18px]">{str('pasteHint')}</Text>}>
             <Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text>
           </If>
         </View>
+        <Emoji />
         <Btn kind="soft" testID="connect" label={busy() ? str('connecting') : str('connect')} disabled={busy()} onPress={go} />
       </If>
       <If when={mode() === 'server'}>
@@ -359,7 +368,9 @@ const Check = () => <Text class="text-primary text-[17px] font-semibold">✓</Te
 function ComputerSection(props: { origin: string; hosted: boolean }) {
   const route = () => routeOf(props.origin, props.hosted, viaPocket())
   // the way a tunnel goes can change, and asking is what upgrades it to direct: only while this page shows
-  if (viaPocket()) { refreshPath().catch(() => {}); const timer = setInterval(() => { refreshPath().catch(() => {}) }, 15_000); cleanup(() => clearInterval(timer)) }
+  // `revoked`: the computer removed this phone; signed out, as for a refused token (state.ts, `unpaired`)
+  const ask = () => { refreshPath().catch((e) => { if ((e as { code?: string }).code === 'revoked') disconnect().catch(() => {}) }) }
+  if (viaPocket()) { ask(); const timer = setInterval(ask, 15_000); cleanup(() => clearInterval(timer)) }
   // a machine id or a container id means nothing to the person: the words for a hosted computer, the address of their server
   const name = () => {
     const r = route()
@@ -370,7 +381,7 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
   const path = () => {
     const r = route()
     if (!r || connection() !== 'online') return str('pathUnknown')
-    if (r.via === 'pocket') { const p = pocketPath(); return p?.kind === 'direct' ? str('pathPocketDirect') : p?.kind === 'relay' ? t('pathPocketRelay')(p.relay ?? '') : str('pathPocket') }
+    if (r.via === 'pocket') { const p = pocketPath(); return p?.kind === 'direct' ? str('pathPocketDirect') : p?.kind === 'relay' ? t('pathPocketRelay')(p.relay ?? '') : p?.kind === 'lan' ? str('pathPocketLan') : str('pathPocket') }
     if (r.via === 'lan') return t('pathLan')(r.host)
     if (r.via === 'cloudflare') return str('pathCloudflare')
     if (r.via === 'hosted') return str('pathHosted')
@@ -379,7 +390,7 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
   const note = () => {
     const r = route()
     if (!r) return undefined
-    if (r.via === 'pocket') return str('notePocket')
+    if (r.via === 'pocket') return tailcatOnly() ? `${str('notePocket')} ${str('tailcatOnlyNote')}` : str('notePocket')
     if (!r.encrypted) return str('notePlain')
     return r.via === 'cloudflare' ? str('noteCloudflare') : r.via === 'hosted' ? str('noteHosted') : undefined
   }
@@ -396,6 +407,7 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
           <Text testID="route" class="text-muted-foreground text-[13px] leading-[18px] text-right">{path()}</Text>
         </View>
       </View></View>
+      {viaPocket() ? <Cell title={str('tailcatOnly')} right={<Toggle checked={tailcatOnly()} onChange={(on) => { changeTailcatOnly(on).catch(() => {}) }} label={str('tailcatOnly')} testID="tailcat-only" />} /> : null}
       <Cell title={str('appVersion')} value={APP_VERSION} testID="app-version" />
       {me()?.computer?.version ? <Cell title={str('computerVersion')} value={me()!.computer!.version} testID="computer-version" /> : null}
     </Group>

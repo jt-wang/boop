@@ -10,7 +10,7 @@
 //   end      — the follow ended; with `error` the thread shows a notice and follows again
 import { effect, platform, signal, Storage, host } from 'nsh'
 import { Bot, loadSession, saveSession, setChosenLanguage, type Session } from './api.ts'
-import { forgetPocket, openTunnel, restorePocket, viaPocket } from './pocket.ts'
+import { forgetPocket, loadTailcatOnly, openTunnel, restorePocket, setTailcatOnly, viaPocket } from './pocket.ts'
 import { watchSocket, type SocketWatch } from './liveness.ts'
 import { isLang, labelSeparator, listSeparator } from './locale.ts'
 import { ALL as STRINGS, detectLang, type Lang } from './i18n.ts' // [agent:ui] the merged table, so str() resolves every module's keys
@@ -115,6 +115,7 @@ const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<T
 
 export async function boot() {
   await loadPrefs()
+  await loadTailcatOnly() // before the first tunnel: TailPocket reads it at connect
   const saved = await Storage.getItem('lang')
   if (isLang(saved)) { lang.set(saved); setChosenLanguage(saved) } else lang.set(detectLang())
   const s = await loadSession()
@@ -324,6 +325,14 @@ export async function refreshMe() {
   const next = await bot.get<Me>('/me')
   const cur = me()
   putMe(cur ? { ...cur, ...next, mainSessionId: next.mainSessionId ?? cur.mainSessionId } : next)
+}
+
+/** Settings' Tailcat-only switch: TailPocket keeps an open tunnel's routes, so the tunnel opens again now. */
+export async function changeTailcatOnly(on: boolean) {
+  await setTailcatOnly(on)
+  if (!viaPocket()) return
+  lastReopen = 0
+  await reopenTunnel()
 }
 
 const REOPEN_EVERY_MS = 20_000

@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.5-pre.1
+
+- TailPocket v0.3. Phones still connect through Tailcat. With `DEEPSEEK_BOT_RELAY_URL` and `DEEPSEEK_BOT_RELAY_TOKEN` set, they can also connect through your own tailpocket-relay, end-to-end encrypted with Noise, and the QR becomes `tailpocket2:…`. The relay sees only ciphertext.
+- Phones paired before this do not scan again: the new app fetches the computer's key over Tailcat the first time it opens. If the computer is not on v0.3 yet, the phone keeps using Tailcat and shows no error.
+- The computer keeps each phone's end-to-end key across restarts.
+- Settings says which way the connection goes: directly, through a relay, or over the local network (all end-to-end encrypted). A phone the computer removed is signed out.
+- Without the TailPocket helper, the bot no longer falls back to plain HTTP on the local network. It stays on 127.0.0.1 and says to install the helper. A plain local network address you choose (`--host 0.0.0.0`, `--no-tailpocket`, a host in the config) still works, but now prints a warning that anyone on the network can see all traffic, the token included.
+- Deep links `deepseekbot://pair?invite=tailpocket2:…` open on iOS and Android, and the Mac window shows a `tailpocket2:` code.
+- TailPocket v0.3.0-pre.9 on the computer. Pairing compares four emoji: the phone shows them, the computer shows the phone's name and the same emoji, and the person confirms there (`y`/`n` in the terminal, two buttons in the Mac window). The QR is always `tailpocket2:…`; pairing needs this app version, while phones paired before keep connecting.
+- Phones on the same Wi-Fi reach the computer straight over the local network, end-to-end encrypted. `--no-lan` turns that off; `--tailcat-only` on the computer and Settings › Computer › Tailcat only on the phone use Tailcat alone.
+- Through TailPocket every request goes under the tunnel's base, which carries a token, so another app on the phone cannot use the tunnel. The token is never saved.
+- The TestFlight and Android release workflows build TailPocket v0.3.0-pre.9 (public `63aa1be`) instead of v0.2.4, and Android asks for its 0.3.0-pre.9 libraries.
+- Version 0.1.5: phone build 6, Mac build 5.
+
 ## v0.1.4-release.1
 
 - Update the bundled Mac app to 0.1.4 (4), using the existing DMG build and ad hoc signing process with stock NSH 0.4 and the matching TailPocket helper. Remove build-home paths before signing.

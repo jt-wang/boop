@@ -18,6 +18,8 @@ export interface BotState {
   failures: number
   /** Starts after the first. */
   restarts: number
+  /** A phone asking to pair (src/main.ts `[bot] pair-request`): its name and the four emoji its screen shows. */
+  ask?: { device: string; emoji: string[] } | null
 }
 
 /** The part of NSH's `ChildProcess` the supervisor uses. */
@@ -26,6 +28,8 @@ export interface ChildLike {
   on(event: 'stdout' | 'stderr', handler: (text: string) => void): ChildLike
   on(event: 'exit', handler: (result: { code?: number | null; signal?: string | null; error?: string | null }) => void): ChildLike
   kill(): void
+  /** The bot's stdin (`stdin: "pipe"`): the answer to a pairing request. */
+  write?(text: string): void
 }
 
 export interface Deps {
@@ -42,12 +46,22 @@ export const FIRST_PORT = 3850
 /** Starts that died before pairing, in a row, before the window gives up. */
 export const MAX_FAILURES = 5
 
-/** The bot's line `  http://192.168.1.23:3850/pair?code=123456` (src/main.ts printPairing), or `  tailpocket1:…` (printPocketPairing). */
+/** The bot's line `  http://192.168.1.23:3850/pair?code=123456` (src/main.ts printPairing), or `  tailpocket1:…` / `  tailpocket2:…` with a relay (printPocketPairing). */
 export function parsePairing(line: string): { url: string; code: string | null } | null {
-  const invite = /^\s*(tailpocket1:[A-Za-z0-9_-]+)\s*$/.exec(line)
+  const invite = /^\s*(tailpocket[12]:[A-Za-z0-9_-]+)\s*$/.exec(line)
   if (invite) return { url: invite[1], code: null }
   const m = /(https?:\/\/\S+\/pair\?code=(\d{6}))/.exec(line)
   return m ? { url: m[1], code: m[2] } : null
+}
+
+/** `[bot] pair-request {"device":…,"emoji":[…]}`: a phone asks to pair; `[bot] pair-request answered|ended …`: no longer. */
+export function parseAsk(line: string): { device: string; emoji: string[] } | null | undefined {
+  const m = /^\[bot\] pair-request (.*)$/.exec(line.trim())
+  if (!m) return undefined
+  try {
+    const a = JSON.parse(m[1]) as { device?: unknown; emoji?: unknown }
+    return { device: typeof a.device === 'string' ? a.device : '', emoji: Array.isArray(a.emoji) ? a.emoji.filter((e): e is string => typeof e === 'string').slice(0, 4) : [] }
+  } catch { return null }
 }
 
 /** `…/Boop.app/Contents/MacOS/<exe>` → `…/Boop.app/Contents/Resources`. */
@@ -79,6 +93,8 @@ export function createSupervisor(deps: Deps) {
     child = c
     c.on('stdout', (line) => {
       if (child !== c) return
+      const ask = parseAsk(line)
+      if (ask !== undefined) { set({ ask }); return }
       const p = parsePairing(line)
       if (p) set({ phase: 'running', pairUrl: p.url, code: p.code, failures: 0 })
     })
@@ -92,10 +108,10 @@ export function createSupervisor(deps: Deps) {
       if (child !== c || state.phase === 'stopped') return
       child = null
       const wasRunning = state.phase === 'running'
-      if (/EADDRINUSE/.test(stderrTail)) { set({ phase: 'restarting', pairUrl: null, code: null, port: state.port + 1 }); return schedule(0) }
+      if (/EADDRINUSE/.test(stderrTail)) { set({ phase: 'restarting', pairUrl: null, code: null, ask: null, port: state.port + 1 }); return schedule(0) }
       const failures = wasRunning ? 0 : state.failures + 1
-      if (failures >= MAX_FAILURES) return set({ phase: 'failed', pairUrl: null, code: null, failures })
-      set({ phase: 'restarting', pairUrl: null, code: null, failures })
+      if (failures >= MAX_FAILURES) return set({ phase: 'failed', pairUrl: null, code: null, ask: null, failures })
+      set({ phase: 'restarting', pairUrl: null, code: null, ask: null, failures })
       schedule(wasRunning ? 1000 : backoffMs(failures))
     })
   }
@@ -111,9 +127,15 @@ export function createSupervisor(deps: Deps) {
       try { resources = await deps.locate() } catch { return set({ phase: 'failed' }) }
       spawnBot()
     },
+    /** The person compared the emoji: `y` or `n` on the bot's stdin, as in a terminal. */
+    answer(yes: boolean) {
+      if (!state.ask) return
+      set({ ask: null })
+      try { child?.write?.(yes ? 'y\n' : 'n\n') } catch {}
+    },
     stop() {
       if (timer !== null) { clearTimer(timer); timer = null }
-      set({ phase: 'stopped', pairUrl: null, code: null })
+      set({ phase: 'stopped', pairUrl: null, code: null, ask: null })
       const c = child; child = null
       c?.kill()
     },

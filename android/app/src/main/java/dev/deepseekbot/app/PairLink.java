@@ -21,7 +21,7 @@ final class PairLink {
         if (!"deepseekbot".equalsIgnoreCase(uri.getScheme()) || !"pair".equalsIgnoreCase(uri.getHost())) return null;
         Map<String, String> items = query(uri.getRawQuery());
         String invite = items.get("invite");
-        if (invite != null && invite.startsWith("tailpocket1:")) return invite;
+        if (invite != null && (invite.startsWith("tailpocket1:") || invite.startsWith("tailpocket2:"))) return invite;
         String full = items.get("url");
         if (full != null && full.toLowerCase().startsWith("http")) return full;
         String origin = items.get("origin");
