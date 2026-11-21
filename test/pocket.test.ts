@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { listenPlan, Pocket, pocketWanted, windowSeconds } from '../src/pocket.ts'
+import { checkRoutes, listenPlan, parseRoutesFlag, Pocket, pocketWanted, routesLine, windowSeconds, type PocketRoute } from '../src/pocket.ts'
+import { writeFileSync } from 'node:fs'
 import { Pairing } from '../src/pairing.ts'
 import { MemoryDeviceStore } from '../src/devices.ts'
 
@@ -60,12 +61,13 @@ function fakeHost() {
 }
 const quiet = { ask() {}, askEnded() {} }
 
-type StartOpts = { identity?: string; allowed?: string[]; keys?: Record<string, string>; relays?: { url: string; token: string; opaque?: boolean; appAuth?: boolean }[]; noLan?: boolean; tailcatOnly?: boolean; save?: (s: unknown) => Promise<void>; forward?: string }
-async function open(o: { relay?: { url: string; token: string }; noLan?: boolean; tailcatOnly?: boolean } = {}) {
+type StartOpts = { identity?: string; allowed?: string[]; keys?: Record<string, string>; relays?: { url: string; token: string; opaque?: boolean; appAuth?: boolean }[]; noLan?: boolean; tailcatOnly?: boolean; routes?: string[]; save?: (s: unknown) => Promise<void>; forward?: string }
+async function open(o: { relay?: { url: string; token: string }; noLan?: boolean; tailcatOnly?: boolean; routes?: PocketRoute[]; saved?: object } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pocket-'))
+  if (o.saved) writeFileSync(join(dir, 'tailpocket.json'), JSON.stringify(o.saved))
   const f = fakeHost()
   let opts: StartOpts = {}
-  const pocket = await Pocket.open({ statePath: join(dir, 'tailpocket.json'), forward: '127.0.0.1:3850', name: 'Studio Mac', relay: o.relay, noLan: o.noLan, tailcatOnly: o.tailcatOnly, start: (async (x: StartOpts) => { opts = x; return f.host }) as never })
+  const pocket = await Pocket.open({ statePath: join(dir, 'tailpocket.json'), forward: '127.0.0.1:3850', name: 'Studio Mac', relay: o.relay, noLan: o.noLan, tailcatOnly: o.tailcatOnly, routes: o.routes, start: (async (x: StartOpts) => { opts = x; return f.host }) as never })
   return { dir, ...f, pocket, opts: () => opts }
 }
 const tick = () => new Promise((r) => setTimeout(r, 5))
@@ -124,6 +126,53 @@ test('the settings: noLan goes to the helper; Tailcat only goes alone, without t
   assert.equal(only.opts().tailcatOnly, true)
   assert.equal(only.opts().relays, undefined)
   assert.equal(only.opts().noLan, undefined, 'Tailcat only already has no local network route')
+})
+
+// TailPocket v0.3.2: routes, Tailcat optional. A wrong set is refused by Boop with a sentence, before the helper sees it.
+test('routes: every non-empty set of tailcat, lan, relay passes; what TailPocket would refuse comes back as a sentence', () => {
+  const ok = { relay: true, from: 'config' as const }
+  for (const routes of [['tailcat'], ['lan'], ['relay'], ['lan', 'relay'], ['relay', 'tailcat'], ['tailcat', 'lan', 'relay']]) assert.equal(checkRoutes({ ...ok, routes }), null, routes.join(','))
+  assert.equal(checkRoutes({ ...ok, routes: undefined }), null, 'unset: as in v0.3.1')
+  assert.match(checkRoutes({ ...ok, routes: [] })!, /empty.*tailcat, lan, relay/)
+  assert.match(checkRoutes({ ...ok, routes: ['wifi'] })!, /"wifi" is not a route/)
+  assert.match(checkRoutes({ ...ok, routes: ['LAN'] })!, /"LAN" is not a route/, 'names are exact')
+  assert.match(checkRoutes({ ...ok, routes: ['lan', 'lan'] })!, /"lan" is listed twice/)
+  assert.match(checkRoutes({ ...ok, routes: 'lan' })!, /empty/, 'a string in config.json is not a list')
+  assert.match(checkRoutes({ ...ok, routes: ['relay'], relay: false })!, /DEEPSEEK_BOT_RELAY_URL.*DEEPSEEK_BOT_RELAY_TOKEN/)
+  assert.equal(checkRoutes({ ...ok, routes: ['lan'], relay: false }), null, 'no relay needed without the relay route')
+  assert.match(checkRoutes({ ...ok, routes: ['lan'], noLan: true })!, /"routes" replaces "noLan" in config\.json/)
+  assert.match(checkRoutes({ ...ok, routes: ['lan'], tailcatOnly: true, from: 'flag' })!, /--routes replaces --tailcat-only/)
+})
+
+test('--routes: a comma list as written; all drops the setting; nothing after it is an empty set, not every route', () => {
+  assert.deepEqual(parseRoutesFlag('lan, relay'), ['lan', 'relay'])
+  assert.equal(parseRoutesFlag('all'), undefined)
+  assert.deepEqual(parseRoutesFlag(undefined), [])
+  assert.match(checkRoutes({ routes: parseRoutesFlag(undefined), relay: false, from: 'flag' })!, /empty/)
+})
+
+test('routesLine says what a set costs: LAN only does not reach a phone away from home; no Tailcat talks to no tailcat.dev', () => {
+  assert.match(routesLine(['lan']), /local network\. No Tailcat.*cannot connect/)
+  assert.doesNotMatch(routesLine(['lan', 'relay']), /cannot connect/)
+  assert.doesNotMatch(routesLine(['tailcat', 'lan']), /No Tailcat/)
+})
+
+test('routes go to the helper alone: no noLan or tailcatOnly beside them, the relay only when relay is in them', async () => {
+  const relay = { url: 'wss://relay.example.com', token: 'relay-token' }
+  const lan = await open({ routes: ['lan'], relay, noLan: true, tailcatOnly: true })
+  assert.deepEqual(lan.opts().routes, ['lan'])
+  assert.equal(lan.opts().relays, undefined, 'TailPocket refuses relays without the relay route')
+  assert.equal(lan.opts().noLan, undefined); assert.equal(lan.opts().tailcatOnly, undefined)
+  const both = await open({ routes: ['lan', 'relay'], relay })
+  assert.deepEqual(both.opts().relays, [relay])
+  assert.equal((await open()).opts().routes, undefined, 'unset stays unset: v0.3.1 behaviour')
+})
+
+test('without Tailcat, phones that never sent an end-to-end key are counted: TailPocket forgets them and they pair again', async () => {
+  const saved = { identity: 'id', allowed: ['nodekey:old', 'nodekey:new'], keys: { 'nodekey:new': 'noise' } }
+  assert.equal((await open({ routes: ['lan'], saved })).pocket.mustPairAgain, 1)
+  assert.equal((await open({ routes: ['tailcat', 'lan'], saved })).pocket.mustPairAgain, 0, 'with Tailcat it can still sync the key')
+  assert.equal((await open({ saved })).pocket.mustPairAgain, 0)
 })
 
 test('emoji: the person sees the phone\'s name and emoji, and only their answer pairs it', async () => {

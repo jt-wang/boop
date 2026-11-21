@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.8
+
+- TailPocket v0.3.3 (v0.3.2's optional Tailcat, with the fixes from its security audit): Tailcat is now optional. Start the computer with `--routes` (or `"routes"` in `config.json`) set to any of `tailcat`, `lan`, `relay`. `--routes lan` keeps everything on your network and talks to no Tailcat server; a phone away from that network cannot connect. Without `--routes` nothing changes. A wrong set stops the bot with one sentence saying what to change.
+- Phones: Settings › Computer › Connection chooses the routes this phone may use: all routes, local network only, relay only or Tailcat only, each with what it means and costs. Switching reconnects at once, a route that reaches nothing is reported, and a choice TailPocket refuses is not shown as applied. The old Tailcat-only switch becomes Tailcat only.
+- Pairing works without Tailcat (emoji pairing over the local network or your relay). Phones paired over Tailcat before v0.3 that never sent their end-to-end key pair again on a computer without Tailcat; the bot says how many.
+- Version 0.1.8: phone build 9, Mac build 7.
+
 ## v0.1.7
 
 - TailPocket v0.3.1 on every platform. Removing a paired phone closes its open connections immediately, including when it was the last phone. Helper shutdown is bounded; phones can move to a better connection without interrupting existing requests.

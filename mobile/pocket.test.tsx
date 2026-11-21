@@ -268,23 +268,72 @@ test('a tailpocket2: pairing shows the emoji until the computer confirms, then g
   expect(app.shows('id:pair-emoji')).toBe(false)
 })
 
-test('Settings: Tailcat only goes to TailPocket, is kept on this phone, and is set again before the next launch\'s tunnel', async () => {
+// TailPocket v0.3.2: the phone chooses its routes in Settings › Connection, and the choice reconnects at once.
+test('Settings › Connection: LAN only goes to TailPocket, is kept on this phone, reconnects now, and says what it costs', async () => {
   const set: unknown[] = []; let opened = 0
-  const app = await settings(undefined, { 'tailPocket.setTailcatOnly': (d: unknown) => { set.push(d); return null }, 'tailPocket.connect': () => (opened++, tunnel(50999)), 'tailPocket.disconnect': null })
-  await app.waitFor('id:tailcat-only')
+  const app = await settings(() => ({ route: 'lan', relay: '' }), { 'tailPocket.setRoutes': (d: unknown) => { set.push(d); return null }, 'tailPocket.connect': () => (opened++, tunnel(50999)), 'tailPocket.disconnect': null })
+  await app.waitFor('id:connection-row')
+  await app.press('id:connection-row')
+  await app.waitFor('id:route-all')
+  for (const words of ['All routes', 'Local network only', 'Relay only', 'Tailcat only', '/Away from that network it does not connect/', '/Switching reconnects at once/', '/setup instructions on the computer/']) await app.waitFor(`text:${words}`)
+  expect(app.shows('text:/npm start|--routes/')).toBe(false) // a phone's Settings names no developer command
   const before = opened
-  await app.press('id:tailcat-only')
+  await app.press('id:route-lan')
   await app.waitUntil(() => set.length === 1)
-  expect(set[0]).toEqual({ on: true })
-  expect(app.storage().tailcatOnly).toBe('1')
+  expect(set[0]).toEqual({ routes: ['lan'] })
+  expect(app.storage().pocketRoutes).toBe('lan')
   await app.waitUntil(() => opened > before) // an open tunnel keeps its routes: it opens again
-  await app.waitFor('text:/Reach the computer only through Tailcat/')
-  const order: string[] = []
-  const again = await open('./App.tsx', {
-    storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1', tailcatOnly: '1' },
-    host: { handlers: { 'tailPocket.setTailcatOnly': (d: { on: boolean }) => { order.push(`set ${d.on}`); return null }, 'tailPocket.connect': () => { order.push('connect'); return tunnel(50999) } } },
+  await app.waitFor('text:Reconnecting')
+  // the events socket cannot open headless and keeps falling back to Reconnecting: say hello until the new way shows
+  for (let i = 0; i < 30 && !app.shows('text:/Straight to your computer over the local network/'); i++) {
+    await app.host.send('event', { type: 'hello', connected: true, asks: [] }); await new Promise((r) => setTimeout(r, 200))
+  }
+  expect(app.shows('text:/Straight to your computer over the local network/')).toBe(true)
+  await app.press('id:route-all')
+  await app.waitUntil(() => set.length === 2)
+  expect(set[1]).toEqual({ routes: null }) // all routes: TailPocket's default again
+})
+
+test('Settings › Connection: a choice TailPocket refuses is neither shown nor kept, and says it failed', async () => {
+  const app = await settings(undefined, { 'tailPocket.setRoutes': () => { throw new Error('invalid-routes') } })
+  await app.press('id:connection-row')
+  await app.waitFor('id:route-lan')
+  await app.press('id:route-lan')
+  await app.waitFor('text:Could not change how this phone connects. Try again.')
+  expect(app.storage().pocketRoutes).toBe(undefined)
+})
+
+test('Settings: the footer says when this phone is limited to one route', async () => {
+  const app = await open('./App.tsx', {
+    storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1', pocketRoutes: 'relay' },
+    host: { handlers: { 'tailPocket.connect': tunnel(50999), 'tailPocket.setRoutes': null } },
     network: reachable(50999),
   })
-  await again.waitFor('label:Settings')
-  expect(order.slice(0, 2)).toEqual(['set true', 'connect'])
+  await app.waitFor('label:Settings')
+  await app.press('label:Settings')
+  await app.waitFor('text:/Relay only: Only through your own relay/')
+})
+
+for (const [stored, routes] of [[{ pocketRoutes: 'lan' }, ['lan']], [{ tailcatOnly: '1' }, ['tailcat']]] as const) {
+  test(`a launch sets the routes before its first tunnel (${Object.keys(stored)[0]})`, async () => {
+    const order: string[] = []
+    const app = await open('./App.tsx', {
+      storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1', ...stored },
+      host: { handlers: { 'tailPocket.setRoutes': (d: { routes: string[] | null }) => { order.push(`routes ${d.routes}`); return null }, 'tailPocket.setTailcatOnly': () => { order.push('tailcat-only'); return null }, 'tailPocket.connect': () => { order.push('connect'); return tunnel(50999) } } },
+      network: reachable(50999),
+    })
+    await app.waitFor('label:Settings')
+    expect(order.slice(0, 2)).toEqual([`routes ${routes.join(',')}`, 'connect'])
+  })
+}
+
+test('a phone with every route sets none: TailPocket keeps its default', async () => {
+  const order: string[] = []
+  const app = await open('./App.tsx', {
+    storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1' },
+    host: { handlers: { 'tailPocket.setRoutes': () => { order.push('routes'); return null }, 'tailPocket.connect': () => { order.push('connect'); return tunnel(50999) } } },
+    network: reachable(50999),
+  })
+  await app.waitFor('label:Settings')
+  expect(order).toEqual(['connect'])
 })

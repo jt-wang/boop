@@ -2,6 +2,9 @@
 // JavaScript that runs inside a native app: NSH apps (`host`), React Native (the native module).
 // The native side does the work; this file only names the calls and shapes the answers.
 
+/** A route type: Tailcat, the local network, or a tailpocket-relay. */
+export type TailPocketRouteType = "tailcat" | "lan" | "relay";
+
 /** How JavaScript reaches the native bridge. `timeoutMs` 0 waits as long as the native side takes. */
 export interface TailPocketTransport {
   call(name: string, args?: unknown, timeoutMs?: number): Promise<unknown>;
@@ -114,6 +117,16 @@ export function createTailPocket(transport: TailPocketTransport) {
     /** Reach computers over Tailcat only: pair, connect and sync then never use the relay or local network routes a
      *  computer lists. Set it before `connect`; open connections keep the setting they started with. */
     setTailcatOnly: (on: boolean) => call<void>("tailPocket.setTailcatOnly", { on }),
+
+    /** The route types the phone may use (v0.3.2): any of "tailcat", "lan", "relay". Without "tailcat", pair and
+     *  connect never start a Tailcat client, so the phone talks to no Tailcat or DERP server. `null` allows every
+     *  route. Rejects with `invalid-routes` for an empty, unknown or repeated route. It turns setTailcatOnly off, and setTailcatOnly(true) clears it: the last call decides. */
+    setRoutes: (routes: TailPocketRouteType[] | null) =>
+      // Only null allows every route: undefined (a setting that did not load) would be dropped on the way to the
+      // native side and must not widen the phone's routes.
+      routes === null || Array.isArray(routes)
+        ? call<void>("tailPocket.setRoutes", { routes })
+        : Promise.reject(new TailPocketError("invalid-routes")),
 
     /** Opens the tunnel to a saved (or given) computer. */
     connect: async (options: { link?: TailPocketHostLink; slot?: string; derpMapUrl?: string } = {}): Promise<TailPocketConnection> => {

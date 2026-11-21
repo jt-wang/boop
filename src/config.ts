@@ -18,6 +18,9 @@ export interface BotConfig {
   noLan?: boolean
   /** TailPocket (local use): Tailcat only, as before v0.3: no local network route and no relay. `--tailcat-only`. */
   tailcatOnly?: boolean
+  /** TailPocket v0.3.2 (local use): exactly the routes phones may use, any of "tailcat", "lan", "relay"; replaces the two
+   *  switches above. `--routes lan,relay`, `--routes all` to drop it. Checked by src/pocket.ts `checkRoutes`. */
+  routes?: string[]
 }
 
 export const DEFAULT_CONFIG: BotConfig = {

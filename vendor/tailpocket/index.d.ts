@@ -59,6 +59,13 @@ export interface TailPocketHostOptions {
   noLan?: boolean;
   /** Tailcat only, as before v0.3: no local network listener, no relay; invites and routes list only Tailcat. Not with `relays` or `listen`. */
   tailcatOnly?: boolean;
+  /**
+   * Exactly the routes to run (v0.3.2), one or more of "tailcat", "lan", "relay". Without "tailcat" the helper starts
+   * no Tailcat node and talks to no Tailcat or DERP server; only emoji windows (`pair({ emoji: true })`) exist then.
+   * "relay" needs `relays`; `relays` and `listen` need their route. Not with `tailcatOnly` or `noLan`. Default:
+   * Tailcat, lan unless `noLan`, relay when `relays` are given.
+   */
+  routes?: Array<'tailcat' | 'lan' | 'relay'>;
   /** Decide each connection from a paired phone; false (or no answer in 5 s) closes it. */
   authorize?(phone: string, route: string): Promise<boolean> | boolean;
   /** Pairings, revokes, sessions and refusals. Never keys, codes or payloads. */

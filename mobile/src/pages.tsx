@@ -7,7 +7,7 @@ import { APP_VERSION } from './version.ts'
 import { LANGS, LANG_NAMES, formatDateTime, formatNumber } from './locale.ts'
 import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type InputRef } from 'nsh'
 import { AlertDialog, Input } from 'nsh/base'
-import { api, changeTailcatOnly, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
+import { api, changeRouteMode, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
 import { activityText } from './plain.ts'
 import { pair, parseAddress, type Session } from './api.ts'
 import { signIn, hostConfig, hostUrl, isHostedOrigin, waitForSandbox } from './hosted.ts'
@@ -17,7 +17,7 @@ import { Progress } from 'nsh/base'
 import mark from '../assets/mark.png'
 import { AboutGroup, openLegal } from './compliance.tsx' // [compliance]
 import { pairLink } from './native.ts'
-import { canScan, isInvite, pairEmoji, pairInvite, pocketPath, refreshPath, scanInvite, tailcatOnly, viaPocket } from './pocket.ts'
+import { canScan, isInvite, pairEmoji, pairInvite, pocketPath, refreshPath, ROUTE_MODES, routeMode, scanInvite, viaPocket, type RouteMode } from './pocket.ts'
 import { ago } from './library.tsx'
 import { Avatar, Btn, Card, Cell, Empty, Group, Hint, Page, pageClass, Toggle, TopProbe } from './ui.tsx'
 import { diagnosticStatus, diagnosticTitle } from './diagnostics-page.tsx'
@@ -364,8 +364,45 @@ export function DevicesPage() {
 
 const Check = () => <Text class="text-primary text-[17px] font-semibold">✓</Text>
 
-/** Settings' first section: which computer, whether it is reached, and which way. */
-function ComputerSection(props: { origin: string; hosted: boolean }) {
+/** The Computer section's Status row: a dot and Online, Reconnecting or Offline. */
+function StatusCell() {
+  const dot = () => connection() === 'online' ? 'bg-emerald-500' : connection() === 'offline' ? 'bg-destructive' : 'bg-amber-500'
+  const state = () => str(connection() === 'online' ? 'stateOnline' : connection() === 'offline' ? 'stateOffline' : 'stateReconnecting')
+  return <Cell title={str('connectionStatus')} testID="computer-status" right={<View class="flex-row items-center gap-2"><View class={`w-[8px] h-[8px] rounded-full ${dot()}`} /><Text class="text-muted-foreground text-[17px]">{state()}</Text></View>} />
+}
+/** Which way TailPocket says the tunnel goes now. */
+const pocketPathText = () => { const p = pocketPath(); return p?.kind === 'direct' ? str('pathPocketDirect') : p?.kind === 'relay' ? t('pathPocketRelay')(p.relay ?? '') : p?.kind === 'lan' ? str('pathPocketLan') : str('pathPocket') }
+/** Each choice's name and what it means and costs. */
+const ROUTE_WORDS = { all: ['routeAll', 'routeAllNote'], lan: ['routeLan', 'routeLanNote'], relay: ['routeRelay', 'routeRelayNote'], tailcat: ['routeTailcat', 'routeTailcatNote'] } as const satisfies Record<RouteMode, readonly [string, string]>
+
+/** Settings › Connection: which routes this phone may use (TailPocket v0.3.2), with what each means and costs. A choice
+ *  applies at once: the tunnel opens again, Status shows Reconnecting until the new way answers, and the line under it says
+ *  which way it went. One that reaches nothing says so instead of leaving the person to guess. */
+export function ConnectionPage() {
+  const ask = () => { refreshPath().catch((e) => { if ((e as { code?: string }).code === 'revoked') disconnect().catch(() => {}) }) }
+  ask(); const timer = setInterval(ask, 5_000); cleanup(() => clearInterval(timer))
+  effect(() => { if (connection() === 'online') ask() })
+  // the hint waits for one failed try after a switch: Reconnecting for a moment is the switch itself
+  const stuck = signal(false)
+  let since = 0
+  effect(() => { if (connection() === 'online') { stuck.set(false); since = 0 } else if (!since) since = Date.now() })
+  const check = setInterval(() => { stuck.set(connection() !== 'online' && since > 0 && Date.now() - since > 12_000) }, 1000); cleanup(() => clearInterval(check))
+  const pick = (m: RouteMode) => { if (m === routeMode()) return; since = Date.now(); stuck.set(false); changeRouteMode(m).catch(() => showToast(str('routeFailed'))) }
+  return (
+    <Page page="ConnectionPage" class={pageClass}>
+      <Group footer={stuck() && routeMode() !== 'all' ? str('routeNotReaching') : connection() === 'online' ? pocketPathText() : undefined}>
+        <StatusCell />
+      </Group>
+      <Group header={str('routesHeader')} footer={str('routesFooter')}>
+        {ROUTE_MODES.map((m) => <Cell title={str(ROUTE_WORDS[m][0])} subtitle={str(ROUTE_WORDS[m][1])} right={routeMode() === m ? <Check /> : undefined} onPress={() => pick(m)} testID={`route-${m}`} />)}
+      </Group>
+    </Page>
+  )
+}
+
+/** Settings' first section: which computer, whether it is reached, and which way. Through TailPocket the Connection row
+ *  opens the routes this phone may use (`onRoutes`). */
+function ComputerSection(props: { origin: string; hosted: boolean; onRoutes?: () => void }) {
   const route = () => routeOf(props.origin, props.hosted, viaPocket())
   // the way a tunnel goes can change, and asking is what upgrades it to direct: only while this page shows
   // `revoked`: the computer removed this phone; signed out, as for a refused token (state.ts, `unpaired`)
@@ -381,7 +418,7 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
   const path = () => {
     const r = route()
     if (!r || connection() !== 'online') return str('pathUnknown')
-    if (r.via === 'pocket') { const p = pocketPath(); return p?.kind === 'direct' ? str('pathPocketDirect') : p?.kind === 'relay' ? t('pathPocketRelay')(p.relay ?? '') : p?.kind === 'lan' ? str('pathPocketLan') : str('pathPocket') }
+    if (r.via === 'pocket') return pocketPathText()
     if (r.via === 'lan') return t('pathLan')(r.host)
     if (r.via === 'cloudflare') return str('pathCloudflare')
     if (r.via === 'hosted') return str('pathHosted')
@@ -390,31 +427,31 @@ function ComputerSection(props: { origin: string; hosted: boolean }) {
   const note = () => {
     const r = route()
     if (!r) return undefined
-    if (r.via === 'pocket') return tailcatOnly() ? `${str('notePocket')} ${str('tailcatOnlyNote')}` : str('notePocket')
+    if (r.via === 'pocket') { const m = routeMode(); return m === 'all' ? str('notePocket') : `${str('notePocket')} ${str(ROUTE_WORDS[m][0])}: ${str(ROUTE_WORDS[m][1])}` }
     if (!r.encrypted) return str('notePlain')
     return r.via === 'cloudflare' ? str('noteCloudflare') : r.via === 'hosted' ? str('noteHosted') : undefined
   }
-  const dot = () => connection() === 'online' ? 'bg-emerald-500' : connection() === 'offline' ? 'bg-destructive' : 'bg-amber-500'
-  const state = () => str(connection() === 'online' ? 'stateOnline' : connection() === 'offline' ? 'stateOffline' : 'stateReconnecting')
+  const opensRoutes = () => viaPocket() && !!props.onRoutes
   return (
     <Group header={str('computer')} footer={note()}>
       {name() ? <Cell title={str('name')} value={name()} testID="computer-name" /> : null}
-      <Cell title={str('connectionStatus')} testID="computer-status" right={<View class="flex-row items-center gap-2"><View class={`w-[8px] h-[8px] rounded-full ${dot()}`} /><Text class="text-muted-foreground text-[17px]">{state()}</Text></View>} />
-      <View class="pl-4"><View style={{ borderTopWidth: 0.5 }} class="flex-row items-start gap-3 min-h-[44px] pr-4 py-[11px] border-border">
+      <StatusCell />
+      {/* through TailPocket it navigates like any row with a chevron: to the routes this phone may use */}
+      <View role={opensRoutes() ? 'button' : undefined} testID="connection-row" onPress={opensRoutes() ? props.onRoutes : undefined} class={`pl-4 ${opensRoutes() ? 'active:bg-secondary' : ''}`}><View style={{ borderTopWidth: 0.5 }} class="flex-row items-start gap-3 min-h-[44px] pr-4 py-[11px] border-border">
         <Text class="text-foreground text-[17px] leading-[22px]">{str('connectionLabel')}</Text>
         <View class="flex-1 min-w-0 items-end gap-[2px]">
           <Text testID="computer-security" class="text-muted-foreground text-[17px] leading-[22px] text-right">{route() ? str(route()!.via === 'pocket' ? 'connE2e' : route()!.encrypted ? 'connTls' : 'connPlain') : ''}</Text>
           <Text testID="route" class="text-muted-foreground text-[13px] leading-[18px] text-right">{path()}</Text>
         </View>
+        {opensRoutes() ? <Text class="text-input text-[17px] leading-[22px] font-semibold -mr-[2px]">›</Text> : null}
       </View></View>
-      {viaPocket() ? <Cell title={str('tailcatOnly')} right={<Toggle checked={tailcatOnly()} onChange={(on) => { changeTailcatOnly(on).catch(() => {}) }} label={str('tailcatOnly')} testID="tailcat-only" />} /> : null}
       <Cell title={str('appVersion')} value={APP_VERSION} testID="app-version" />
       {me()?.computer?.version ? <Cell title={str('computerVersion')} value={me()!.computer!.version} testID="computer-version" /> : null}
     </Group>
   )
 }
 
-export function SettingsPage(props: { onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void; onDiagnostics?: () => void }) {
+export function SettingsPage(props: { onRoutes?: () => void; onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void; onDiagnostics?: () => void }) {
   const name = signal(me()?.assistant.name ?? '')
   // a rename elsewhere (the chat, another phone) shows here: the field follows the bot's name
   effect(() => { const n = me()?.assistant.name; if (n) name.set(n) })
@@ -437,7 +474,7 @@ export function SettingsPage(props: { onIdentity: () => void; onDevices: () => v
   }
   return (
     <Page page="SettingsPage" class={`${pageClass} pb-[env(keyboard-inset-height)]`} keyboardShouldPersistTaps="handled">
-      <ComputerSection origin={origin()} hosted={hosted()} />
+      <ComputerSection origin={origin()} hosted={hosted()} onRoutes={props.onRoutes} />
       <If when={isSample()} else={
         <Group footer={unpairBody()}>
           <Cell title={str('unpair')} destructive centered onPress={unpair} testID="unpair" />

@@ -4,7 +4,7 @@ import { effect, Keyboard, keyboardFrame, mount, platform, safeAreaInsets, signa
 import { createNavStack, NavPage, NavStack } from 'nsh/base'
 import { boot, connect, me, session, str, toast } from './src/state.ts'
 import { ChatScreen } from './src/chat.tsx'
-import { ActivityPage, ConnectScreen, DevicesPage, GoalsPage, IdentityPage, MenuPage, NameScreen, PreparingScreen, SettingsPage, SignInScreen, UpcomingPage, UsagePage, WelcomeScreen } from './src/pages.tsx'
+import { ActivityPage, ConnectionPage, ConnectScreen, DevicesPage, GoalsPage, IdentityPage, MenuPage, NameScreen, PreparingScreen, SettingsPage, SignInScreen, UpcomingPage, UsagePage, WelcomeScreen } from './src/pages.tsx'
 import { hostUrl, setHostUrl } from './src/hosted.ts'
 import { Glass, Icon, largeTitles, systemHeaderClass, systemTabBarStyle, tabIcons, underBarClass } from './src/ui.tsx'
 import { muted } from './src/kit.tsx'
@@ -26,7 +26,7 @@ import { diagnosticLog, loadDiagnostics, runDiagnostics } from './src/diagnostic
 type Route =
   | { name: 'chat' } | { name: 'menu' } | { name: 'identity' } | { name: 'upcoming' } | { name: 'goals' } | { name: 'activity' } | { name: 'devices' } | { name: 'settings' }
   | { name: 'library' } | { name: 'file'; path: string } | { name: 'ideas' } | { name: 'connectors' } | { name: 'connector-add' } | { name: 'memory' } | { name: 'usage' }
-  | { name: 'discover' } | { name: 'diagnostics' }
+  | { name: 'discover' } | { name: 'diagnostics' } | { name: 'connection' }
   | { name: 'profile'; tab?: ProfileTab; focus?: string } | { name: 'memory-edit'; item: MemoryItem } | { name: 'connector'; id: string }
   | { name: 'report'; target: ReportTarget } | { name: 'interfaces' } | { name: 'interface'; id: string } | { name: 'ai-provider' } // [compliance]
 // routes added by other features go here (extend `Route` and `page()` below)
@@ -138,7 +138,8 @@ function App() {
       case 'interface': return <NavPage headerClass={HEADER} title="" class={grouped}><InterfacePage id={route.id} onOpen={(i) => openInterface({ moduleId: i.id, title: i.title })} onReport={(target) => nav.push({ name: 'report', target })} /></NavPage>
       case 'ai-provider': return <NavPage headerClass={HEADER} title={str('aiProvider')} class={grouped}><AiProviderPage onStopped={() => nav.popToRoot()} /></NavPage>
       case 'diagnostics': return <NavPage headerClass={HEADER} title={diagnosticTitle()} class={grouped}><DiagnosticsPage /></NavPage>
-      case 'settings': return <NavPage headerClass={HEADER} title={str('settings')} headerLargeTitle={largeTitles} class={grouped}><SettingsPage onDiagnostics={() => nav.push({ name: 'diagnostics' })} onAiProvider={() => nav.push({ name: 'ai-provider' })} onIdentity={() => nav.push({ name: 'identity' })} onMemory={() => nav.push({ name: 'memory' })} onConnectors={() => nav.push({ name: 'connectors' })} onUsage={() => nav.push({ name: 'usage' })} onDevices={() => nav.push({ name: 'devices' })} onActivity={() => nav.push({ name: 'activity' })} /></NavPage>
+      case 'settings': return <NavPage headerClass={HEADER} title={str('settings')} headerLargeTitle={largeTitles} class={grouped}><SettingsPage onRoutes={() => nav.push({ name: 'connection' })} onDiagnostics={() => nav.push({ name: 'diagnostics' })} onAiProvider={() => nav.push({ name: 'ai-provider' })} onIdentity={() => nav.push({ name: 'identity' })} onMemory={() => nav.push({ name: 'memory' })} onConnectors={() => nav.push({ name: 'connectors' })} onUsage={() => nav.push({ name: 'usage' })} onDevices={() => nav.push({ name: 'devices' })} onActivity={() => nav.push({ name: 'activity' })} /></NavPage>
+      case 'connection': return <NavPage headerClass={HEADER} title={str('connectionPage')} class={grouped}><ConnectionPage /></NavPage>
       // routes added by other features go here
     }
   }

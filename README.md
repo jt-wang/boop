@@ -45,7 +45,7 @@ DEEPSEEK_API_KEY=sk-… npm start
 
 The terminal prints a QR code. Scan it from the phone app.
 
-The phone app is the way in. Pairing shows four emoji on the phone and on the computer; answer `y` in the terminal (or Same in the Mac window) when they match. On the same Wi-Fi the phone goes straight to the computer, end-to-end encrypted; `--no-lan` turns that off, and `--tailcat-only` uses Tailcat alone. A plain address on the local network is still there if you ask for it (`npm start -- --host 0.0.0.0` or `--no-tailpocket`): plain HTTP on the same Wi-Fi, which anyone on that network can read, the token included. The bot prints a warning saying so when it starts.
+The phone app is the way in. Pairing shows four emoji on the phone and on the computer; answer `y` in the terminal (or Same in the Mac window) when they match. On the same Wi-Fi the phone goes straight to the computer, end-to-end encrypted. `--routes` chooses the routes: `--routes lan` keeps everything on your network with no Tailcat at all (a phone away from home then cannot connect), `--routes tailcat` uses Tailcat alone; the phone has the same choice under Settings › Connection (`docs/connection.md`). A plain address on the local network is still there if you ask for it (`npm start -- --host 0.0.0.0` or `--no-tailpocket`): plain HTTP on the same Wi-Fi, which anyone on that network can read, the token included. The bot prints a warning saying so when it starts.
 
 How each route works and who can read the traffic: [docs/connection.md](docs/connection.md).
 

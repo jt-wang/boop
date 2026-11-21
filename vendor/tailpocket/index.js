@@ -72,6 +72,7 @@ export class TailPocketHost extends EventEmitter {
       v: 1, name: options.name, identity: options.identity ?? '', allowed: this.allowed, forward: options.forward,
       port: options.port, pairingPort: options.pairingPort, derpMapUrl: options.derpMapUrl, identifyPhone: !!options.identifyPhone,
       keys: options.keys, relays: options.relays, listen: options.listen, tailcatOnly: !!options.tailcatOnly, noLan: !!options.noLan,
+      routes: options.routes,
       authorize: typeof options.authorize === 'function', audit: typeof options.audit === 'function',
     });
   }
@@ -130,7 +131,7 @@ export class TailPocketHost extends EventEmitter {
       case 'localCancelled': this.#pairings.get(e.id)?.cancelled(); break;
       case 'localDelivered': this.#pairings.get(e.id)?.delivered(); break;
       case 'error': {
-        const err = new TailPocketHostError(e.code);
+        const err = new TailPocketHostError(e.code, e.message);
         if (e.id && this.#pairings.get(e.id)?.localError(err)) break;
         if (!e.id && this.#waiters.has('ready')) { this.#settle('ready', err); break; }
         if (e.id && this.#waiters.has(e.id)) { this.#settle(e.id, err); break; }

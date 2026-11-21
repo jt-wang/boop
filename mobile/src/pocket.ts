@@ -2,7 +2,7 @@
 // (TailPocketNsh.attach), the bridge keeps the phone's key and the link in the Keychain or Keystore, and each opening of
 // the tunnel gives a new loopback port, so the saved origin is only ever a guess until the tunnel is open again.
 import { host, platform, signal, Storage } from 'nsh'
-import { createTailPocket, TailPocketError, type TailPocketConnection, type TailPocketPath } from './tailpocket/client.ts'
+import { createTailPocket, TailPocketError, type TailPocketConnection, type TailPocketPath, type TailPocketRouteType } from './tailpocket/client.ts'
 import { pair } from './api.ts'
 
 // NSH 0.4.0 rejects a host call with `code: 'ERR_NSH_HOST_ERROR'` and the bridge's own code as the message (measured
@@ -24,21 +24,28 @@ let tunnel: TailPocketConnection | null = null
 /** The four emoji a pairing shows while the computer's user compares them (TailPocket v0.3.0-pre.4); null otherwise. */
 export const pairEmoji = signal<string[] | null>(null)
 
-/** Tailcat only (Settings): the phone ignores the relay and local network routes a computer lists. Per phone, in Storage
- *  (`tailcatOnly` = '1'); TailPocket takes it before each `connect`, so it is set at launch and the tunnel opens again
- *  when it changes. */
-export const tailcatOnly = signal(false)
-export async function loadTailcatOnly(): Promise<void> {
-  const on = (await Storage.getItem('tailcatOnly').catch(() => null)) === '1'
-  tailcatOnly.set(on)
-  if (on) await tailPocket.setTailcatOnly(true).catch(() => {}) // a browser has no bridge
+/** Which routes this phone may use (Settings › Connection, TailPocket v0.3.2 `setRoutes`): every route the computer lists, or
+ *  only one kind. Without Tailcat the phone starts no Tailcat client at all. Per phone, in Storage (`pocketRoutes`);
+ *  TailPocket takes it before each `connect`, so it is set at launch and the tunnel opens again when it changes. */
+export type RouteMode = 'all' | 'lan' | 'relay' | 'tailcat'
+export const ROUTE_MODES: readonly RouteMode[] = ['all', 'lan', 'relay', 'tailcat']
+const ROUTES: Record<RouteMode, TailPocketRouteType[] | null> = { all: null, lan: ['lan'], relay: ['relay'], tailcat: ['tailcat'] }
+export const routeMode = signal<RouteMode>('all')
+export async function loadRouteMode(): Promise<void> {
+  const saved = await Storage.getItem('pocketRoutes').catch(() => null)
+  // before v0.3.2 the one choice was the Tailcat-only switch (`tailcatOnly` = '1')
+  const mode = ROUTE_MODES.find((m) => m === saved) ?? ((await Storage.getItem('tailcatOnly').catch(() => null)) === '1' ? 'tailcat' : 'all')
+  routeMode.set(mode)
+  if (mode !== 'all') await tailPocket.setRoutes(ROUTES[mode]).catch(() => {}) // a browser has no bridge
 }
-export async function setTailcatOnly(on: boolean): Promise<void> {
-  tailcatOnly.set(on)
-  await Storage.setItem('tailcatOnly', on ? '1' : '0').catch(() => {})
-  await tailPocket.setTailcatOnly(on).catch(() => {})
+/** TailPocket takes the routes first: one it refuses is neither shown nor kept, so the screen never claims a limit the
+ *  phone does not have. Always an array or an explicit null (TailPocket v0.3.3 refuses anything else). */
+export async function setRouteMode(mode: RouteMode): Promise<void> {
+  await tailPocket.setRoutes(ROUTES[mode])
+  routeMode.set(mode)
+  await Storage.setItem('pocketRoutes', mode).catch(() => {})
+  await Storage.removeItem('tailcatOnly').catch(() => {})
 }
-
 
 /** A browser has no bridge and no camera scanner: it keeps the address form. */
 export const canScan = () => platform.os !== 'web'

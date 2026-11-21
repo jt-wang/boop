@@ -15,7 +15,7 @@ import { personZone, setComputerZone } from './clock.ts'
 import { loadSecrets, ModelSwitch } from './modelswitch.ts'
 import { FileDeviceStore } from './devices.ts'
 import { Pairing } from './pairing.ts'
-import { listenPlan, Pocket, pocketWanted, windowSeconds, type PocketWanted } from './pocket.ts' // the local connection, docs/connection.md
+import { checkRoutes, listenPlan, parseRoutesFlag, Pocket, pocketWanted, routesLine, windowSeconds, type PocketRoute, type PocketWanted } from './pocket.ts' // the local connection, docs/connection.md
 import { PushService, type Notification } from './push.ts'
 import { ApnsSender, RelayApnsSender, type ApnsConfig } from './push-apns.ts' // [agent:ios] [host]
 import { FcmSender, RelayFcmSender, type FcmConfig } from './push-fcm.ts' // [push]
@@ -60,8 +60,16 @@ const overrides: Partial<BotConfig> = {}
 if (flag('--port')) overrides.port = Number(flag('--port'))
 if (flag('--host')) overrides.host = flag('--host')!
 if (argv.includes('--tunnel')) overrides.tunnel = 'cloudflared'
-if (argv.includes('--no-lan')) overrides.noLan = true
-if (argv.includes('--tailcat-only')) overrides.tailcatOnly = true
+// The routes phones may use (docs/connection.md). Whichever way is given on this command line replaces the one saved before.
+if (argv.includes('--routes')) {
+  const routes = parseRoutesFlag(flag('--routes'))
+  // checked before config.json keeps it, so a wrong flag is not there next time
+  const wrong = routes && checkRoutes({ routes, noLan: argv.includes('--no-lan'), tailcatOnly: argv.includes('--tailcat-only'), relay: !!(process.env.DEEPSEEK_BOT_RELAY_URL && process.env.DEEPSEEK_BOT_RELAY_TOKEN), from: 'flag' })
+  if (wrong) { console.error(`[bot] TailPocket did not start: ${wrong}`); process.exit(2) }
+  Object.assign(overrides, { routes, noLan: undefined, tailcatOnly: undefined })
+}
+if (argv.includes('--no-lan')) Object.assign(overrides, { noLan: true, routes: undefined })
+if (argv.includes('--tailcat-only')) Object.assign(overrides, { tailcatOnly: true, routes: undefined })
 // [host] a hosted sandbox gets the same three as env vars (DEEPSEEK_BOT_MODEL / _BASE_URL / _API_KEY_ENV); flags win
 const modelFlag = flag('--model') ?? process.env.DEEPSEEK_BOT_MODEL
 if (modelFlag) {
@@ -90,6 +98,11 @@ if (plan.plain) console.warn(`[bot] WARNING: listening on ${cfg.host} in plain H
 const pocketRelay = process.env.DEEPSEEK_BOT_RELAY_URL && process.env.DEEPSEEK_BOT_RELAY_TOKEN ? { url: process.env.DEEPSEEK_BOT_RELAY_URL, token: process.env.DEEPSEEK_BOT_RELAY_TOKEN } : undefined
 if (!pocketRelay && (process.env.DEEPSEEK_BOT_RELAY_URL || process.env.DEEPSEEK_BOT_RELAY_TOKEN)) console.error('[bot] DEEPSEEK_BOT_RELAY_URL and DEEPSEEK_BOT_RELAY_TOKEN go together; the relay is off')
 if (pocketRelay && cfg.tailcatOnly) console.error('[bot] Tailcat only (tailcatOnly / --tailcat-only): the relay is off')
+// [tailpocket] routes (v0.3.2): a wrong set stops here with what to change; the Mac window reads the line as failed
+const routesWrong = localPocket ? checkRoutes({ routes: cfg.routes, noLan: cfg.noLan, tailcatOnly: cfg.tailcatOnly, relay: !!pocketRelay, from: argv.includes('--routes') ? 'flag' : 'config' }) : null
+if (routesWrong) { console.error(`[bot] TailPocket did not start: ${routesWrong}`); process.exit(2) }
+const pocketRoutes = cfg.routes as PocketRoute[] | undefined
+if (pocketRelay && pocketRoutes && !pocketRoutes.includes('relay')) console.error('[bot] routes leave out relay: the relay is off')
 // [compliance] Nothing reaches the model until the person (18+) agreed to its provider; reports
 // go to the host on a hosted computer. `publicOrigin` is known once the server listens.
 const moderator = moderatorFromEnv()
@@ -408,7 +421,7 @@ const printPocketPairing = async (p: Pocket, ttlMs = 15 * 60_000) => {
     },
     askEnded: () => { if (!answerAsk) return; answerAsk = null; console.log('[bot] pair-request ended: the phone left or the time ran out') },
   })
-  console.log('\nScan this with the Boop app on your phone. It pairs once, then works from any network:\n')
+  console.log(`\nScan this with the Boop app on your phone. It pairs once, then works ${pocketRoutes?.length === 1 && pocketRoutes[0] === 'lan' ? 'on this network' : 'from any network'}:\n`)
   qrcode.generate(w.qr, { small: true }, (q: string) => console.log(q))
   console.log(`  ${w.qr}\n  valid until ${w.expiresAt.toLocaleTimeString()}. Whoever holds this code can pair, so keep it to yourself.\n`)
   await writeFile(join(root, 'pairing.txt'), `${w.qr}\n`, { mode: 0o600 }).catch(() => {})
@@ -422,7 +435,9 @@ const printPocketPairing = async (p: Pocket, ttlMs = 15 * 60_000) => {
 let stopping = false
 if (localPocket) {
   try {
-    pocket = await Pocket.open({ statePath: join(root, 'tailpocket.json'), forward: `127.0.0.1:${boundPort}`, name: hostname(), relay: pocketRelay, noLan: cfg.noLan, tailcatOnly: cfg.tailcatOnly })
+    pocket = await Pocket.open({ statePath: join(root, 'tailpocket.json'), forward: `127.0.0.1:${boundPort}`, name: hostname(), relay: pocketRelay, noLan: cfg.noLan, tailcatOnly: cfg.tailcatOnly, routes: pocketRoutes })
+    if (pocketRoutes) console.log(routesLine(pocketRoutes))
+    if (pocket.mustPairAgain) console.log(`[bot] ${pocket.mustPairAgain} phone(s) paired over Tailcat before TailPocket v0.3 have no end-to-end key, so without Tailcat they cannot connect: scan a new code with each.`)
     if (await wantsQr()) await printPocketPairing(pocket)
     else console.log('[bot] TailPocket is on. Press p⏎ to pair another phone.')
   } catch (e) { console.error(`[bot] TailPocket did not start (${(e as Error).message}). No phone can reach this computer; start with --host 0.0.0.0 for the local network.`) }

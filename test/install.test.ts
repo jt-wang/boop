@@ -177,8 +177,8 @@ test('a developer finds TailPocket at ../tailpocket, the name a clone of the pub
 test('Android asks for TailPocket under the group and version public TailPocket publishes', () => {
   const read = (f: string) => readFileSync(join(ROOT, f), 'utf8')
   const gradle = read('android/app/build.gradle')
-  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket:0\.3\.1'/)
-  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket-ui:0\.3\.1'/)
+  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket:0\.3\.3'/)
+  assert.match(gradle, /implementation 'io\.jingtao\.tailpocket:tailpocket-ui:0\.3\.3'/)
   assert.match(read('scripts/tailpocket-sync.sh'), /build\/android\/m2\/io\/jingtao\/tailpocket/)
   // A clean machine has no Gradle cache and no local.properties in a fresh TailPocket clone.
   assert.match(read('scripts/tailpocket-sync.sh'), /export ANDROID_HOME="\$\{ANDROID_HOME:-\$HOME\/Library\/Android\/sdk\}"/)

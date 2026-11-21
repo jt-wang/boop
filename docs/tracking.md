@@ -9,7 +9,7 @@ Measured 2026-11-03 on DSH 0.2.0-rc.2 and Chrome 156 on macOS.
 | DSH product analytics | Off: `dsh-web-app/cordis.patch.yml` mounts it only for the `desktop` profile; Boop starts `web` | Same run: `lsof` on the whole DSH process tree shows no connection beyond the computer in 75 s. |
 | The assistant's browser | Off until a page asks | `test/browser-quiet.e2e.test.ts` |
 | `x-deepseek-harness-user-id`, `x-deepseek-harness-session-id` on model requests | **Still sent** | See below |
-| TailPocket's helper, local use only (`tailcat.dev` for the relay list; a relay) | On: it is how the phone reaches the computer (`docs/connection.md`). Nothing Boop says passes in the clear; the relay sees WireGuard packets. The helper discards its own logs (TailPocket `connecthost/node.go`). | `lsof` on the helper: two relay addresses on port 443, plus loopback to the bot |
+| TailPocket's helper, local use only (`tailcat.dev` for the relay list; a relay) | On: it is how the phone reaches the computer (`docs/connection.md`). Off with `--routes lan` or `--routes relay`: no Tailcat node, so nothing goes to `tailcat.dev` or its relays. Nothing Boop says passes in the clear; the relay sees WireGuard packets. The helper discards its own logs (TailPocket `connecthost/node.go`). | `lsof` on the helper: two relay addresses on port 443, plus loopback to the bot |
 
 ## The two headers
 
