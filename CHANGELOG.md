@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.9
+
+- Public CI checks that every commit and tag has the project's public identity, a 12:00 UTC date and no trailer other than `Source-Rev`. No app change; v0.1.8 stays the current release.
+
 ## v0.1.8
 
 - TailPocket v0.3.3 (v0.3.2's optional Tailcat, with the fixes from its security audit): Tailcat is now optional. Start the computer with `--routes` (or `"routes"` in `config.json`) set to any of `tailcat`, `lan`, `relay`. `--routes lan` keeps everything on your network and talks to no Tailcat server; a phone away from that network cannot connect. Without `--routes` nothing changes. A wrong set stops the bot with one sentence saying what to change.
