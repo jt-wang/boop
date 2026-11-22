@@ -17,6 +17,14 @@ on:
         description: What to Test for testers (en-US)
         type: string
         required: true
+      copy_review_info_from:
+        description: Bundle ID of an app in this account whose beta review contact and feedback email fill Boop's missing ones
+        type: string
+        default: io.jingtao.herdranywhere
+      description:
+        description: Beta app description, used only when Boop has none
+        type: string
+        default: "Boop is an AI assistant that runs on your own computer: a Mac, or a server you run. Pair this app with it by scanning the code your computer shows, then chat with it from your phone. It uses the shell, files, web search and a browser on that computer, and tells you when a task is done or needs your OK. Messages between the phone and your computer are end-to-end encrypted. You need Boop running on your own computer with your own model API key."
 
 permissions:
   contents: read
@@ -41,11 +49,13 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/asc-client"
           "$RUNNER_TEMP/asc-client/bin/pip" install PyJWT==2.10.1 cryptography==46.0.3
       - name: Add to the public group and submit for Beta App Review
-        run: '"$RUNNER_TEMP/asc-client/bin/python" -B scripts/testflight-beta.py --version "$TF_VERSION" --build "$TF_BUILD" --what-to-test "$TF_WHAT" --output "$RUNNER_TEMP/boop-testflight-beta.json"'
+        run: '"$RUNNER_TEMP/asc-client/bin/python" -B scripts/testflight-beta.py --version "$TF_VERSION" --build "$TF_BUILD" --what-to-test "$TF_WHAT" --output "$RUNNER_TEMP/boop-testflight-beta.json" --copy-review-info-from "$TF_COPY_FROM" --description "$TF_DESCRIPTION"'
         env:
           TF_VERSION: ${{ inputs.version }}
           TF_BUILD: ${{ inputs.build }}
           TF_WHAT: ${{ inputs.what_to_test }}
+          TF_COPY_FROM: ${{ inputs.copy_review_info_from }}
+          TF_DESCRIPTION: ${{ inputs.description }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}

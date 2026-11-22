@@ -12,7 +12,9 @@ CONTACT = {"contactFirstName": "Sam", "contactLastName": "Example", "contactPhon
 
 
 class FakeASC:
-    def __init__(self, contact=CONTACT, groups=(), review=None, state="VALID"):
+    def __init__(self, contact=CONTACT, groups=(), review=None, state="VALID", locs=None):
+        self.locs = [{"attributes": {"locale": "en-US", "description": "Boop", "feedbackEmail": "f@example.com"}}] \
+            if locs is None else locs
         self.contact, self.groups, self.review, self.state = dict(contact), list(groups), review, state
         self.group_builds, self.calls, self.whats_new = {}, [], None
 
@@ -20,13 +22,25 @@ class FakeASC:
         self.calls.append((method, path.split("?")[0]))
         p = path.split("?")[0]
         if p == "/v1/apps":
+            if "herdranywhere" in path:
+                return {"data": [{"id": "src", "attributes": {"name": "Herdr Anywhere"}}]}
             return {"data": [{"id": "app1"}]}
+        if p == "/v1/apps/src/betaAppReviewDetail":
+            return {"data": {"id": "srcd", "attributes": SOURCE}}
+        if p == "/v1/apps/src/betaAppLocalizations":
+            return {"data": [{"attributes": {"locale": "en-US", "feedbackEmail": "feedback@example.org"}}]}
+        if p == "/v1/betaAppReviewDetails/d1" and method == "PATCH":
+            self.contact.update(body["data"]["attributes"])
+            return {}
+        if p == "/v1/betaAppLocalizations" and method == "POST":
+            self.locs.append({"attributes": body["data"]["attributes"]})
+            return {}
         if p == "/v1/builds":
             return {"data": [{"id": "b10", "attributes": {"processingState": self.state}}]}
         if p == "/v1/apps/app1/betaAppReviewDetail":
-            return {"data": {"attributes": self.contact}}
+            return {"data": {"id": "d1", "attributes": self.contact}}
         if p == "/v1/apps/app1/betaAppLocalizations":
-            return {"data": [{"attributes": {"description": "Boop", "feedbackEmail": "f@example.com"}}]}
+            return {"data": self.locs}
         if p == "/v1/builds/b10/betaAppReviewSubmission":
             return {"data": self.review}
         if p == "/v1/apps/app1/betaGroups":
@@ -61,6 +75,8 @@ class FakeASC:
         return [c for c in self.calls if c[0] != "GET"]
 
 
+SOURCE = {"contactFirstName": "Ana", "contactLastName": "Source", "contactPhone": "+1 555 0199",
+          "contactEmail": "ana@example.org", "demoAccountRequired": False}
 INTERNAL = {"id": "g1", "attributes": {"name": "Internal Testing", "isInternalGroup": True}}
 
 
@@ -94,6 +110,28 @@ class BetaTest(unittest.TestCase):
     def test_a_build_still_processing_changes_nothing(self):
         asc = FakeASC(groups=[INTERNAL], state="PROCESSING")
         with self.assertRaisesRegex(beta.Stop, "not VALID"):
+            beta.submit(asc, "0.1.10", "10", "x")
+        self.assertEqual(asc.writes(), [])
+
+    def test_missing_review_info_is_copied_from_the_other_app_and_never_shown(self):
+        import contextlib, io, json
+        empty = {k: None for k in CONTACT}
+        asc = FakeASC(contact=empty, groups=[INTERNAL], locs=[])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            r = beta.submit(asc, "0.1.10", "10", "x", "io.jingtao.herdranywhere", "Boop runs on your computer.")
+        self.assertEqual({k: asc.contact[k] for k in beta.CONTACT}, {k: SOURCE[k] for k in beta.CONTACT})
+        self.assertEqual(asc.locs[0]["attributes"], {"locale": "en-US", "feedbackEmail": "feedback@example.org",
+                                                     "description": "Boop runs on your computer."})
+        self.assertTrue(r["submitted"])
+        self.assertEqual(out.getvalue().strip(), "已从 Herdr Anywhere 复制")
+        shown = out.getvalue() + json.dumps(r)
+        for secret in ("555 0199", "ana@example.org", "feedback@example.org"):
+            self.assertNotIn(secret, shown)
+
+    def test_without_a_source_app_missing_info_still_stops(self):
+        asc = FakeASC(contact={k: None for k in CONTACT}, groups=[INTERNAL])
+        with self.assertRaises(beta.Stop):
             beta.submit(asc, "0.1.10", "10", "x")
         self.assertEqual(asc.writes(), [])
 
