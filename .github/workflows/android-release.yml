@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: jt-wang/tailpocket
-          ref: 32c50f3aac847044030222fe9b498bb98e882133
+          ref: e197f3edca01ba4d1c70a6a752a5cad9a383cb0c
           path: tailpocket
           persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5

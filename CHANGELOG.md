@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.10
+
+- TailPocket v0.3.6. When the phone cannot reach the computer, Settings says why instead of only "Reconnecting": Boop is not running on the computer or the computer was reset; the computer is off or asleep, or this network blocks the connection; or your relay server cannot be reached.
+- The chat shows the same reason above the message box; tapping it, or the status at the top, opens Settings. The Connection row says Not connected whenever the phone is offline.
+- Only when the computer looks reset does Settings offer Pair again, and only when you tap it. Scan only the code on your own computer's screen; the phone keeps its current pairing until the new one works, so a failed or cancelled pairing changes nothing. The reason is never used to unpair or forget the computer on its own.
+- Version 0.1.10: phone build 10, Mac build 8.
+
 ## v0.1.9
 
 - Public CI checks that every commit and tag has the project's public identity, a 12:00 UTC date and no trailer other than `Source-Rev`. No app change; v0.1.8 stays the current release.

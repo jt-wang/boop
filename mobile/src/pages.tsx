@@ -7,7 +7,7 @@ import { APP_VERSION } from './version.ts'
 import { LANGS, LANG_NAMES, formatDateTime, formatNumber } from './locale.ts'
 import { cleanup, Clipboard, effect, Keyboard, keyboardFrame, resource, signal, Scroll, Storage, Text, View, type InputRef } from 'nsh'
 import { AlertDialog, Input } from 'nsh/base'
-import { api, changeRouteMode, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, sessionId, setAssistantName, setLang, showToast, startSample, str, t, type ThreadSummary } from './state.ts'
+import { api, changeRouteMode, connection, joined, connect, deviceName, disconnect, follow, hostedBy, isSample, lang, me, offlineReason, repairComputer, sessionId, setAssistantName, setLang, showToast, startSample, str, t, UNREACHABLE_WORDS, type ThreadSummary } from './state.ts'
 import { activityText } from './plain.ts'
 import { pair, parseAddress, type Session } from './api.ts'
 import { signIn, hostConfig, hostUrl, isHostedOrigin, waitForSandbox } from './hosted.ts'
@@ -28,6 +28,16 @@ const kindWord = (k: string) => ({ memory: str('kindMemory'), schedule: str('kin
 
 const fieldClass = 'min-h-[44px] px-4 text-foreground text-[17px] bg-transparent'
 const setupContent = 'px-4 gap-4 pt-[calc(env(safe-area-inset-top)+44px)] pb-[calc(env(safe-area-inset-bottom)+32px)]'
+
+/** What a failed TailPocket pairing says, by its code. */
+const pairError = (code?: string) => str(code === 'expired' ? 'pocketExpired' : code === 'unauthorized' ? 'pocketRefused' : code === 'invalid-invite' ? 'pocketInvalid' : code === 'denied' ? 'pocketDenied' : code === 'unsupported' ? 'pocketNoCamera' : 'pocketUnreachable')
+/** A tailpocket2: pairing waits for the person at the computer to compare these with what it shows (src/pocket.ts). */
+const PairEmoji = () => <If when={pairEmoji()}>{(e) => (
+  <Card class="items-center gap-2 px-4 py-4 mt-2">
+    <Text testID="pair-emoji" class="text-foreground text-[40px] leading-[52px] text-center">{e().join(' ')}</Text>
+    <Text class="text-muted-foreground text-[15px] leading-[20px] text-center">{str('pocketEmoji')}</Text>
+  </Card>
+)}</If>
 
 export function ConnectScreen(props: { initial?: { origin?: string; code?: string }; onDiagnostics?: () => void }) {
   // Two ways in: scan the computer's QR code, or paste the code its window copies. A server's
@@ -55,7 +65,7 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       await connect(s, { hostedBy: null })
     } catch (e) {
       const code = (e as { code?: string }).code
-      if (code !== 'cancelled') error.set(str(code === 'expired' ? 'pocketExpired' : code === 'unauthorized' ? 'pocketRefused' : code === 'invalid-invite' ? 'pocketInvalid' : code === 'denied' ? 'pocketDenied' : code === 'unsupported' ? 'pocketNoCamera' : 'pocketUnreachable'))
+      if (code !== 'cancelled') error.set(pairError(code))
     } finally { busy.set(false) }
   }
   const go = async () => {
@@ -70,13 +80,7 @@ export function ConnectScreen(props: { initial?: { origin?: string; code?: strin
       await connect({ origin: parsed.origin, token: r.token }, { hostedBy: null })
     } catch { error.set(str('connectFailed')) } finally { busy.set(false) }
   }
-  // a tailpocket2: pairing waits for the person at the computer to compare these with what it shows (src/pocket.ts)
-  const Emoji = () => <If when={pairEmoji()}>{(e) => (
-    <Card class="items-center gap-2 px-4 py-4 mt-2">
-      <Text testID="pair-emoji" class="text-foreground text-[40px] leading-[52px] text-center">{e().join(' ')}</Text>
-      <Text class="text-muted-foreground text-[15px] leading-[20px] text-center">{str('pocketEmoji')}</Text>
-    </Card>
-  )}</If>
+  const Emoji = PairEmoji
   const ErrorLine = () => <If when={error()}><View class="px-4"><Text testID="connect-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text></View></If>
   const link = (testID: string, label: string, onPress: () => void, small = false) => (
     <View role="button" testID={testID} onPress={onPress} class="min-h-[44px] items-center justify-center active:opacity-60"><Text class={small ? 'text-muted-foreground text-[15px]' : 'text-primary text-[17px]'}>{label}</Text></View>
@@ -366,10 +370,13 @@ const Check = () => <Text class="text-primary text-[17px] font-semibold">✓</Te
 
 /** The Computer section's Status row: a dot and Online, Reconnecting or Offline. */
 function StatusCell() {
-  const dot = () => connection() === 'online' ? 'bg-emerald-500' : connection() === 'offline' ? 'bg-destructive' : 'bg-amber-500'
-  const state = () => str(connection() === 'online' ? 'stateOnline' : connection() === 'offline' ? 'stateOffline' : 'stateReconnecting')
+  // the same state as the line saying why (offlineReason): a reason known means it is not just a moment's reconnecting
+  const dot = () => connection() === 'online' ? 'bg-emerald-500' : connection() === 'offline' || offlineReason() ? 'bg-destructive' : 'bg-amber-500'
+  const state = () => str(connection() === 'online' ? 'stateOnline' : offlineReason() ? 'stateUnreachable' : connection() === 'offline' ? 'stateOffline' : 'stateReconnecting')
   return <Cell title={str('connectionStatus')} testID="computer-status" right={<View class="flex-row items-center gap-2"><View class={`w-[8px] h-[8px] rounded-full ${dot()}`} /><Text class="text-muted-foreground text-[17px]">{state()}</Text></View>} />
 }
+/** Why the computer cannot be reached, when TailPocket says (state.ts `offlineReason`). */
+const reasonText = () => { const r = offlineReason(); return r ? str(UNREACHABLE_WORDS[r]) : undefined }
 /** Which way TailPocket says the tunnel goes now. */
 const pocketPathText = () => { const p = pocketPath(); return p?.kind === 'direct' ? str('pathPocketDirect') : p?.kind === 'relay' ? t('pathPocketRelay')(p.relay ?? '') : p?.kind === 'lan' ? str('pathPocketLan') : str('pathPocket') }
 /** Each choice's name and what it means and costs. */
@@ -390,7 +397,7 @@ export function ConnectionPage() {
   const pick = (m: RouteMode) => { if (m === routeMode()) return; since = Date.now(); stuck.set(false); changeRouteMode(m).catch(() => showToast(str('routeFailed'))) }
   return (
     <Page page="ConnectionPage" class={pageClass}>
-      <Group footer={stuck() && routeMode() !== 'all' ? str('routeNotReaching') : connection() === 'online' ? pocketPathText() : undefined}>
+      <Group footer={reasonText() ?? (stuck() && routeMode() !== 'all' ? str('routeNotReaching') : connection() === 'online' ? pocketPathText() : undefined)}>
         <StatusCell />
       </Group>
       <Group header={str('routesHeader')} footer={str('routesFooter')}>
@@ -417,7 +424,9 @@ function ComputerSection(props: { origin: string; hosted: boolean; onRoutes?: ()
   }
   const path = () => {
     const r = route()
-    if (!r || connection() !== 'online') return str('pathUnknown')
+    // the same state as Status: no route is being found while it cannot reach the computer
+    if (connection() !== 'online') return str('notConnected')
+    if (!r) return str('pathUnknown')
     if (r.via === 'pocket') return pocketPathText()
     if (r.via === 'lan') return t('pathLan')(r.host)
     if (r.via === 'cloudflare') return str('pathCloudflare')
@@ -433,7 +442,7 @@ function ComputerSection(props: { origin: string; hosted: boolean; onRoutes?: ()
   }
   const opensRoutes = () => viaPocket() && !!props.onRoutes
   return (
-    <Group header={str('computer')} footer={note()}>
+    <Group header={str('computer')} footer={(viaPocket() ? reasonText() : undefined) ?? note()}>
       {name() ? <Cell title={str('name')} value={name()} testID="computer-name" /> : null}
       <StatusCell />
       {/* through TailPocket it navigates like any row with a chevron: to the routes this phone may use */}
@@ -451,7 +460,34 @@ function ComputerSection(props: { origin: string; hosted: boolean; onRoutes?: ()
   )
 }
 
-export function SettingsPage(props: { onRoutes?: () => void; onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void; onDiagnostics?: () => void }) {
+/** Settings › Pair again: only from the person's tap, only the code on their own computer's screen. The old pairing stays
+ *  until the new one works (pocket.ts `repairInvite`); a failure or a cancel changes nothing. */
+export function RepairPage(props: { onDone: () => void }) {
+  const busy = signal(false)
+  const error = signal('')
+  const scan = async () => {
+    busy.set(true); error.set('')
+    try { await repairComputer(await scanInvite()); showToast(str('repaired')); props.onDone() }
+    catch (e) { const code = (e as { code?: string }).code; if (code !== 'cancelled') error.set(pairError(code)) }
+    finally { busy.set(false) }
+  }
+  return (
+    <Page page="RepairPage" class={pageClass}>
+      <View class="px-8 gap-3 pt-2">
+        <Text testID="repair-own-screen" class="text-foreground text-[17px] leading-[22px] font-semibold">{str('repairOwnScreen')}</Text>
+        <Hint text={str('repairBody')} />
+        <Hint text={str('repairKeeps')} />
+      </View>
+      <View class="px-4 gap-3">
+        <Btn kind="primary" testID="repair-scan" label={busy() ? str('connecting') : str('repairScan')} disabled={busy()} onPress={() => { scan().catch(() => {}) }} />
+        <PairEmoji />
+        <If when={error()}><View class="px-4"><Text testID="repair-error" class="text-destructive text-[13px] leading-[18px]">{error()}</Text></View></If>
+      </View>
+    </Page>
+  )
+}
+
+export function SettingsPage(props: { onRepair?: () => void; onRoutes?: () => void; onIdentity: () => void; onDevices: () => void; onActivity: () => void; onMemory?: () => void; onConnectors?: () => void; onUsage?: () => void; onAiProvider?: () => void; onDiagnostics?: () => void }) {
   const name = signal(me()?.assistant.name ?? '')
   // a rename elsewhere (the chat, another phone) shows here: the field follows the bot's name
   effect(() => { const n = me()?.assistant.name; if (n) name.set(n) })
@@ -475,6 +511,12 @@ export function SettingsPage(props: { onRoutes?: () => void; onIdentity: () => v
   return (
     <Page page="SettingsPage" class={`${pageClass} pb-[env(keyboard-inset-height)]`} keyboardShouldPersistTaps="handled">
       <ComputerSection origin={origin()} hosted={hosted()} onRoutes={props.onRoutes} />
+      {/* TailPocket says the computer did not take this phone: maybe reset. A button, never on its own (the reason can be faked) */}
+      <If when={viaPocket() && offlineReason() === 'not-running' && !!props.onRepair}>
+        <Group footer={str('repairFooter')}>
+          <Cell title={str('repair')} tint centered onPress={() => props.onRepair?.()} testID="repair" />
+        </Group>
+      </If>
       <If when={isSample()} else={
         <Group footer={unpairBody()}>
           <Cell title={str('unpair')} destructive centered onPress={unpair} testID="unpair" />

@@ -18,7 +18,7 @@ import { Input, TextView } from 'nsh/base'
 import { BackHandler } from 'nsh/mobile'
 import { connectorOf, serviceName, toolWord, type CardRow, type FileRow, type ModuleRow, type Row } from './fold.ts'
 import { FileView, isRemote, LibraryImage, splitImages } from './files.tsx'
-import { asks, awaiting, threadLoaded, connection, follow, lang, me, memoryNoted, reflecting, rowKey, rows, running, sessionId, copiedToast, showToast, statusText, str, t, trySend, type Ask, isSample } from './state.ts'
+import { asks, awaiting, threadLoaded, connection, offlineReason, UNREACHABLE_WORDS, follow, lang, me, memoryNoted, reflecting, rowKey, rows, running, sessionId, copiedToast, showToast, statusText, str, t, trySend, type Ask, isSample } from './state.ts'
 import { showWork } from './prefs.ts'
 import { openStop, StopControl } from './stop.tsx'
 import { AskCard } from './asks.tsx'
@@ -156,7 +156,8 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
     if (reflecting()) return str('updatingMemory')
     if (memoryNoted()) return cm('memNoted')(memoryNoted())
     const c = connection()
-    return c === 'online' ? str('online') : c === 'reconnecting' ? str('reconnecting') : str('offline')
+    // TailPocket said why (state.ts `offlineReason`): the same words as Settings' Status
+    return c === 'online' ? str('online') : offlineReason() ? str('stateUnreachable') : c === 'reconnecting' ? str('reconnecting') : str('offline')
   })
   const live = computed(() => running() || waiting())
   const dot = computed<'online' | 'busy' | 'off'>(() => (running() ? 'busy' : connection() === 'online' ? 'online' : 'off'))
@@ -223,7 +224,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
         <View onLayout={({ bounds: b }) => topH.set(b.size.height)} class="pb-2" style={{ pointerEvents: 'box-none' }}>
           <View class="flex-row items-center gap-2 px-3" style={{ paddingTop: insets().top + 6 }}>
             <Glass role="button" accessibilityLabel={str('menu')} onPress={props.onMenu} class="w-11 h-11 rounded-full items-center justify-center active:opacity-60"><Icon name="menu" /></Glass>
-            <Glass role="button" onPress={props.onIdentity} onLongPress={openStop} testID="status" class="flex-1 min-w-0 h-11 rounded-full flex-row items-center gap-[10px] pl-[5px] pr-4 active:opacity-70">
+            <Glass role="button" onPress={() => (offlineReason() ? props.onSettings() : props.onIdentity())} onLongPress={openStop} testID="status" class="flex-1 min-w-0 h-11 rounded-full flex-row items-center gap-[10px] pl-[5px] pr-4 active:opacity-70">
               <Avatar size={34} dot={dot()} />
               <View class="flex-1 min-w-0">
                 <Text class="text-foreground font-semibold text-[15px] leading-[18px]" style={{ numberOfLines: 1 }}>{me()?.assistant.name ?? ''}</Text>
@@ -251,6 +252,12 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
       <ModulePlayer />
       {/* In flow, over the list's bottom edge (the list carries a negative margin of this height): taps land here, the content still scrolls under. */}
       <View onLayout={({ bounds: b }) => bottomH.set(b.size.height)} class="px-3 pt-2" style={{ paddingBottom: bottomPad() }}>
+        {/* not connected and TailPocket said why: the same sentence as Settings, above the composer so the keyboard leaves it */}
+        <If when={offlineReason()}>{(r) => (
+          <View role="button" testID="offline-reason" onPress={props.onSettings} class="mx-1 mb-2 rounded-2xl bg-secondary px-4 py-3 active:opacity-70">
+            <Text class="text-foreground text-[15px] leading-5">{str(UNREACHABLE_WORDS[r()])}</Text>
+          </View>
+        )}</If>
         <If when={pending().length > 0}>
           {/* at most half the screen; taller (several cards, a long question) scrolls inside */}
           <Scroll testID="pinned-asks" style={{ maxHeight: Math.max(240, screenH() * 0.5), flexGrow: 0 }} contentClass="gap-2 pb-2" keyboardShouldPersistTaps="handled">

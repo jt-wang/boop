@@ -337,3 +337,72 @@ test('a phone with every route sets none: TailPocket keeps its default', async (
   await app.waitFor('label:Settings')
   expect(order).toEqual(['connect'])
 })
+
+// TailPocket v0.3.4+: when the computer cannot be reached, lastFailure() says why. The reason is not authenticated: it only
+// picks the words shown and offers Pair again as a button; it never unpairs, deletes the link or pairs on its own.
+const offline = (failure: unknown, more: Record<string, unknown> = {}, network: Record<string, unknown> = {}) => {
+  const calls: string[] = []
+  const app = open('./App.tsx', {
+    storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1', me: JSON.stringify(body) },
+    host: { handlers: { 'tailPocket.connect': tunnel(50999), 'tailPocket.lastFailure': () => failure, 'tailPocket.store.deleteLink': () => { calls.push('deleteLink'); return null }, 'tailPocket.store.saveLink': () => { calls.push('saveLink'); return null }, ...more } },
+    network,
+  })
+  return { app, calls }
+}
+for (const [reason, words, repair] of [
+  ['refused', "/Boop isn't running on the computer, or the computer was reset/", true],
+  ['handshake-closed', "/Boop isn't running on the computer, or the computer was reset/", true],
+  ['no-answer', "/Check it's on and awake; this network may block the connection/", false],
+  ['relay-down', "Your relay server can't be reached.", false],
+] as const) {
+  test(`cannot connect (${reason}): Settings says why, offers Pair again only for a reset computer, and keeps the pairing`, async () => {
+    const { app: opening, calls } = offline({ code: 'unreachable', reason, route: 'lan', routes: [{ t: 'lan', r: reason }], at: 1 })
+    const app = await opening
+    // the chat says the same sentence as Settings, and its status opens Settings
+    await app.waitFor('id:offline-reason', { timeout: 15000 })
+    await app.waitFor(`text:${words}`)
+    await app.press('id:status')
+    await app.waitFor('id:computer-status')
+    await app.waitFor(`text:${words}`)
+    await app.waitFor("text:Can't reach")
+    expect(app.shows('text:Finding the route…')).toBe(false) // the Connection row follows the same state
+    await app.waitFor('text:Not connected')
+    expect(app.shows('id:repair')).toBe(repair)
+    expect(calls.includes('deleteLink')).toBe(false)
+    expect(app.storage().token).toBe('tok_abcdefghijklmnopqrstuvwxyz0123456789')
+    expect(app.storage().pocket).toBe('1')
+  })
+}
+
+const reset = { code: 'unreachable', reason: 'refused', route: 'lan', routes: [{ t: 'lan', r: 'refused' }], at: 1 }
+const newLink = { ...link, key: 'privkey:new', payload: '654321' }
+test('Pair again: only the code on your own screen; a failed pairing keeps the old link and session', async () => {
+  let paired: { save?: boolean } = {}
+  const { app: opening, calls } = offline(reset, {
+    'tailPocket.scan': invite, 'tailPocket.pair': (d: typeof paired) => { paired = d; return newLink },
+    'tailPocket.connect': (d: { link?: unknown }) => tunnel(d?.link ? 51000 : 50999), 'tailPocket.disconnect': null,
+  }, { [`POST ${base(51000)}/pair`]: { status: 403, body: {} } })
+  const app = await opening
+  await app.waitFor('label:Settings'); await app.press('label:Settings')
+  await app.waitFor('id:repair', { timeout: 15000 }); await app.press('id:repair')
+  await app.waitFor("text:Scan only the code shown on your own computer's screen.")
+  await app.press('id:repair-scan')
+  await app.waitFor('id:repair-error')
+  expect(paired.save).toBe(false) // nothing replaces the old link before Boop took this phone
+  expect(calls).toEqual([])
+  expect(app.storage().token).toBe('tok_abcdefghijklmnopqrstuvwxyz0123456789')
+})
+
+test('Pair again: once the computer takes this phone, the new link is saved and the app goes on with it', async () => {
+  const { app: opening, calls } = offline(reset, {
+    'tailPocket.scan': invite, 'tailPocket.pair': newLink,
+    'tailPocket.connect': (d: { link?: unknown }) => tunnel(d?.link ? 51000 : 50999), 'tailPocket.disconnect': null,
+  }, { ...reachable(51000), [`POST ${base(51000)}/pair`]: { body: { token: 'tok_new_abcdefghijklmnopqrstuvwxyz012345' } } })
+  const app = await opening
+  await app.waitFor('label:Settings'); await app.press('label:Settings')
+  await app.waitFor('id:repair', { timeout: 15000 }); await app.press('id:repair')
+  await app.press('id:repair-scan')
+  await app.waitUntil(() => app.storage().token === 'tok_new_abcdefghijklmnopqrstuvwxyz012345')
+  expect(calls).toEqual(['saveLink'])
+  expect(app.storage().origin).toBe('http://127.0.0.1:51000')
+})

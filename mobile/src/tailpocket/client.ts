@@ -28,6 +28,26 @@ export interface TailPocketPath {
   route: "direct" | "relay" | "lan" | string; relay: string;
   kind?: "lan" | "direct" | "derp" | "relay" | string; derpRegion?: number; derpCode?: string; derpHost?: string; relayHost?: string;
 }
+/**
+ * Why the last connection attempt failed (v0.3.4). `reason` is what to tell the user:
+ * - `refused` or `handshake-closed`: something answered for the computer and did not take this phone (your relay has no
+ *   computer in its room, the computer's address refused it, or it closed the encrypted handshake). TailPocket is not
+ *   running there, or the computer was reset: open it, or pair again.
+ * - `no-answer`: no route answered. The computer is off or asleep, or this network blocks it (a plane's Wi-Fi).
+ * - `relay-down`: your relay answered but would not carry the phone, and nothing else answered.
+ * - `""`: `code` says it (`revoked`, `unauthorized`, `mismatch`), or no route was tried.
+ *
+ * `routes` is every route tried (`r`: `refused`, `no-host`, `handshake-closed`, `relay-down`, `no-answer`); `at` is
+ * milliseconds since 1970. Not authenticated (only `revoked` comes from the computer itself): anyone on the network can
+ * refuse a connection or pose as the relay. Use it for the message the user sees; never delete the link because of it.
+ */
+export interface TailPocketDialFailure {
+  code: string;
+  reason: "refused" | "handshake-closed" | "no-answer" | "relay-down" | "" | string;
+  route: string;
+  routes: { t: string; r: string }[];
+  at: number;
+}
 export interface TailPocketConnection {
   /** `http://127.0.0.1:<port>/_tailpocket/<token>`: requests under it reach the computer's forwarded port, without the prefix.
    *  Build every URL by appending to it (`${baseUrl}/api/info`); a URL resolved against "/" (`new URL("/api/info", baseUrl)`)
@@ -43,6 +63,9 @@ export interface TailPocketConnection {
   path(timeoutMs?: number): Promise<TailPocketPath>;
   /** The link with the computer's latest routes. */
   link(): Promise<TailPocketHostLink>;
+  /** Why the last connection attempt failed, or `null` when none failed since the last one that worked (v0.3.4). The
+   *  forward only closes a connection whose attempt failed, so `fetch` sees a network error; read this then. */
+  lastFailure(): Promise<TailPocketDialFailure | null>;
   close(): Promise<void>;
 }
 export interface TailPocketNearbyHost { name: string }
@@ -137,6 +160,7 @@ export function createTailPocket(transport: TailPocketTransport) {
         sync: (timeoutMs?: number) => call<TailPocketHostLink>("tailPocket.sync", timeoutMs ? { handle, timeoutMs } : { handle }, (timeoutMs ?? 30_000) + SLACK_MS),
         path: (timeoutMs?: number) => call<TailPocketPath>("tailPocket.path", timeoutMs ? { handle, timeoutMs } : { handle }, (timeoutMs ?? 5_000) + SLACK_MS),
         link: () => call<TailPocketHostLink>("tailPocket.link", { handle }),
+        lastFailure: async () => (await call<TailPocketDialFailure | null>("tailPocket.lastFailure", { handle })) ?? null,
         close: () => call<void>("tailPocket.disconnect", { handle }),
       };
     },

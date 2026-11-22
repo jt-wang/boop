@@ -1,6 +1,6 @@
 {
   "name": "tailpocket",
-  "version": "0.3.3",
+  "version": "0.3.6",
   "description": "Let a phone reach your Node app from anywhere: QR or same-Wi-Fi pairing, no port forwarding, no VPN app, no server of your own.",
   "type": "module",
   "main": "index.js",

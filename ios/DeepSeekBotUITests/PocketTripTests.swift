@@ -122,4 +122,51 @@ final class PocketTripTests: XCTestCase {
         any("identifier == 'route-all'").tap()
         XCTAssertTrue(any("label == 'Connected'").waitForExistence(timeout: 30))
     }
+
+    // An example exchange for the screenshots, sent while the computer answers (the bot runs a fake model).
+    func testSayExample() throws {
+        guard env["INVITE"] != nil else { throw XCTSkip("needs a paired app and a running bot") }
+        continueAfterFailure = false
+        app.launch()
+        let box = any("identifier == 'composer' OR label == 'Message' OR placeholderValue == 'Message'")
+        XCTAssertTrue(box.waitForExistence(timeout: 40))
+        box.tap()
+        box.typeText("Can I fit the dentist in tomorrow?")
+        any("label == 'Send'").tap()
+        XCTAssertTrue(any("label CONTAINS 'the dentist at 4 works'").waitForExistence(timeout: 60), "the example reply")
+    }
+
+    // TailPocket v0.3.4+: with the computer side stopped (refused) or frozen (no answer), the chat and Settings say why,
+    // from the same state as Status, and keep the pairing. TEST_RUNNER_REASON: not-running or no-answer.
+    func testUnreachableSaysWhy() throws {
+        guard let reason = env["REASON"] else { throw XCTSkip("needs a paired app whose computer is unreachable (TEST_RUNNER_REASON)") }
+        continueAfterFailure = false
+        let style = env["STYLE"] ?? "light"
+        let words = reason == "not-running" ? "Boop isn't running on the computer" : "Check it's on and awake"
+        app.launch()
+        let card = any("identifier == 'offline-reason'")
+        XCTAssertTrue(card.waitForExistence(timeout: 90), "the chat says why")
+        XCTAssertTrue(any("label CONTAINS \"\(words)\"").exists, "the same words as Settings: \(reason)")
+        XCTAssertTrue(any("label CONTAINS \"Can't reach\"").exists, "the header agrees")
+        sleep(1)
+        shot("ios-unreach-chat-\(reason)-\(style)")
+        let box = any("identifier == 'composer' OR label == 'Message' OR placeholderValue == 'Message'")
+        box.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        sleep(1)
+        XCTAssertTrue(card.isHittable, "the keyboard leaves the reason in view")
+        shot("ios-unreach-kb-\(reason)-\(style)")
+        any("identifier == 'status'").tap() // not connected: the status opens Settings
+        XCTAssertTrue(any("identifier == 'computer-status'").waitForExistence(timeout: 10), "the status opened Settings")
+        XCTAssertTrue(any("label CONTAINS \"\(words)\"").waitForExistence(timeout: 30), "Settings says why: \(reason)")
+        XCTAssertFalse(any("label == 'Finding the route…'").exists, "the Connection row follows Status")
+        XCTAssertEqual(any("identifier == 'repair'").exists, reason == "not-running", "Pair again only for a reset computer")
+        sleep(1)
+        shot("ios-unreach-\(reason)-\(style)")
+        guard reason == "not-running" else { return }
+        any("identifier == 'repair'").tap()
+        XCTAssertTrue(any("label CONTAINS \"Scan only the code shown on your own computer's screen\"").waitForExistence(timeout: 10))
+        sleep(1)
+        shot("ios-repair-\(style)")
+    }
 }

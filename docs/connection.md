@@ -14,7 +14,7 @@ Local means the Mac app or `npm start` on your own computer. Your own server and
 6. Each launch opens the tunnel again and gets a new port and forward token. When a tunnel stops answering, the app opens it again (`mobile/src/state.ts`, `mobile/src/liveness.ts`).
 7. Removing a device or unpairing also removes that phone's key from the helper, so its tunnel stops too.
 
-### Routes (TailPocket v0.3.2 and later; Boop ships v0.3.3)
+### Routes (TailPocket v0.3.2 and later; Boop ships v0.3.6)
 
 There are three routes. Each is end-to-end encrypted between the phone and the computer:
 
@@ -52,6 +52,24 @@ Phones paired before v0.3 do not scan again. When the new app opens a saved link
 Compatibility (TailPocket v0.3.0-pre.4 and later on the computer): an app from before pre.4 still connects over its saved link, but cannot pair with a new QR. Pairing needs the new app. Boop does not use TailPocket's same-Wi-Fi pairing without a camera (`pairing.local`), so its `local-too-many-attempts` (pre.5) and `ErrLocalUsed` (pre.6) never reach the person.
 
 Over Tailcat the traffic between the phone and the computer is WireGuard. [TailPocket's README](https://github.com/jt-wang/tailpocket) says "Relays only see encrypted WireGuard packets", and its `docs/PROTOCOL.md` agrees: the phone makes its long-term key and sends the computer only the public half; the private key in the invite is a one-time key that reaches the pairing node and nothing else. Over the local network and your relay it is a Noise session pinned to the computer's key, which the phone learns from the QR; the four emoji come from that handshake. Both loopback hops are plain HTTP inside one device. Tailcat's default relays are free and rate-limited; TailPocket's `derpMapUrl` option points at others.
+
+### When the phone cannot connect (TailPocket v0.3.4 and later)
+
+After a request through the tunnel fails, the phone asks TailPocket why (`lastFailure()`) and Settings shows one of:
+
+| TailPocket says | Settings shows |
+|---|---|
+| `refused`, `handshake-closed` | Boop is not running on the computer, or the computer was reset. A Pair again button appears. |
+| `no-answer` | The computer is off or asleep, or this network blocks the connection. |
+| `relay-down` | Your relay server cannot be reached. |
+
+Status and that line come from the same state, and both clear as soon as the computer answers. TailPocket's dial may take
+max(20 s, routes × 10 s) to fail; when the phone's own request gave up first, it reads the reason again after that.
+
+The reason is not authenticated: a device on the same Wi-Fi can refuse the computer's address and make the phone show the
+first line. So it only picks the words. The phone never unpairs, deletes the link or changes the computer's key because
+of it. Pair again runs only when you tap it, asks you to scan only the code on your own computer's screen, and keeps the
+old pairing until the new one has worked: a failed or cancelled pairing leaves everything as it was.
 
 ## Limits
 

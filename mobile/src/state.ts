@@ -10,7 +10,7 @@
 //   end      — the follow ended; with `error` the thread shows a notice and follows again
 import { effect, platform, signal, Storage, host } from 'nsh'
 import { Bot, loadSession, saveSession, setChosenLanguage, type Session } from './api.ts'
-import { forgetPocket, loadRouteMode, openTunnel, pocketPath, restorePocket, setRouteMode, viaPocket, type RouteMode } from './pocket.ts'
+import { dialBoundMs, forgetPocket, loadRouteMode, openTunnel, pocketPath, reached, readFailure, repairInvite, restorePocket, setRouteMode, unreachable, viaPocket, type RouteMode, type Unreachable } from './pocket.ts'
 import { watchSocket, type SocketWatch } from './liveness.ts'
 import { isLang, labelSeparator, listSeparator } from './locale.ts'
 import { ALL as STRINGS, detectLang, type Lang } from './i18n.ts' // [agent:ui] the merged table, so str() resolves every module's keys
@@ -188,6 +188,21 @@ export async function startSample() {
 /** Sets `me` and keeps a copy for the next launch. */
 function putMe(m: Me) { me.set(m); if (!isSample()) Storage.setItem('me', JSON.stringify(m)).catch(() => {}) }
 
+/** The words for each reason the computer cannot be reached (TailPocket INTEGRATE.md). */
+export const UNREACHABLE_WORDS: Record<Unreachable, string> = { 'not-running': 'unreachNotRunning', 'no-answer': 'unreachNoAnswer', 'relay-down': 'unreachRelayDown' }
+/** Why this phone is not connected: from the same state as Status, `connection` and TailPocket's reason. */
+export const offlineReason = () => (connection() === 'online' ? null : unreachable())
+export const offlineText = () => { const r = offlineReason(); return str(r ? UNREACHABLE_WORDS[r] : 'notConnected') }
+
+/** Settings › Pair again, from the person's tap only: the new pairing replaces the old one once it works; until then the
+ *  old link and session stay as they are (pocket.ts `repairInvite`). */
+export async function repairComputer(invite: string) {
+  const s = await repairInvite(invite, deviceName())
+  const old = eventsWs; eventsWs = null; try { old?.close() } catch {}
+  lastReopen = 0
+  await connect(s, { hostedBy: null })
+}
+
 export async function disconnect() {
   stopped = true
   if (viaPocket()) await forgetPocket()
@@ -293,7 +308,7 @@ export const toolPhrase = (name: string, l: Lang) => { const w = toolWord(name, 
 
 /** One /events message. Tests hand messages in the same way (`app.host.send('event', m)`), as the socket cannot be stubbed headless. */
 export function handleEvent(m: { type: string; asks?: Ask[]; ask?: Ask; eventId?: string; sessionId?: string; running?: boolean; toolName?: string; connected?: boolean; me?: Me; user?: number; memory?: number }) {
-  if (m.type === 'hello') { asks.set(m.asks ?? []); connection.set(m.connected ? 'online' : 'reconnecting') }
+  if (m.type === 'hello') { asks.set(m.asks ?? []); connection.set(m.connected ? 'online' : 'reconnecting'); if (m.connected) reached() }
   else if (m.type === 'ask' && m.ask) asks.set([...asks().filter((a) => a.eventId !== m.ask!.eventId), m.ask])
   else if ((m.type === 'ask-cancelled' || m.type === 'ask-answered') && m.eventId) asks.set(asks().filter((a) => a.eventId !== m.eventId))
   else if (m.type === 'snapshot' || m.type === 'rows' || m.type === 'delta' || m.type === 'status' || m.type === 'end') apply(m as unknown as ThreadFrame)
@@ -340,14 +355,16 @@ export async function changeRouteMode(mode: RouteMode) {
   connectEvents()
 }
 
-const REOPEN_EVERY_MS = 20_000
 const SOCKET_CHECK_MS = 10_000
 let lastReopen = 0
 /** Through TailPocket, a request that fails may mean the tunnel itself is gone (a suspended app, a new network): open it again. */
 async function reopenTunnel() {
   if (!viaPocket() || !bot) return
-  // with the computer off or no network every try fails, and each opening starts a node on this phone: not every few seconds
-  const now = Date.now(); if (now - lastReopen < REOPEN_EVERY_MS) return
+  // why it failed, from the tunnel that failed, before it closes (a reason only for the words shown: pocket.ts)
+  await readFailure()
+  // with the computer off or no network every try fails, and each opening starts a node on this phone: not every few
+  // seconds, and not before TailPocket's dial may have ended, or it would never get to say why
+  const now = Date.now(); if (now - lastReopen < dialBoundMs()) return
   lastReopen = now
   const mine = bot
   let origin: string
@@ -366,7 +383,7 @@ function connectEvents() {
     setTimeout(() => { if (eventsWs === ws && ws.readyState === 0) { try { ws.close() } catch {} eventsWs = null; if (!stopped) setTimeout(connectEvents, 500) } }, CONNECT_TIMEOUT_MS)
     let watch: SocketWatch | null = null
     ws.onopen = () => {
-      connection.set('online'); sendFollow(); if (appState() === 'background') sendPresence()
+      connection.set('online'); reached(); sendFollow(); if (appState() === 'background') sendPresence()
       if (viaPocket()) watch = watchSocket({ every: SOCKET_CHECK_MS, may: () => appState() !== 'background', ping: () => { try { ws.send(JSON.stringify({ type: 'ping' })) } catch {} }, dead: () => {
         if (eventsWs !== ws) return
         eventsWs = null; connection.set('reconnecting'); try { ws.close() } catch {}
@@ -422,7 +439,7 @@ function settle(incoming: Row[], inPlace: boolean) {
  */
 export async function answerCard(cardId: string, text: string): Promise<boolean> {
   const id = sessionId(); if (!id || !text.trim()) return false
-  if (connection() !== 'online') { showToast(str('notConnected')); return false }
+  if (connection() !== 'online') { showToast(offlineText()); return false }
   answering.update((s) => new Set(s).add(cardId))
   try { await api().prompt(id, text, cardId); thread.running = true; thread.statusText = str('working'); awaiting.set(true); publish(); return true }
   catch { showToast(str('failed')); return false }

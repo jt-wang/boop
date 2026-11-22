@@ -98,7 +98,7 @@ test('your own server: named by its address, encrypted to it, and no line about 
 test('not connected: the state says so and the way there is not claimed', async () => {
   const app = await settings('http://192.168.1.20:3850')
   await app.host.send('event', { type: 'reset' })
-  await app.waitFor('text:Finding the route…')
+  await app.waitFor('text:Not connected') // the way there follows Status: not "finding the route" while it cannot reach
   expect(app.shows('text:Reconnecting')).toBe(true)
   expect(app.shows('text:/Direct to your computer/')).toBe(false)
   expect(app.shows('text:Not encrypted')).toBe(true) // the address it will try again is still plain

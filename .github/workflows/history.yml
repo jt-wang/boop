@@ -23,6 +23,9 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      # On a tag push, checkout writes the pushed tag as a lightweight ref; fetch the real tag objects again.
+      - name: Fetch the annotated tags as they are on GitHub
+        run: git fetch --quiet --force --tags origin
       - name: Check every branch, tag and pull request head
         env:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}

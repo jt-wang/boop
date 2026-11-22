@@ -2,7 +2,7 @@
 // (TailPocketNsh.attach), the bridge keeps the phone's key and the link in the Keychain or Keystore, and each opening of
 // the tunnel gives a new loopback port, so the saved origin is only ever a guess until the tunnel is open again.
 import { host, platform, signal, Storage } from 'nsh'
-import { createTailPocket, TailPocketError, type TailPocketConnection, type TailPocketPath, type TailPocketRouteType } from './tailpocket/client.ts'
+import { createTailPocket, TailPocketError, type TailPocketConnection, type TailPocketHostLink, type TailPocketPath, type TailPocketRouteType } from './tailpocket/client.ts'
 import { pair } from './api.ts'
 
 // NSH 0.4.0 rejects a host call with `code: 'ERR_NSH_HOST_ERROR'` and the bridge's own code as the message (measured
@@ -20,6 +20,40 @@ export const viaPocket = signal(false)
 export const pocketPath = signal<{ kind: 'direct' | 'relay' | 'lan'; relay?: string } | null>(null)
 
 let tunnel: TailPocketConnection | null = null
+
+/** Why the computer cannot be reached, from TailPocket's `lastFailure()` (v0.3.4): `not-running` (refused or a closed
+ *  handshake: TailPocket is not running there, or the computer was reset), `no-answer` (off, asleep, or this network
+ *  blocks it), `relay-down`. null: nothing failed, or not known yet. Not authenticated, as anyone on the network can
+ *  refuse a connection: it only picks the words shown, and never unpairs, deletes the link or changes the pinned key. */
+export type Unreachable = 'not-running' | 'no-answer' | 'relay-down'
+export const unreachable = signal<Unreachable | null>(null)
+const REASONS: Record<string, Unreachable> = { refused: 'not-running', 'handshake-closed': 'not-running', 'no-answer': 'no-answer', 'relay-down': 'relay-down' }
+/** How many routes one dial tries: those in the link that this phone may use (Settings › Connection). */
+let dialRoutes = 1
+/** How long TailPocket may take to fail a dial, max(20 s, routes × 10 s) (INTEGRATE.md): until then `lastFailure()`
+ *  may still be null, and opening the tunnel again sooner would cut the dial short. */
+export const dialBoundMs = () => Math.max(20_000, dialRoutes * 10_000)
+function countRoutes(l: TailPocketHostLink): number {
+  const allowed = ROUTES[routeMode()]
+  const kinds = new Set((l.via ?? []).map((r) => r.t))
+  if (l.address) kinds.add('tailcat')
+  return Math.max(1, [...kinds].filter((t) => allowed === null || (allowed as string[]).includes(t)).length)
+}
+let readAgain: ReturnType<typeof setTimeout> | null = null
+/** A request through the tunnel failed: ask TailPocket why. Null may mean the dial has not ended (the app's own timeout
+ *  is shorter than the dial's), so then it asks once more after the bound. */
+export async function readFailure(again = true): Promise<void> {
+  const t = tunnel; if (!t) return
+  let f
+  try { f = await t.lastFailure() } catch { return } // a bridge before v0.3.4 cannot say
+  if (t !== tunnel) return
+  // an empty reason (no route tried, `code` says it) adds nothing: only the computer answering clears a known one (`reached`)
+  if (f) { const r = REASONS[f.reason]; if (r) unreachable.set(r); return }
+  if (!again || readAgain) return
+  readAgain = setTimeout(() => { readAgain = null; readFailure(false).catch(() => {}) }, dialBoundMs())
+}
+/** The computer answered: no reason to show. */
+export const reached = () => unreachable.set(null)
 
 /** The four emoji a pairing shows while the computer's user compares them (TailPocket v0.3.0-pre.4); null otherwise. */
 export const pairEmoji = signal<string[] | null>(null)
@@ -39,7 +73,7 @@ export async function loadRouteMode(): Promise<void> {
   if (mode !== 'all') await tailPocket.setRoutes(ROUTES[mode]).catch(() => {}) // a browser has no bridge
 }
 /** TailPocket takes the routes first: one it refuses is neither shown nor kept, so the screen never claims a limit the
- *  phone does not have. Always an array or an explicit null (TailPocket v0.3.3 refuses anything else). */
+ *  phone does not have. Always an array or an explicit null (TailPocket v0.3.3 and later refuse anything else). */
 export async function setRouteMode(mode: RouteMode): Promise<void> {
   await tailPocket.setRoutes(ROUTES[mode])
   routeMode.set(mode)
@@ -75,7 +109,7 @@ export async function openTunnel(): Promise<string> {
  *  the computer's key and routes, so it can use the encrypted ones without a new QR. Not awaited: a computer before v0.3
  *  does not answer it, and the phone simply keeps using Tailcat. */
 function syncKey(t: TailPocketConnection) {
-  t.link().then((l) => (l.pk ? undefined : t.sync())).catch(() => {})
+  t.link().then((l) => { dialRoutes = countRoutes(l); return l.pk ? undefined : t.sync() }).catch(() => {})
 }
 
 const CLAIM_TRIES = 20
@@ -88,17 +122,45 @@ export async function pairInvite(invite: string, device: string): Promise<{ orig
   finally { pairEmoji.set(null) }
   // every URL goes under the tunnel's base (`…/_tailpocket/<token>`), never resolved against "/"
   const origin = await openTunnel()
-  // the first connection through a new tunnel takes seconds to find the way: it fails until then
-  let refused = false
+  try {
+    const token = await claim(origin, link.payload ?? '', device)
+    await Storage.setItem('pocket', '1'); viaPocket.set(true); reached()
+    return { origin, token }
+  } catch (e) { await forgetPocket(); throw e }
+}
+
+/** Spends the Boop code that came inside the tunnel; the first connection through a new tunnel takes seconds to find
+ *  the way, and fails until then. */
+async function claim(origin: string, code: string, device: string): Promise<string> {
   for (let i = 0; i < CLAIM_TRIES; i++) {
     try {
-      const r = await pair(origin, link.payload ?? '', device)
-      if (r.ok) { await Storage.setItem('pocket', '1'); viaPocket.set(true); return { origin, token: r.token } }
-      refused = true; break
-    } catch { await new Promise((resolve) => setTimeout(resolve, 1500)) }
+      const r = await pair(origin, code, device)
+      if (r.ok) return r.token
+      throw new TailPocketError('expired')
+    } catch (e) {
+      if (e instanceof TailPocketError) throw e
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+    }
   }
-  await forgetPocket()
-  throw new TailPocketError(refused ? 'expired' : 'unreachable')
+  throw new TailPocketError('unreachable')
+}
+
+/** Pair again, only from the person's tap (Settings, when the computer looks reset). The new link is tried on a tunnel
+ *  of its own and saved only once Boop took this phone: until then, and if it fails or is cancelled, the old link stays
+ *  and keeps working when the computer comes back. */
+export async function repairInvite(invite: string, device: string): Promise<{ origin: string; token: string }> {
+  let link: TailPocketHostLink
+  try { link = await tailPocket.pair(invite.trim(), { device, save: false, onEmoji: (e) => pairEmoji.set(e.slice(0, 4)) }) }
+  finally { pairEmoji.set(null) }
+  const trial = await tailPocket.connect({ link })
+  let token: string
+  try { token = await claim(trial.baseUrl, link.payload ?? '', device) } catch (e) { await trial.close().catch(() => {}); throw e }
+  await tailPocket.store.saveLink(link)
+  const before = tunnel
+  tunnel = trial; dialRoutes = countRoutes(link)
+  await before?.close().catch(() => {})
+  await Storage.setItem('pocket', '1'); viaPocket.set(true); reached()
+  return { origin: trial.baseUrl, token }
 }
 
 /** This phone is done with this computer: the tunnel closes and the link goes. */
@@ -108,7 +170,7 @@ export async function forgetPocket(): Promise<void> {
   await open?.close().catch(() => {})
   await tailPocket.store.deleteLink().catch(() => {})
   await Storage.removeItem('pocket')
-  viaPocket.set(false); pocketPath.set(null)
+  viaPocket.set(false); pocketPath.set(null); reached()
 }
 
 /** Asks TailPocket which way the tunnel goes. A bridge that cannot say leaves it unsaid. Rejects `revoked` when the
