@@ -1,0 +1,58 @@
+name: TestFlight beta
+
+# Puts one processed build in the public TestFlight group and submits it for Beta App Review, then reads the state
+# back. Never submits for App Store review. See scripts/testflight-beta.py.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: App version, as in mobile/nsh.json
+        type: string
+        required: true
+      build:
+        description: Apple build number already uploaded and processed
+        type: string
+        required: true
+      what_to_test:
+        description: What to Test for testers (en-US)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+concurrency:
+  group: boop-testflight-beta
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.repository == 'jt-wang/boop' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: testflight
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test the submission logic
+        run: python3 -B -m unittest discover -s test -p testflight_beta_test.py
+      - name: Prepare Apple API client
+        run: |
+          python3 -m venv "$RUNNER_TEMP/asc-client"
+          "$RUNNER_TEMP/asc-client/bin/pip" install PyJWT==2.10.1 cryptography==46.0.3
+      - name: Add to the public group and submit for Beta App Review
+        run: '"$RUNNER_TEMP/asc-client/bin/python" -B scripts/testflight-beta.py --version "$TF_VERSION" --build "$TF_BUILD" --what-to-test "$TF_WHAT" --output "$RUNNER_TEMP/boop-testflight-beta.json"'
+        env:
+          TF_VERSION: ${{ inputs.version }}
+          TF_BUILD: ${{ inputs.build }}
+          TF_WHAT: ${{ inputs.what_to_test }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: boop-testflight-beta-${{ inputs.build }}
+          path: ${{ runner.temp }}/boop-testflight-beta.json
+          retention-days: 7
+          if-no-files-found: warn
