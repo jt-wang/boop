@@ -189,7 +189,7 @@ export async function startSample() {
 function putMe(m: Me) { me.set(m); if (!isSample()) Storage.setItem('me', JSON.stringify(m)).catch(() => {}) }
 
 /** The words for each reason the computer cannot be reached (TailPocket INTEGRATE.md). */
-export const UNREACHABLE_WORDS: Record<Unreachable, string> = { 'not-running': 'unreachNotRunning', 'no-answer': 'unreachNoAnswer', 'relay-down': 'unreachRelayDown' }
+export const UNREACHABLE_WORDS: Record<Unreachable, keyof typeof STRINGS.en> = { 'not-running': 'unreachNotRunning', 'no-answer': 'unreachNoAnswer', 'relay-down': 'unreachRelayDown' }
 /** Why this phone is not connected: from the same state as Status, `connection` and TailPocket's reason. */
 export const offlineReason = () => (connection() === 'online' ? null : unreachable())
 export const offlineText = () => { const r = offlineReason(); return str(r ? UNREACHABLE_WORDS[r] : 'notConnected') }

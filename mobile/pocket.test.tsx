@@ -340,7 +340,7 @@ test('a phone with every route sets none: TailPocket keeps its default', async (
 
 // TailPocket v0.3.4+: when the computer cannot be reached, lastFailure() says why. The reason is not authenticated: it only
 // picks the words shown and offers Pair again as a button; it never unpairs, deletes the link or pairs on its own.
-const offline = (failure: unknown, more: Record<string, unknown> = {}, network: Record<string, unknown> = {}) => {
+const offline = (failure: unknown, more: Record<string, unknown> = {}, network: NonNullable<Parameters<typeof open>[1]>["network"] = {}) => {
   const calls: string[] = []
   const app = open('./App.tsx', {
     storage: { origin: 'http://127.0.0.1:50999', token: 'tok_abcdefghijklmnopqrstuvwxyz0123456789', pocket: '1', me: JSON.stringify(body) },

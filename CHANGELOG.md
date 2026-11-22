@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.10-release.1
+
+- Fix the phone app's type check, which stopped the signed Android and iOS builds of v0.1.10. No change in behaviour; the v0.1.10 release files are built from this commit.
+
 ## v0.1.10
 
 - TailPocket v0.3.6. When the phone cannot reach the computer, Settings says why instead of only "Reconnecting": Boop is not running on the computer or the computer was reset; the computer is off or asleep, or this network blocks the connection; or your relay server cannot be reached.
