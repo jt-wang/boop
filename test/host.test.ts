@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
 import { createServer } from 'node:http'
 import { execFile } from 'node:child_process'
+import { once } from 'node:events'
 import { fileURLToPath } from 'node:url'
 import { writeFileSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -171,6 +172,25 @@ test('the proxy forwards /s/<id>/* to the sandbox for its owner only; the bot in
     const err = await new Promise<Error>((resolve) => { denied.on('error', resolve); denied.on('open', () => resolve(new Error('opened'))) })
     assert.match(err.message, /403/)
   } finally { await s.close() }
+})
+
+test('revoking a device through the host cuts its proxied events socket', async () => {
+  const s = await boot()
+  let ws: WebSocket | undefined
+  try {
+    const acct = await s.signIn('a@example.com')
+    const r = await s.ready(acct)
+    const headers = { authorization: `Bearer ${r.token}` }
+    const { device } = await (await fetch(`${r.origin}/me`, { headers })).json() as { device: { id: string } }
+    const { ticket } = await (await fetch(`${r.origin}/ws-ticket`, { method: 'POST', headers })).json() as { ticket: string }
+    ws = new WebSocket(`${r.origin.replace('http', 'ws')}/events?ticket=${ticket}`)
+    const signal = AbortSignal.timeout(2000)
+    const [hello] = await once(ws, 'message', { signal })
+    assert.equal(JSON.parse(hello.toString()).type, 'hello')
+    const closed = once(ws, 'close', { signal })
+    assert.equal((await fetch(`${r.origin}/devices/${device.id}`, { method: 'DELETE', headers })).status, 200)
+    assert.equal((await closed)[0], 1006, 'the host cuts the socket without waiting for a close handshake')
+  } finally { ws?.terminate(); await s.close() }
 })
 
 test('the OAuth callback reaches the sandbox without an account token (a browser redirect carries none); the sandbox learns its public URL', async () => {

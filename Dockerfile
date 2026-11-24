@@ -20,7 +20,7 @@
 # image through it. With @img pruned, every read_image on the hosted computer
 # failed with "Could not load the sharp module". Both
 # are guarded by test/image.test.ts. Only sharp's WebAssembly fallback goes.
-FROM node:24-trixie-slim AS deps
+FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0 AS deps
 WORKDIR /opt/deepseek-bot
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev \
@@ -33,7 +33,7 @@ RUN npm ci --omit=dev \
 # Stage 2: the runtime. Debian 13 (trixie, glibc 2.41): the nsh 0.4.0 Linux
 # build needs glibc 2.39; on bookworm (2.36) every nsh call printed "weak
 # version `GLIBC_2.39' not found" into the ui tool's errors.
-FROM node:24-trixie-slim
+FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0
 # iptables: kernel owner-match egress rules for the cell uid. e2fsprogs: the
 # fixed-size workspace image. util-linux: mount/umount/setpriv/prlimit.
 # WITH_BROWSER=1 is used by the containment test; production installs Chromium

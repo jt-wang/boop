@@ -251,7 +251,7 @@ export function MenuPage(props: { onPick: () => void; onUpcoming: () => void; on
       <Group>
         <Cell title={str('mainThread')} subtitle={me()?.assistant.name ?? ''} value={sessionId() === me()?.mainSessionId ? str('current') : undefined} onPress={() => open(me()!.mainSessionId!)} />
       </Group>
-      <Group header={str('sideChats')} footer={!list.loading() && (list() ?? []).length === 0 ? str('noSideChats') : undefined}>
+      <Group header={str('sideChats')} footer={list()?.length === 0 ? str('noSideChats') : undefined}>
         <Each of={list() ?? []} key={(s) => s.sessionId}>
           {(s) => <Cell title={s().title || '…'} subtitle={ago(s().updatedAt)} value={s().running ? str('working') : sessionId() === s().sessionId ? str('current') : undefined} chevron onPress={() => open(s().sessionId)} />}
         </Each>
@@ -301,7 +301,7 @@ export function UpcomingPage() {
   const act = async (fn: () => Promise<unknown>) => { try { await fn(); list.refetch() } catch { showToast(str('failed')) } }
   return (
     <Page page="UpcomingPage">
-      <If when={!list.loading() && (list() ?? []).length === 0}><Empty text={str('noUpcoming')} /></If>
+      <If when={list()?.length === 0}><Empty text={str('noUpcoming')} /></If>
       <Each of={list() ?? []} key={(x) => x.id}>
         {(task) => (
           <Group>
@@ -322,7 +322,7 @@ export function GoalsPage() {
   const act = async (fn: () => Promise<unknown>) => { try { await fn(); list.refetch() } catch { showToast(str('failed')) } }
   return (
     <Page page="GoalsPage">
-      <If when={!list.loading() && (list() ?? []).length === 0}><Empty text={str('noGoals')} /></If>
+      <If when={list()?.length === 0}><Empty text={str('noGoals')} /></If>
       <Each of={list() ?? []} key={(x) => x.id}>
         {(g) => (
           <Group footer={g().notes.length ? `${str('latest')}: ${g().notes[g().notes.length - 1].text}` : undefined}>
@@ -341,7 +341,7 @@ export function ActivityPage() {
   const list = resource(() => 0, async () => api().get<{ id: string; at: string; kind: string; text: string }[]>('/activity'))
   return (
     <Page page="ActivityPage">
-      <If when={!list.loading() && (list() ?? []).length === 0}><Empty text={str('noActivity')} /></If>
+      <If when={list()?.length === 0}><Empty text={str('noActivity')} /></If>
       <If when={(list() ?? []).length > 0}>
         <Group>
           <Each of={list() ?? []} key={(x) => x.id}>{(a) => <Cell title={activityText(a().text, lang())} subtitle={joined(kindWord(a().kind), fmt(a().at))} />}</Each>

@@ -1,0 +1,52 @@
+name: Tests
+
+# The fast tests, on every push and pull request (REGRESSION.md, "push"): the bot's (npm test, with the old-phone /
+# new-computer contract against the last release's tag), the app's type check and its headless tests (nsh check and
+# nsh test mobile, with the flash-of-empty-state checks), and the screenshot check's self-test. The device tests run
+# every night in nightly.yml.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: npm test, nsh check and nsh test mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          # client-contract.test.ts reads the last release's app from its tag
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: NSH 0.4.0
+        run: |
+          curl --fail --location --silent --show-error https://github.com/longbridge/nsh/releases/download/v0.4.0/nsh-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nsh.tar.gz"
+          echo "8806121aebf40bb51f8fb6aa703722fbb01253f9a435759c18d53beece1ec976  $RUNNER_TEMP/nsh.tar.gz" | sha256sum --check
+          tar xzf "$RUNNER_TEMP/nsh.tar.gz" -C "$RUNNER_TEMP"
+          printf 'NSH_HOME=%s\nNSH_BIN=%s\n' "$RUNNER_TEMP/nsh" "$RUNNER_TEMP/nsh/bin/nsh" >> "$GITHUB_ENV"
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+        env:
+          BOOP_REQUIRE_RELEASE_BASELINE: '1'
+      - run: '"$NSH_BIN" check mobile'
+      - run: '"$NSH_BIN" test mobile'
+      - name: The screenshot check finds what it must
+        run: |
+          sudo apt-get install -y -qq tesseract-ocr python3-pil fonts-dejavu-core >/dev/null
+          scripts/shots-check.sh --self-test

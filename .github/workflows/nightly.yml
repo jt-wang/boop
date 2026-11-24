@@ -1,0 +1,115 @@
+name: Nightly
+
+# The slow tests (REGRESSION.md, "nightly"): the Android device tests on an API 35 emulator (scripts/android-test.sh:
+# JVM unit tests and every instrumented test, among them ChatKeyboardTest and ScreenshotsTest, the chat in light and
+# dark, keyboard down and up, font 100% and 130%), then every screenshot read by OCR (scripts/shots-check.sh) before it
+# is uploaded. Every night on main, on every push to the public branch ci (where a release candidate goes before main),
+# and by hand. The push to ci is what runs it on a candidate before this workflow is on main: GitHub dispatches a
+# workflow by hand only once it is on the default branch. .dev/RELEASING.md: a release needs this run green on the
+# candidate's own SHA.
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  push:
+    branches: [ci]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  android:
+    name: Android device tests and screenshots
+    if: github.repository == 'jt-wang/boop'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      ANDROID_SERIAL: emulator-5554
+    defaults:
+      run:
+        working-directory: boop
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: boop
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jt-wang/tailpocket
+          ref: e197f3edca01ba4d1c70a6a752a5cad9a383cb0c
+          path: tailpocket
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: tailpocket/go.mod
+          cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;28.2.13676358'
+      - name: NSH 0.4.0 and TailPocket, as android-release.yml
+        run: |
+          curl --fail --location --silent --show-error https://github.com/longbridge/nsh/releases/download/v0.4.0/nsh-linux-x86_64.tar.gz -o "$RUNNER_TEMP/nsh.tar.gz"
+          echo "8806121aebf40bb51f8fb6aa703722fbb01253f9a435759c18d53beece1ec976  $RUNNER_TEMP/nsh.tar.gz" | sha256sum --check
+          tar xzf "$RUNNER_TEMP/nsh.tar.gz" -C "$RUNNER_TEMP"
+          export NSH_HOME="$RUNNER_TEMP/nsh" NSH_BIN="$RUNNER_TEMP/nsh/bin/nsh" ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.2.13676358"
+          # TailPocket's Android build compiles against this; without it, it looks in ~/.nsh and fails
+          export NSH_AAR="$NSH_HOME/embed/android/nsh.aar"
+          (cd ../tailpocket && scripts/build-mobile.sh android)
+          (cd ../tailpocket/sdk/android && ./gradlew --no-daemon -q publish :tailpocket-nsh:assembleRelease)
+          mkdir -p android/app/libs android/tailpocket-m2/io/jingtao
+          cp ../tailpocket/sdk/android/tailpocket-nsh/build/outputs/aar/tailpocket-nsh-release.aar android/app/libs/tailpocket-nsh.aar
+          cp -R ../tailpocket/build/android/m2/io/jingtao/tailpocket android/tailpocket-m2/io/jingtao/
+          printf 'NSH_HOME=%s\nNSH_BIN=%s\nNSH_AAR=%s\nJAVA_HOME=%s\n' "$NSH_HOME" "$NSH_BIN" "$NSH_AAR" "$JAVA_HOME" >> "$GITHUB_ENV"
+          npm ci --no-audit --no-fund
+      - run: scripts/ci-android-up.sh
+      - name: Device tests
+        run: scripts/android-test.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: android-nightly-reports
+          path: boop/android/app/build/reports/androidTests
+          if-no-files-found: ignore
+          retention-days: 14
+      # The 8 captures of ScreenshotsTest (REGRESSION.md, "Screenshot baseline"): all of them, each decodable, nothing
+      # private in any (scripts/shots-check.sh). Only then are they uploaded; the check's log names a file and a category,
+      # never the text it read.
+      - name: Screenshots, all 8, read by OCR before upload
+        id: shots
+        run: |
+          rm -rf "$RUNNER_TEMP/shots"
+          "$ANDROID_HOME/platform-tools/adb" pull /data/local/tmp/boop-shots "$RUNNER_TEMP/shots"
+          sudo apt-get install -y -qq tesseract-ocr python3-pil fonts-dejavu-core >/dev/null
+          scripts/shots-check.sh --self-test
+          expect=$(for m in light dark; do for f in 10 13; do printf 'android-chat-%s-font%s.png android-chat-%s-font%s-keyboard.png ' $m $f $m $f; done; done)
+          scripts/shots-check.sh "$RUNNER_TEMP/shots" --expect "$expect"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.shots.outcome == 'success'
+        with:
+          name: android-nightly-screenshots
+          # the 8 files the check read and nothing else, by their exact paths (REGRESSION.md, "Screenshot baseline")
+          path: |
+            ${{ runner.temp }}/shots/android-chat-light-font10.png
+            ${{ runner.temp }}/shots/android-chat-light-font10-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-light-font13.png
+            ${{ runner.temp }}/shots/android-chat-light-font13-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-dark-font10.png
+            ${{ runner.temp }}/shots/android-chat-dark-font10-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-dark-font13.png
+            ${{ runner.temp }}/shots/android-chat-dark-font13-keyboard.png
+          if-no-files-found: error
+          retention-days: 14

@@ -1,14 +1,17 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 // install.sh is what a stranger pipes into sh. People who only want to use Boop install from the release's files: no clone
 // and no build, so no git and no Go (owner, 2026-11-04). It runs here with stand-ins for curl and npm that write down
 // what they were asked; tar is the real one, on a real archive.
 const ROOT = join(import.meta.dirname, '..')
+const sha256 = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex')
 
 function archive(dir: string, marker = true) {
   const src = join(dir, 'pack', 'boop'); mkdirSync(join(src, 'src'), { recursive: true })
@@ -20,21 +23,25 @@ function archive(dir: string, marker = true) {
   return tgz
 }
 
-function run(env: Record<string, string> = {}, o: { before?: (home: string) => void; curlFails?: boolean; npm?: boolean } = {}) {
-  const home = mkdtempSync(join(tmpdir(), 'install-'))
+function run(env: Record<string, string> = {}, o: { before?: (home: string) => void; curlFails?: boolean; npm?: boolean; sed?: boolean } = {}) {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'install-')))
   const bin = join(home, 'fake-bin'); mkdirSync(bin)
   const log = join(home, 'calls.log'); writeFileSync(log, '')
   const tgz = archive(home)
+  const sums = join(home, 'SHA256SUMS')
+  writeFileSync(sums, `${sha256(tgz)}  boop-${platform()}.tgz\n`)
   const script = (name: string, body: string) => { const p = join(bin, name); writeFileSync(p, `#!/bin/sh\n${body}\n`); chmodSync(p, 0o755) }
   script('curl', `echo "curl $*" >> "${log}"
 ${o.curlFails ? 'exit 22' : ''}
-while [ $# -gt 0 ]; do if [ "$1" = -o ]; then cp "${tgz}" "$2"; fi; shift; done`)
+case "$2" in */SHA256SUMS) source="${sums}" ;; *) source="${tgz}" ;; esac
+while [ $# -gt 0 ]; do if [ "$1" = -o ]; then cp "$source" "$2"; fi; shift; done`)
   if (o.npm !== false) script('npm', `echo "npm $* in $PWD" >> "${log}"`)
+  if (o.sed === false) script('tar', 'exit 1')
   symlinkSync(process.execPath, join(bin, 'node'))
   script('git', `echo "git $*" >> "${log}"; exit 1`)
   script('go', `echo "go $*" >> "${log}"; exit 1`)
   o.before?.(home)
-  const r = spawnSync('sh', [join(ROOT, 'install.sh')], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: home, ...env } })
+  const r = spawnSync('/bin/sh', [join(ROOT, 'install.sh')], { cwd: home, encoding: 'utf8', env: { PATH: o.sed === false ? bin : `${bin}:/usr/bin:/bin`, HOME: home, ...env } })
   return { home, status: r.status, out: r.stdout + r.stderr, calls: readFileSync(log, 'utf8'), done: () => rmSync(home, { recursive: true, force: true }) }
 }
 
@@ -74,6 +81,15 @@ test('Node.js and npm are the only things it asks for', () => {
   } finally { r.done() }
 })
 
+test('missing sed is reported before downloading or running npm', () => {
+  const r = run({}, { sed: false })
+  try {
+    assert.notEqual(r.status, 0)
+    assert.match(r.out, /Boop needs sed/)
+    assert.equal(r.calls, '')
+  } finally { r.done() }
+})
+
 test('installing again replaces the code and leaves nothing of the old version', () => {
   const r = run({}, { before: (home) => {
     mkdirSync(join(home, 'boop', 'src'), { recursive: true })
@@ -99,6 +115,43 @@ test('a folder that is not a Boop install is left alone', () => {
   } finally { r.done() }
 })
 
+test('an upgrade follows parent symlinks before interpreting ..', () => {
+  const physical = "physical team's files"
+  const r = run({ DEEPSEEK_BOT_DIR: 'link/../boop/' }, { before: (home) => {
+    const nested = join(home, physical, 'nested')
+    mkdirSync(nested, { recursive: true })
+    symlinkSync(nested, join(home, 'link'))
+    for (const parent of [home, join(home, physical)]) {
+      mkdirSync(join(parent, 'boop'))
+      writeFileSync(join(parent, 'boop', '.boop-release'), '0.0.9\n')
+    }
+  } })
+  try {
+    assert.equal(r.status, 0, r.out)
+    assert.equal(readFileSync(join(r.home, 'boop', '.boop-release'), 'utf8'), '0.0.9\n', 'the unrelated install must stay untouched')
+    const installed = join(r.home, physical, 'boop')
+    assert.equal(readFileSync(join(installed, '.boop-release'), 'utf8'), '0.1.0\n')
+    const cd = r.out.match(/^  (cd .+) && DEEPSEEK_API_KEY=.* npm start$/m)?.[1]
+    assert.ok(cd, r.out)
+    const pasted = spawnSync('sh', ['-c', `${cd} && pwd -P`], { encoding: 'utf8' })
+    assert.equal(pasted.status, 0, pasted.stderr)
+    assert.equal(pasted.stdout.trimEnd(), installed)
+  } finally { r.done() }
+})
+
+test('an install destination that is itself a symlink is left alone', () => {
+  const r = run({ DEEPSEEK_BOT_DIR: 'link/' }, { before: (home) => {
+    mkdirSync(join(home, 'boop'))
+    writeFileSync(join(home, 'boop', '.boop-release'), '0.0.9\n')
+    symlinkSync(join(home, 'boop'), join(home, 'link'))
+  } })
+  try {
+    assert.notEqual(r.status, 0)
+    assert.match(r.out, /not a Boop install/)
+    assert.equal(readFileSync(join(r.home, 'link', '.boop-release'), 'utf8'), '0.0.9\n')
+  } finally { r.done() }
+})
+
 test('a download that fails stops the install and says so', () => {
   const r = run({}, { curlFails: true })
   try {
@@ -115,6 +168,65 @@ test('the folder and where the files come from can be chosen', () => {
     assert.match(r.calls, new RegExp(`^curl .*https://example\\.com/files/boop-${platform()}\\.tgz`, 'm'))
     assert.equal(existsSync('/tmp/install-test-elsewhere/src/main.ts'), true)
   } finally { r.done(); rmSync('/tmp/install-test-elsewhere', { recursive: true, force: true }) }
+})
+
+test('a local release installs and upgrades with real npm, leaving the old install working on failure', (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'boop install-'))
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+  const release = join(home, 'release')
+  const source = join(home, 'pack', 'boop')
+  const installed = join(home, 'installs', 'boop')
+  const file = `boop-${platform()}.tgz`
+  const tgz = join(release, file)
+  const sums = join(release, 'SHA256SUMS')
+  mkdirSync(release)
+  mkdirSync(join(source, 'src'), { recursive: true })
+  const publish = (version: string, brokenLock = false) => {
+    const pkg = { name: 'boop-fixture', version }
+    writeFileSync(join(source, 'package.json'), JSON.stringify({ ...pkg, scripts: { start: 'node src/main.ts' } }))
+    const lock = join(source, 'package-lock.json')
+    if (brokenLock) rmSync(lock, { force: true })
+    else writeFileSync(lock, JSON.stringify({ ...pkg, lockfileVersion: 3, packages: { '': pkg } }))
+    writeFileSync(join(source, '.boop-release'), version)
+    writeFileSync(join(source, 'src', 'main.ts'), `console.log('${version}')\n`)
+    assert.equal(spawnSync('tar', ['czf', tgz, '-C', join(home, 'pack'), 'boop']).status, 0)
+    writeFileSync(sums, `${'0'.repeat(64)}  other-platform.tgz\n${sha256(tgz)}  ${file}\n`)
+  }
+  const env = { ...process.env, HOME: home, DEEPSEEK_BOT_DIR: installed + '/', DEEPSEEK_BOT_RELEASE_URL: pathToFileURL(release).href, npm_config_offline: 'true' }
+  const install = () => spawnSync('sh', [join(ROOT, 'install.sh')], { encoding: 'utf8', env })
+  const works = (version: string) => {
+    const r = spawnSync('npm', ['start', '--silent'], { cwd: installed, encoding: 'utf8', env })
+    assert.equal(r.status, 0, r.stderr)
+    assert.equal(r.stdout.trim(), version)
+    assert.deepEqual(readdirSync(join(home, 'installs')), ['boop'])
+  }
+  const fails = (error: RegExp) => {
+    const r = install()
+    assert.notEqual(r.status, 0, r.stdout + r.stderr)
+    assert.match(r.stderr, error)
+    works('1.0.0')
+  }
+
+  publish('1.0.0')
+  let r = install()
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  works('1.0.0')
+
+  publish('2.0.0')
+  rmSync(sums)
+  fails(/Could not download .*SHA256SUMS/)
+  writeFileSync(sums, `${sha256(tgz)}  ${file}.other\n`)
+  fails(/SHA256SUMS has no unique valid checksum/)
+  publish('2.0.0')
+  writeFileSync(tgz, Buffer.concat([readFileSync(tgz), Buffer.from('tampered')]))
+  fails(/SHA256 checksum mismatch/)
+  publish('2.0.0', true)
+  fails(/EUSAGE/)
+
+  publish('2.0.0')
+  r = install()
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  works('2.0.0')
 })
 
 test('the release files carry what the server runs and the helper for their platform, and nothing else', () => {

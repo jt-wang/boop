@@ -139,8 +139,10 @@ if (guard.policy.mode === 'off') console.log('[bot] outbound guard OFF (DEEPSEEK
 else console.log(`[bot] outbound guard on${guard.policy.lockModel ? ' (hosted: model change locked)' : ''}${guard.policy.allow.length ? `; allowed: ${guard.policy.allow.join(', ')}` : ''}`)
 const guardedFetch = guard.fetch
 
+const surrogateModelKey = randomBytes(24).toString('base64url')
 const modelProxy = await startModelProxy({
   upstream: upstreamBase,
+  surrogateKey: surrogateModelKey,
   apiKey: process.env[modelKeyEnv],
   auth: officialModel ? 'x-api-key' : 'bearer',
   fetch: modelGuard.fetch,
@@ -290,7 +292,6 @@ const onConnected = async (id: string, name: string) => {
 
 // The surrogate env for the harness. Everything else in the bot's environment
 // stays here; harnessEnv keeps only the known, non-secret variables.
-const surrogateModelKey = randomBytes(24).toString('base64url')
 // The env names the person gave their connectors go in by name (their rows read them from the harness's env);
 // the model variables below are set after, so a connector naming one gets the surrogate.
 const dshEnv = harnessEnv(process.env, [...connectorEnvNames(connectors.enabled()), ...(officialModel ? ['DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL'] : [modelKeyEnv])])

@@ -546,7 +546,7 @@ export async function createHostServer(o: HostOptions): Promise<HostServer> {
         client.on('message', (d, bin) => upstream.send(d, { binary: bin }))
         upstream.on('message', (d, bin) => client.send(d, { binary: bin }))
         client.on('close', (c, r) => { upstream.close(normalCode(c), r); done() })
-        upstream.on('close', (c, r) => client.close(normalCode(c), r))
+        upstream.on('close', (c, r) => { if (c === 1006) client.terminate(); else client.close(normalCode(c), r) })
         client.on('error', () => upstream.terminate())
         upstream.on('error', () => client.terminate())
       })

@@ -38,6 +38,24 @@ test('the tools are listed over MCP and refuse a wrong secret', async () => {
   } finally { await s.close() }
 })
 
+test('overlapping MCP requests each get their own tool response', { timeout: 5000 }, async () => {
+  const { promise: started, resolve: start } = Promise.withResolvers<void>()
+  const { promise: held, resolve: release } = Promise.withResolvers<void>()
+  const s = await boot({ notify: async () => { start(); await held } })
+  try {
+    const [first, second] = await Promise.all([s.connect(), s.connect()])
+    const pending = first.callTool({ name: 'notify', arguments: { title: 'Hold this request' } })
+    try {
+      await Promise.race([started, pending])
+      const result = await second.callTool({ name: 'goal_list', arguments: {} })
+      assert.equal(textOf(result), 'No goals.')
+    } finally {
+      release()
+      assert.equal(textOf(await pending), 'Sent.')
+    }
+  } finally { await s.close() }
+})
+
 test('remember writes a dated fact once; forget removes matching lines', async () => {
   const s = await boot()
   try {

@@ -1,8 +1,8 @@
 {
   "name": "Boop",
   "id": "io.jingtao.boop",
-  "version": "0.1.10",
-  "build": 10,
+  "version": "0.1.11",
+  "build": 11,
   "icon": "assets/icon.png",
   "appearance": "system",
   "theme": {

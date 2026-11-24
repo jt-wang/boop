@@ -36,6 +36,9 @@ type Item = { id: string; row?: Row; activity?: Activity; ack?: boolean }
 
 const LINE = 22            // 17pt body line height
 const MAX_LINES = 5
+// The top fade reaches this far past the chrome. NSH's Android views draw no maskImage, so there it is a solid band
+// (EdgeFade's 80% background) to its edge, and the thread starts below it: the date line was half under it (0.1.10).
+const TOP_FADE = 24
 /** A time label appears above a row this long after the previous one (Messages' rule). */
 const TIME_GAP = 15 * 60_000
 /** Activity blocks whose step list is open, by activity id (kept outside the screen so it survives navigation). */
@@ -187,7 +190,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   return (
     <View class="flex-1 bg-background pb-[env(keyboard-inset-height)]" onLayout={({ bounds: b }) => screenH.set(b.size.height)}>
       <List ref={list} each={items()} keyExtractor={(i) => i.id} estimatedItemSize={64} maintainVisibleContentPosition={{ autoscrollToBottomThreshold: bottomH() + 60 }}  /* the end of the content sits under the floating composer: anywhere inside that padding is "at the bottom" */ style={{ flex: 1, marginBottom: -bottomH() }}
-        contentStyle={{ paddingHorizontal: 16, paddingTop: chromeBottom() + 8, paddingBottom: bottomH() + 40 }}  /* 40: a markdown row that ends with a list measures one line short (NSH 0.3.0, 2026-10-27); the padding keeps that line visible. The gap between rows is each row's own (ItemView). */
+        contentStyle={{ paddingHorizontal: 16, paddingTop: chromeBottom() + (platform.os === 'android' ? TOP_FADE : 8), paddingBottom: bottomH() + 40 }}  /* 40: a markdown row that ends with a list measures one line short (NSH 0.3.0, 2026-10-27); the padding keeps that line visible. The gap between rows is each row's own (ItemView). */
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={50} testID="thread"
         refreshing={refreshing()} onRefresh={refresh}
         onScroll={(e) => {
@@ -218,7 +221,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
       </If>
 
       {/* Top chrome: a scroll-edge fade, then three glass pieces (menu, identity, settings) and, while it works, the status pill. */}
-      <EdgeFade edge="top" height={chromeBottom() + 24} />
+      <EdgeFade edge="top" height={chromeBottom() + TOP_FADE} />
       <View onLayout={({ bounds: b }) => chromeH.set(b.size.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'box-none' }}>
         {/* the bar alone (topH) places the empty thread; the bar with the live activity (chromeH) is where messages start */}
         <View onLayout={({ bounds: b }) => topH.set(b.size.height)} class="pb-2" style={{ pointerEvents: 'box-none' }}>
@@ -251,7 +254,9 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
       <EdgeFade edge="bottom" height={bottomH() + 16} />
       <ModulePlayer />
       {/* In flow, over the list's bottom edge (the list carries a negative margin of this height): taps land here, the content still scrolls under. */}
-      <View onLayout={({ bounds: b }) => bottomH.set(b.size.height)} class="px-3 pt-2" style={{ paddingBottom: bottomPad() }}>
+      {/* With a card pinned the chrome is solid: the fade under it is see-through, and the thread scrolled under a card
+          this tall showed between the card and the field and under the field as cut-off lines of text */}
+      <View onLayout={({ bounds: b }) => bottomH.set(b.size.height)} testID="bottom-chrome" class={`px-3 pt-2 ${pending().length > 0 ? 'bg-background' : ''}`} style={{ paddingBottom: bottomPad() }}>
         {/* not connected and TailPocket said why: the same sentence as Settings, above the composer so the keyboard leaves it */}
         <If when={offlineReason()}>{(r) => (
           <View role="button" testID="offline-reason" onPress={props.onSettings} class="mx-1 mb-2 rounded-2xl bg-secondary px-4 py-3 active:opacity-70">
@@ -264,12 +269,12 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
             <Each of={pending()} key={(a) => a.eventId}>{(a) => <Appear when={fresh(`ask-${a().eventId}`)}><AskCard ask={a()} /></Appear>}</Each>
           </Scroll>
         </If>
-        <Glass class="flex-row items-end rounded-[22px] px-[5px]" style={{ minHeight: 44 }}>
+        <Glass testID="composer-field" class="flex-row items-end rounded-[22px] px-[5px]" style={{ minHeight: 44 }}>
           {/* no + until attachments work: a button that only says "coming soon" does nothing */}
           <Input ref={input} placeholder={str('compose')} accessibilityLabel={str('compose')} value={draft()} onChange={({ value: v }) => draft.set(v)} multiline submitBehavior="submit" returnKeyType="send" onSubmit={submit} testID="composer"
             onContentSizeChange={({ size: e }) => composerHeight.set(Math.min(Math.max(e.height, LINE), LINE * MAX_LINES))}
             style={{ height: composerHeight() + 20 }}
-            class="flex-1 bg-transparent pl-[12px] pr-[10px] py-[10px] text-foreground text-[17px] leading-[22px]" />
+            class="flex-1 bg-transparent pl-[12px] pr-[10px] py-[10px] text-foreground text-[17px] leading-[22px] android:caret-foreground" />
           <View role="button" accessibilityLabel={str('send')} onPress={submit} testID="send" class={`w-[34px] h-[34px] mb-[5px] rounded-full items-center justify-center ${canSend() ? 'bg-primary' : 'bg-black/[0.06] dark:bg-white/[0.10]'}`} style={[{ transitionProperty: 'background-color', transitionDuration: 150 }, sendPop.style]}>
             <Text class={`text-[17px] font-bold ${canSend() ? 'text-primary-foreground' : 'text-muted-foreground'}`}>↑</Text>
           </View>

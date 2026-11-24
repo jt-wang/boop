@@ -2,6 +2,7 @@
 // ever gets a per-boot surrogate key in its environment; this bot process
 // (outside the DSH cell) adds the real key at the network boundary. A leaked surrogate can call the model
 // as the agent already can; it cannot reveal the provider key.
+import { timingSafeEqual } from 'node:crypto'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { Readable } from 'node:stream'
@@ -10,6 +11,8 @@ import type { Guard } from './guard.ts'
 export interface ModelProxyOptions {
   /** The provider root, e.g. https://api.siliconflow.cn/v1 or https://api.deepseek.com */
   upstream: string
+  /** The per-boot key the harness must send to the proxy. */
+  surrogateKey: string
   /** The real key; absent means the upstream needs no auth. */
   apiKey?: string
   /** `bearer` for OpenAI-compatible gateways, `x-api-key` for the native Messages adapter. */
@@ -27,11 +30,23 @@ export interface ModelProxy { url: string; close(): Promise<void> }
 const SKIP = new Set(['host', 'connection', 'content-length', 'authorization', 'x-api-key'])
 
 export async function startModelProxy(o: ModelProxyOptions): Promise<ModelProxy> {
+  if (!o.surrogateKey) throw new Error('the model proxy requires a surrogate key')
+  const surrogateKey = Buffer.from(o.surrogateKey)
+  const matchesSurrogate = (value: string | string[] | undefined): boolean => {
+    if (typeof value !== 'string') return false
+    const supplied = Buffer.from(value)
+    return supplied.length === surrogateKey.length && timingSafeEqual(supplied, surrogateKey)
+  }
   const target = new URL(o.upstream)
   const base = target.origin
   const cap = o.maxBytes ?? 64 << 20
   const f = o.fetch ?? fetch
   const server = createServer(async (req, res) => {
+    const bearer = /^Bearer +(\S+)$/i.exec(req.headers.authorization ?? '')?.[1]
+    if (!matchesSurrogate(bearer) && !matchesSurrogate(req.headers['x-api-key'])) {
+      res.writeHead(401, { 'www-authenticate': 'Bearer' })
+      return res.end()
+    }
     try {
       const chunks: Buffer[] = []
       let size = 0

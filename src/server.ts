@@ -10,6 +10,7 @@
 import { computerInfo } from './computer.ts'
 import { tilePath, type Tiles } from './tiles.ts'
 import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from 'node:http'
+import type { Duplex } from 'node:stream'
 import { once } from 'node:events'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { chown, readFile, readdir, writeFile, stat, mkdir, realpath, open as openFile } from 'node:fs/promises'
@@ -133,6 +134,11 @@ export type PendingAsk =
 // `origin`/`referer` are dropped: dsh's browser-trust fence only admits its own
 // loopback authority (403 otherwise, measured 2026-10-26); the device token is the auth here.
 const HOP = new Set(['authorization', 'cookie', 'host', 'origin', 'referer', 'connection', 'upgrade', 'sec-websocket-key', 'sec-websocket-version', 'sec-websocket-extensions'])
+// DSH exposes plugin-defined RPCs here. Only known model-free operations bypass consent.
+const CONSENT_FREE_API = new Set([
+  '/api/file', '/api/session/attachment', '/api/session/cancel', '/api/session/list',
+  '/api/session/page', '/api/session/projections', '/api/session/search',
+])
 const MEMORY_FILES = new Set(['SOUL.md', 'USER.md', 'MEMORY.md'])
 /** Prefix on user-role messages that bot injects (reminders, the opening prompt); apps hide them. */
 export const INJECT = '\u27e6bot\u27e7 '
@@ -187,6 +193,17 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
   const harness: Harness = opts.harness ?? new DshHarness(opts.dsh, opts.watcher ?? new Watcher({ origin: opts.dsh.origin, cookie: opts.dsh.cookie }))
   const pending = new Map<string, PendingAsk>()
   const phones = new Set<WebSocket>()
+  const revokedDevices = new Set<string>()
+  const deviceSockets = new Map<string, Set<() => void>>()
+  const trackUpgrade = (id: string, socket: Duplex, disconnect: () => void) => {
+    const sockets = deviceSockets.get(id) ?? new Set()
+    sockets.add(disconnect)
+    deviceSockets.set(id, sockets)
+    socket.once('close', () => {
+      sockets.delete(disconnect)
+      if (!sockets.size) deviceSockets.delete(id)
+    })
+  }
   // [push] What each open app is doing: in the foreground or not, which thread it follows, whether it answered the last ping.
   // An app tells the bot when it goes to the background ({type:'presence'}); one that stops answering pings is dropped.
   const presence = new Map<WebSocket, { foreground: boolean; sessionId: string | null; alive: boolean }>()
@@ -343,8 +360,9 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
   }
 
   // [compliance] Nothing goes to the model until the person (18 or older) agreed to the provider: 403 {error: 'ai-consent' | 'age'}.
+  const modelGate = () => opts.compliance?.gate()
   const refused = async (res: ServerResponse): Promise<boolean> => {
-    const why = await opts.compliance?.gate()
+    const why = await modelGate()
     if (!why) return false
     json(res, 403, { error: why })
     return true
@@ -360,7 +378,7 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
       const path = url.pathname
       if (path.startsWith('/api/')) {
         if (!(await auth(req))) return json(res, 401, { error: 'device-unauthorized' })
-        if (/^\/api\/session\/(prompt|steer)\b/.test(path) && await refused(res)) return // [compliance]
+        if (!CONSENT_FREE_API.has(path) && await refused(res)) return
         return proxyHttp(req, res, dsh, forwardHeaders(req, opts.dsh.cookie))
       }
       if (path === '/pair' && req.method === 'POST') {
@@ -794,7 +812,12 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
         if (d && req.method === 'DELETE') {
           const target = (await opts.devices.list()).find((x) => x.id === d[1])
           if (target && isHostPairing(target) && !isHostPairing(device)) return json(res, 403, { error: 'the host\'s own pairing' })
-          await opts.devices.revoke(d[1]); await opts.push?.unsubscribeDevice(d[1]); json(res, 200, { ok: true }); res.once('finish', () => { Promise.resolve(opts.onDeviceRevoked?.(d[1])).catch(() => {}) }); return
+          await opts.devices.revoke(d[1])
+          if (target) revokedDevices.add(d[1])
+          for (const disconnect of deviceSockets.get(d[1]) ?? []) disconnect()
+          await opts.push?.unsubscribeDevice(d[1])
+          res.once('finish', () => { Promise.resolve(opts.onDeviceRevoked?.(d[1])).catch(() => {}) })
+          return json(res, 200, { ok: true })
         }
         return json(res, 404, { error: 'not found' })
       }
@@ -834,10 +857,12 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
   server.on('upgrade', async (req, socket, head) => {
     const device = await auth(req).catch((e) => { console.error('[bot] upgrade auth failed', e); return null })
     if (debug) console.log(`[bot] UPGRADE ${req.url} → ${device ? 'ok' : '401'}`)
-    if (!device) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
+    if (socket.destroyed) return
+    if (!device || revokedDevices.has(device.id)) { socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
     const wsPath = new URL(req.url ?? '/', 'http://bot').pathname
     if (wsPath === '/events') {
       wss.handleUpgrade(req, socket, head, (ws) => {
+        trackUpgrade(device.id, socket, () => ws.terminate())
         phones.add(ws)
         presence.set(ws, { foreground: true, sessionId: null, alive: true })
         ws.on('pong', () => { const p = presence.get(ws); if (p) p.alive = true })
@@ -855,7 +880,12 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
           if (m.type === 'follow' && typeof m.sessionId === 'string') {
             if (here) here.sessionId = m.sessionId
             cancelThread?.(); cancelThread = null
-            try { const send = (f: unknown) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(f)) }; cancelThread = await followThread(harness, m.sessionId, (f) => { if (replyFilter) replyFilter.pass(f as never, send); else send(f) }, uiLang(typeof m.lang === 'string' ? m.lang : 'en')) }
+            try {
+              const send = (f: unknown) => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(f)) }
+              const cancel = await followThread(harness, m.sessionId, (f) => { if (replyFilter) replyFilter.pass(f as never, send); else send(f) }, uiLang(typeof m.lang === 'string' ? m.lang : 'en'))
+              if (ws.readyState === WebSocket.OPEN) cancelThread = cancel
+              else cancel()
+            }
             catch (e) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'end', sessionId: m.sessionId, error: { code: 'follow-failed', message: (e as Error).message } })) }
           } else if (m.type === 'unfollow') { if (here) here.sessionId = null; cancelThread?.(); cancelThread = null }
         })
@@ -864,11 +894,43 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
       return
     }
     if (wsPath !== '/api/remote.mux') { socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n'); socket.destroy(); return }
+    let refusal
+    try { refusal = await modelGate() }
+    catch (e) {
+      console.error('[bot] upgrade consent check failed', e)
+      socket.end('HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
+      return
+    }
+    if (socket.destroyed) return
+    if (device.revokedAt || revokedDevices.has(device.id)) {
+      socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n')
+      return
+    }
+    if (refusal) {
+      const body = JSON.stringify({ error: refusal })
+      socket.end(`HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Type: application/json; charset=utf-8\r\nCache-Control: no-store\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`)
+      return
+    }
     const upstream = new WebSocket(`${dsh.protocol === 'https:' ? 'wss' : 'ws'}://${dsh.host}/api/remote.mux`, { headers: { cookie: opts.dsh.cookie } })
-    upstream.once('error', () => { socket.write('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n'); socket.destroy() })
+    let bridged = false
+    trackUpgrade(device.id, socket, () => { socket.destroy(); upstream.terminate() })
+    socket.once('close', () => { if (!bridged) upstream.terminate() })
+    upstream.once('error', () => {
+      if (!bridged && !socket.destroyed) { socket.write('HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n'); socket.destroy() }
+    })
     upstream.once('open', () => {
+      if (socket.destroyed) { upstream.terminate(); return }
       wss.handleUpgrade(req, socket, head, (client) => {
-        client.on('message', (d, bin) => upstream.send(d, { binary: bin }))
+        bridged = true
+        let forwarding = Promise.resolve()
+        client.on('message', (d, bin) => {
+          forwarding = forwarding.then(async () => {
+            if (client.readyState !== WebSocket.OPEN || upstream.readyState !== WebSocket.OPEN) return
+            const why = await modelGate()
+            if (why) { client.close(1008, why); upstream.close(1008, why); return }
+            if (client.readyState === WebSocket.OPEN && upstream.readyState === WebSocket.OPEN) upstream.send(d, { binary: bin })
+          }).catch((e) => { console.error('[bot] mux forwarding failed', e); client.terminate(); upstream.terminate() })
+        })
         upstream.on('message', (d, bin) => client.send(d, { binary: bin }))
         client.on('close', (c, r) => upstream.close(normalCode(c), r))
         upstream.on('close', (c, r) => client.close(normalCode(c), r))
@@ -893,7 +955,7 @@ export async function createBotServer(opts: BotOptions): Promise<BotServer> {
       for (const f of follows.values()) f.cancel()
       follows.clear()
       if (ownHarness) await harness.close().catch(() => {})
-      for (const c of wss.clients) c.terminate()
+      for (const sockets of deviceSockets.values()) for (const disconnect of sockets) disconnect()
       wss.close()
       server.closeAllConnections()
       await new Promise<void>((r) => server.close(() => r()))

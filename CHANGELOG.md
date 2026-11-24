@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.11
+
+- Security fixes. The bot's model proxy accepts only the key it made when it started. Removing a phone closes its open live connections, not only its future requests. Every route that reaches the AI model, including background tasks and the live connection, needs the person's consent first. `install.sh` checks each download against `SHA256SUMS` and keeps the current install until the new one has installed its dependencies. Dependencies with known vulnerabilities (undici, hono, the MCP SDK) are upgraded, and the Docker base image is pinned by digest.
+- Android chat: with the keyboard up, the date line at the top of the thread is no longer half under the header, and in dark mode the message box shows its cursor.
+- With an approval or question waiting above the message box, no cut-off lines of the conversation show between it and the box any more.
+- A list that could not load (other chats, upcoming, goals, Activity) no longer says it is empty, such as "No other chats yet" when the computer did not answer.
+- Tests: pairing and reconnection, every request the phone app makes still answered by the computer (this version's app and the last release's), and nightly Android device tests with screenshots that are checked for private data before they are kept.
+- Version 0.1.11: phone build 11, Mac build 9.
+
 ## v0.1.10-release.1
 
 - Fix the phone app's type check, which stopped the signed Android and iOS builds of v0.1.10. No change in behaviour; the v0.1.10 release files are built from this commit.

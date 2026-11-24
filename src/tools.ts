@@ -181,12 +181,13 @@ export function buildMcpServer(o: ToolsOptions) {
 /** Serve the MCP tools on 127.0.0.1 with a per-process bearer secret. */
 export async function startToolsServer(o: ToolsOptions, port = 0): Promise<ToolsServer> {
   const secret = randomBytes(24).toString('base64url')
-  const mcp = buildMcpServer(o)
   const http = createServer(async (req, res) => {
     if (req.headers.authorization !== `Bearer ${secret}`) { res.writeHead(401); return res.end() }
     if (new URL(req.url ?? '/', 'http://x').pathname !== '/mcp') { res.writeHead(404); return res.end() }
     try {
+      const mcp = buildMcpServer(o)
       const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+      res.once('close', () => { void mcp.close() })
       await mcp.connect(transport)
       await transport.handleRequest(req, res)
     } catch (e) { console.error('[bot] mcp request failed', e); if (!res.headersSent) res.writeHead(500); res.end() }
