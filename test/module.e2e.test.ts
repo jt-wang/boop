@@ -1,10 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ThreadView } from './threadview.ts'
+import { NSH, haveNsh } from './fixtures/nsh.ts'
+import { startBot } from './fixtures/module-bot.ts'
 
 // Generative UI, second layer, with the real model: asked for a tip calculator,
 // the assistant writes an NSH TSX module with the `ui` tool; the bot signs it;
@@ -12,26 +14,10 @@ import { ThreadView } from './threadview.ts'
 // to /ui/:id/result shows as the person's message and the assistant reads it.
 // Skipped unless DEEPSEEK_BOT_E2E_MODEL=1 (model via the local Magpie gateway).
 const run = process.env.DEEPSEEK_BOT_E2E_MODEL === '1'
-const NSH = process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh')
-
-async function startBot() {
-  const home = mkdtempSync(join(tmpdir(), 'bot-module-'))
-  const child: ChildProcess = spawn(process.execPath, ['src/main.ts', '--home', home, '--host', '127.0.0.1', '--port', '0', '--model', 'magpie/group/auto-deepseek-flash', '--base-url', 'http://127.0.0.1:3425/v1', '--api-key-env', 'DEEPSEEK_BOT_MODEL_KEY'], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, DEEPSEEK_BOT_MODEL_KEY: 'local' } })
-  let out = ''
-  const pairUrl = await new Promise<string>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`no pairing url:\n${out}`)), 90_000)
-    child.stdout!.on('data', (d) => { out += d; const m = /(http:\/\/[^\s]+\/pair\?code=(\d{6}))/.exec(out); if (m) { clearTimeout(t); resolve(m[1]) } })
-    child.stderr!.on('data', (d) => { out += d })
-    child.on('exit', (c) => { clearTimeout(t); reject(new Error(`bot exited ${c}:\n${out}`)) })
-  })
-  for (let i = 0; i < 100 && !/listening to the assistant/.test(out); i++) await new Promise((r) => setTimeout(r, 200))
-  assert.match(out, /ui modules on/, 'the bot found nsh and made its keys')
-  const u = new URL(pairUrl); u.hostname = '127.0.0.1'
-  return { home, origin: u.origin, code: u.searchParams.get('code')!, log: () => out, stop: () => new Promise<void>((r) => { child.once('exit', () => { rmSync(home, { recursive: true, force: true }); r() }); child.kill('SIGTERM') }) }
-}
 
 
-test('tip calculator: the assistant builds a module with `ui`; the package verifies; the posted result becomes the person\'s message and gets a reply', { skip: !run, timeout: 600_000 }, async () => {
+
+test('tip calculator: the assistant builds a module with `ui`; the package verifies; the posted result becomes the person\'s message and gets a reply', { skip: !run || !haveNsh, timeout: 600_000 }, async () => {
   const bot = await startBot()
   try {
     const { token } = await (await fetch(`${bot.origin}/pair`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: bot.code, name: 'e2e' }) })).json() as { token: string }

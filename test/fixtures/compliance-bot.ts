@@ -5,13 +5,14 @@
 // The interface asks for the clipboard: its button writes "granted-ok" and reads it back, so the screen shows
 // whether the shell granted the capability (allowed) or refused it (not allowed).
 import { mkdtempSync } from 'node:fs'
-import { tmpdir, homedir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createBotServer, type Settings } from '../../src/server.ts'
 import { MemoryDeviceStore } from '../../src/devices.ts'
 import { Pairing } from '../../src/pairing.ts'
 import { Ui } from '../../src/ui.ts'
 import { Compliance } from '../../src/compliance.ts'
+import { NSH } from './nsh.ts'
 
 const port = Number(process.argv[2] ?? 3895)
 const root = mkdtempSync(join(tmpdir(), 'compliance-bot-'))
@@ -56,7 +57,7 @@ let settings: Settings = { assistantName: '', mainSessionId: 'main', language: '
 const store = { get: async () => ({ ...settings }), set: async (p: Partial<Settings>) => { settings = { ...settings, ...p }; return { ...settings } } }
 const devices = new MemoryDeviceStore()
 const pairing = new Pairing(devices)
-const ui = await Ui.open(root, { nsh: process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh'), hosts: ['127.0.0.1', 'localhost', '10.0.2.2'] })
+const ui = await Ui.open(root, { nsh: NSH, hosts: ['127.0.0.1', 'localhost', '10.0.2.2'] })
 const made = await ui.create({ title: 'Clipboard check', source: SOURCE, permissions: ['clipboard'] })
 if (!made.ok) { console.error(made.errors); process.exit(1) }
 const compliance = await Compliance.open(root, { settings: store, model: { provider: 'siliconflow', model: 'deepseek-ai/DeepSeek-V4.1-Flash', baseURL: 'https://api.siliconflow.cn/v1' }, origin: () => `http://127.0.0.1:${port}` })

@@ -13,7 +13,7 @@ export const ja: LocaleTables = {
     online: 'オンライン', offline: '未接続', reconnecting: '再接続中…', working: '作業中…', waitingYou: 'あなたの返答待ち',
     compose: 'メッセージ', send: '送信', sayHi: 'あいさつする',
     emptyThread: (n) => `${n || 'アシスタント'}にあいさつしましょう。あなたのことを覚えていて、アプリを閉じていても働き、取り消しにくいことは先に確認します。`,
-    cardYes: 'はい', cardNo: 'いいえ', askApproval: '承認が必要です', askQuestion: '質問があります', allowOnce: '今回のみ許可', allowTask: 'このタスクで許可', allowAlways: '常に許可', decline: '拒否', answer: '回答を送信', skip: 'スキップ', custom: 'その他',
+    cardYes: 'はい', cardNo: 'いいえ', askApproval: '承認が必要です', askQuestion: '質問があります', allowOnce: '今回のみ許可', allowTask: 'このタスクで許可', allowAlways: '常に許可', askPrevious: '前のリクエスト', askNext: '次のリクエスト', askOf: (i: number, n: number) => `${n} 件中 ${i} 件目`, decline: '拒否', answer: '回答を送信', skip: 'スキップ', custom: 'その他',
     autoApproved: (t) => `ルールに基づいて${t}を許可しました`,
     menu: 'メニュー', mainThread: 'メインチャット', sideChats: '他のチャット', newSideChat: '新しいチャット', noSideChats: '他のチャットはまだありません。分けておきたいプロジェクトがあれば始めましょう。',
     identity: '人物設定', identityHint: '3つのテキストファイルです。アシスタントが読み、あなたも編集できます。', soul: '性格', user: 'あなたについて', memory: '記憶', save: '保存', saved: '保存しました',

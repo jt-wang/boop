@@ -13,7 +13,7 @@ export const ko: LocaleTables = {
     online: '온라인', offline: '연결 안 됨', reconnecting: '다시 연결 중…', working: '작업 중…', waitingYou: '답변 대기 중',
     compose: '메시지', send: '보내기', sayHi: '인사하기',
     emptyThread: (n) => `${n || '비서'}에게 인사해 보세요. 나를 기억하고, 앱을 닫아도 계속 일하고, 되돌리기 어려운 일은 먼저 물어봐요.`,
-    cardYes: '예', cardNo: '아니요', askApproval: '승인 필요', askQuestion: '질문이 있어요', allowOnce: '이번만 허용', allowTask: '이 작업에서 허용', allowAlways: '항상 허용', decline: '거부', answer: '답변 보내기', skip: '건너뛰기', custom: '기타',
+    cardYes: '예', cardNo: '아니요', askApproval: '승인 필요', askQuestion: '질문이 있어요', allowOnce: '이번만 허용', allowTask: '이 작업에서 허용', allowAlways: '항상 허용', askPrevious: '이전 요청', askNext: '다음 요청', askOf: (i: number, n: number) => `${n}개 중 ${i}번째`, decline: '거부', answer: '답변 보내기', skip: '건너뛰기', custom: '기타',
     autoApproved: (t) => `기존 규칙으로 허용함: ${t}`,
     menu: '메뉴', mainThread: '메인 채팅', sideChats: '다른 채팅', newSideChat: '새 채팅', noSideChats: '아직 다른 채팅이 없어요. 따로 두고 싶은 프로젝트가 있으면 새로 시작해 보세요.',
     identity: '정체성', identityHint: '일반 텍스트 파일 세 개예요. 비서가 읽고, 직접 수정할 수도 있어요.', soul: '성격', user: '나에 대해', memory: '기억', save: '저장', saved: '저장됨',

@@ -3,8 +3,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
 
-const script = new URL('../mac/bot/qr.mjs', import.meta.url).pathname
+const script = fileURLToPath(new URL('../mac/bot/qr.mjs', import.meta.url))
 const LINK = 'http://192.168.1.23:3850/pair?code=123456'
 
 test('qr.mjs prints a square 0/1 matrix with the three finder patterns', () => {

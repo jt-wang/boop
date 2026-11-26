@@ -1,8 +1,8 @@
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
 import { Tiles } from '../src/tiles.ts'
@@ -14,14 +14,13 @@ import { Goals } from '../src/goals.ts'
 import { createBotServer } from '../src/server.ts'
 import { MemoryDeviceStore } from '../src/devices.ts'
 import { emptyThread, foldEvent, INJECT, type Row } from '../src/fold.ts'
+import { NSH, haveNsh } from './fixtures/nsh.ts'
 
 // Generative UI, second layer: the assistant writes a whole NSH TSX module;
 // the bot type-checks, compiles and signs it into a .nshpkg the phone verifies
 // against the bot's root key and runs in a sheet. The module posts its result
 // to POST /ui/:id/result with a one-time token; that becomes the person's next
-// message. Needs the nsh 0.4 CLI (NSH_BIN, default ~/.local/bin/nsh).
-const NSH = process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh')
-const haveNsh = existsSync(NSH)
+// message. Needs the nsh 0.4 CLI (test/fixtures/nsh.ts finds it and refuses another release).
 
 const TIP = `import { host, mount, signal, Text, View } from 'nsh'
 const BILL = 42
@@ -55,7 +54,13 @@ function App() { return <View class="flex-1"><Text>hi</Text><Foo /></View> }
 mount(App)
 `
 
-const openUi = async () => { const root = mkdtempSync(join(tmpdir(), 'bot-ui-')); return { root, ui: await Ui.open(root, { nsh: NSH, hosts: ['127.0.0.1'] }) } }
+// Every directory these tests make, deleted when the file is done, passed or failed: a module build keeps about 27 MB
+// (keys, sources, packages), and left behind they filled a Mac's system disk (767 of them, 17.7 GB).
+const made: string[] = []
+const temp = (prefix: string) => { const d = mkdtempSync(join(tmpdir(), prefix)); made.push(d); return d }
+after(() => { for (const d of made) rmSync(d, { recursive: true, force: true }) })
+
+const openUi = async () => { const root = temp('bot-ui-'); return { root, ui: await Ui.open(root, { nsh: NSH, hosts: ['127.0.0.1'] }) } }
 
 test('open creates a root key and a release key certified for dev.deepseekbot.ui.*; secrets are 0600; a second open keeps them', { skip: !haveNsh }, async () => {
   const { root, ui } = await openUi()
@@ -78,7 +83,7 @@ test('open creates a root key and a release key certified for dev.deepseekbot.ui
 // volume crashed the bot at boot (`chmod … keys/root.secret ENOENT`) because keygen ran as
 // uid 1000 and failed. A uid this process cannot switch to stands in for "not root's".
 test('open as root with runAs: the keys are made by root, not by the cell user', { skip: !haveNsh }, async () => {
-  const root = mkdtempSync(join(tmpdir(), 'bot-ui-'))
+  const root = temp('bot-ui-')
   const ui = await Ui.open(root, { nsh: NSH, hosts: ['127.0.0.1'], runAs: { uid: 4242, gid: 4242 }, getuid: () => 0 })
   for (const f of ['root.secret', 'root.pub', 'release.secret', 'release.pub', 'release.cert']) assert.ok(existsSync(join(root, 'keys', f)), f)
   assert.match(ui.rootPublicKey, /^[A-Za-z0-9+/]{43}=$/)
@@ -117,7 +122,7 @@ test('create: a good module is checked, published and verifies against the root;
 // NSH 0.4.0 moved the layout event's size under `bounds`: a wrapper still reading `size` reports 0 and the thread gives
 // the module no height. Runs the wrapped module in `nsh test` with the app's `inline` set.
 test('withSizeReport: an inline module tells the shell a real height', { skip: !haveNsh }, () => {
-  const dir = mkdtempSync(join(tmpdir(), 'bot-ui-size-'))
+  const dir = temp('bot-ui-size-')
   try {
     writeFileSync(join(dir, 'App.tsx'), withSizeReport(TIP))
     writeFileSync(join(dir, 'nsh.json'), JSON.stringify({ name: 't', id: 'dev.deepseekbot.ui.t', version: '1.0.0', build: 1, capabilities: { host: true, network: { hosts: ['127.0.0.1'] } } }))
@@ -263,7 +268,7 @@ test('fold: a module built during a quiet turn (reminder) still shows', () => {
 })
 
 test('the ui tool over MCP: compile errors come back to the assistant (the fix loop); a good module answers Shown with its id', { skip: !haveNsh }, async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'tools-ui-'))
+  const dir = temp('tools-ui-')
   writeFileSync(join(dir, 'USER.md'), '# USER.md\n'); writeFileSync(join(dir, 'MEMORY.md'), '# MEMORY.md\n')
   const ui = await Ui.open(join(dir, 'home'), { nsh: NSH, hosts: ['127.0.0.1'] })
   const srv = await startToolsServer({ memory: new Memory(dir), scheduler: await Scheduler.open(join(dir, 's.json'), { onDue: async () => {} }), goals: await Goals.open(join(dir, 'g.json')), notify: async () => {}, ui })
@@ -281,7 +286,7 @@ test('the ui tool over MCP: compile errors come back to the assistant (the fix l
 })
 
 test('the ui tool without nsh on this computer says so instead of failing', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'tools-noui-'))
+  const dir = temp('tools-noui-')
   writeFileSync(join(dir, 'USER.md'), '# USER.md\n'); writeFileSync(join(dir, 'MEMORY.md'), '# MEMORY.md\n')
   const ui = await Ui.open(join(dir, 'home'), { nsh: join(dir, 'no-such-nsh'), hosts: ['127.0.0.1'] })
   assert.equal(ui.available, false)
@@ -348,7 +353,7 @@ test('play page: a one-time address from the device; the page runs the bundle wi
   const prompts: { sessionId: string; text: string }[] = []
   const harness = { kind: 'fake', events: { on() {}, clientId: 'c' }, async createSession() { return { sessionId: 'p1' } }, async listSessions() { return [] }, async prompt(sessionId: string, text: string) { prompts.push({ sessionId, text }) }, async answer() {}, async cancel() { return true }, async rpc() { return {} as never }, async close() {}, async follow() { return () => {} } }
   const devices = new MemoryDeviceStore()
-  const appDir = mkdtempSync(join(tmpdir(), 'app-'))
+  const appDir = temp('app-')
   for (const f of ['nsh.0a1b2c3d4e.js', 'nsh.0a1b2c3d4e.wasm', 'host.0a1b2c3d4e.js']) writeFileSync(join(appDir, f), '')
   const bot = await createBotServer({ dsh: { origin: 'http://127.0.0.1:9', cookie: 'c=1' }, devices, harness: harness as never, host: '127.0.0.1', port: 0, workspace: root, ui, appDir, settings: { get: async () => ({ assistantName: 'Nori', mainSessionId: 'main-1', language: 'zh' }), set: async (p) => p as never } })
   try {
@@ -400,16 +405,16 @@ test('hosted: the play page, its runtime and the module\'s result reach the comp
   assert.ok(made.ok); const m = made.module
   const prompts: { sessionId: string; text: string }[] = []
   const harness = { kind: 'fake', events: { on() {}, clientId: 'c' }, async createSession() { return { sessionId: 'p1' } }, async listSessions() { return [] }, async prompt(sessionId: string, text: string) { prompts.push({ sessionId, text }) }, async answer() {}, async cancel() { return true }, async rpc() { return {} as never }, async close() {}, async follow() { return () => {} } }
-  const appDir = mkdtempSync(join(tmpdir(), 'app-'))
+  const appDir = temp('app-')
   const runtime: Record<string, string> = { 'nsh.0a1b2c3d4e.js': 'export const js = 1', 'nsh.0a1b2c3d4e.wasm': 'wasm-bytes', 'browser.0a1b2c3d4e/runtime.js': 'export const browser = 1', 'host.0a1b2c3d4e.js': 'export const host = 1' }
   mkdirSync(join(appDir, 'browser.0a1b2c3d4e'))
   for (const [f, body] of Object.entries(runtime)) writeFileSync(join(appDir, f), body)
   writeFileSync(join(appDir, 'index.html'), '<!doctype html>')
   const secret = 'host-secret-0123456789abcdef'
-  const bot = await createBotServer({ dsh: { origin: 'http://127.0.0.1:9', cookie: 'c=1' }, devices: new MemoryDeviceStore(), harness: harness as never, watcher: { clientId: 'c', on() {} } as never, host: '127.0.0.1', port: 0, workspace: root, ui, appDir, hostSecret: secret, tiles: new Tiles(mkdtempSync(join(tmpdir(), 'tiles-')), async () => new Response('png')), settings: { get: async () => ({ assistantName: 'Nori', mainSessionId: 'main-1', language: 'zh' }), set: async (p) => p as never } })
+  const bot = await createBotServer({ dsh: { origin: 'http://127.0.0.1:9', cookie: 'c=1' }, devices: new MemoryDeviceStore(), harness: harness as never, watcher: { clientId: 'c', on() {} } as never, host: '127.0.0.1', port: 0, workspace: root, ui, appDir, hostSecret: secret, tiles: new Tiles(temp('tiles-'), async () => new Response('png')), settings: { get: async () => ({ assistantName: 'Nori', mainSessionId: 'main-1', language: 'zh' }), set: async (p) => p as never } })
   let state: 'running' | 'missing' = 'missing'
   const provider = { kind: 'one', async create(id: string) { state = 'running'; return { id, origin: bot.origin } }, async get(id: string) { return state === 'missing' ? null : { id, origin: bot.origin } }, async start() {}, async stop() {}, async remove() {}, async status() { return state } }
-  const host = await createHostServer({ provider, image: 'x', accountsPath: join(mkdtempSync(join(tmpdir(), 'host-')), 'accounts.json'), hostSecret: secret, sandboxEnv: {}, devSignIn: true, host: '127.0.0.1', port: 0 })
+  const host = await createHostServer({ provider, image: 'x', accountsPath: join(temp('host-'), 'accounts.json'), hostSecret: secret, sandboxEnv: {}, devSignIn: true, host: '127.0.0.1', port: 0 })
   try {
     const { accountToken } = await (await fetch(`${host.origin}/host/sign-in`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'a@example.com' }) })).json() as { accountToken: string }
     const sb = await (await fetch(`${host.origin}/host/sandbox`, { method: 'POST', headers: { authorization: `Bearer ${accountToken}` } })).json() as { state: string; origin: string; token: string }
@@ -493,8 +498,8 @@ test('the ui import guard refuses comments, template literals and re-exports too
 })
 
 test('the ui compiler does not inherit the bot environment (no model key in a child)', { skip: !haveNsh }, async () => {
-  const { writeFileSync, chmodSync, mkdtempSync } = await import('node:fs')
-  const dir = mkdtempSync(join(tmpdir(), 'nsh-env-'))
+  const { writeFileSync, chmodSync } = await import('node:fs')
+  const dir = temp('nsh-env-')
   const out = join(dir, 'env.txt')
   const fake = join(dir, 'nsh-fake')
   writeFileSync(fake, `#!/bin/sh\nenv > '${out}'\nexit 1\n`)
@@ -513,8 +518,8 @@ test('the ui compiler does not inherit the bot environment (no model key in a ch
 // from registry.npmjs.org on every build and was refused. The image ships it and names it in
 // NSH_TSC; the compiler's minimal environment has to carry that one name through.
 test('the ui compiler gets the TypeScript the image ships (NSH_TSC), and still nothing else of the bot environment', { skip: !haveNsh }, async () => {
-  const { writeFileSync, chmodSync, mkdtempSync } = await import('node:fs')
-  const dir = mkdtempSync(join(tmpdir(), 'nsh-tsc-'))
+  const { writeFileSync, chmodSync } = await import('node:fs')
+  const dir = temp('nsh-tsc-')
   const out = join(dir, 'env.txt')
   const fake = join(dir, 'nsh-fake')
   writeFileSync(fake, `#!/bin/sh\nenv > '${out}'\nexit 1\n`)

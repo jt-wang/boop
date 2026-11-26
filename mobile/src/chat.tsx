@@ -135,6 +135,9 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   // Claude Code's permission prompt sit in the same place.
   const pending = computed<Ask[]>(() => asks().filter((a) => !a.sessionId || a.sessionId === sessionId()))
   const screenH = signal(0)
+  const askFixed = signal(0), pagerH = signal(0), lastH = signal(0), bodyH = signal(0)
+  // each card's title row at its natural (wrapped) height, by event id: a title kept to one line on one card says nothing of another's
+  const heads = signal<Record<string, number>>({})
   const liveActivity = computed(() => foldActivities(rows(), running()).find((i) => i.activity?.live)?.activity ?? null)
   // New rows while scrolled up: count them for the pill.
   let seen = 0
@@ -181,6 +184,49 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   const copy = async (text: string) => { try { await Clipboard.writeText(text); copiedToast(str('copied')) } catch {} }
   const refresh = async () => { const id = sessionId(); if (!id) return; refreshing.set(true); try { await follow(id) } catch {} finally { refreshing.set(false) } }
   const toBottom = () => { list?.scrollToEnd({ animated: true }); atBottom.set(true); unseen.set(0) }
+  // The pinned cards' room: half the screen with the keyboard down. With it up, two thirds of what is left between the
+  // top chrome and the composer, so the thread keeps a third and its last message shows whole above the card
+  // (iPhone SE, largest text: the old 240-point floor left the thread 60 points, under a message line 65–122 tall).
+  // It gives more when the last message needs it to show whole under the top fade (iPhone SE, largest text: its first
+  // line sat under the fade), down to what the card cannot do without: its buttons, the pager, and a line of what it asks.
+  const cardRoom = () => {
+    const kb = keyboardFrame().height
+    if (kb <= 0) return Math.max(240, screenH() * 0.5)
+    const room = screenH() - kb - chromeBottom() - (composerHeight() + 20) - 8 - bottomPad()
+    // pinned-asks' pb-2, the card's pt-3 and pb-4 (pt-1 and its title row with the pager), its gap and the buttons' mt-1,
+    // and what it asks, whole
+    const least = 8 + (pagerH() > 0 ? 4 + pagerH() + 8 : 12) + 16 + 8 + 4 + askFixed() + Math.max(32, bodyH())
+    const keep = TOP_FADE + lastH() + tail() + 8
+    return Math.max(0, Math.min(room, least), Math.min((room * 2) / 3, room - keep))
+  }
+  // 40: a markdown row that ends with a list measures one line short (NSH 0.3.0, 2026-10-27), and only the last row's
+  // missing line can hide (the padding under it keeps that line visible); other rows end on the thread's own 0
+  const tail = () => (/(^|\n)[ \t]*([-*+]|\d+[.)])[ \t]+\S[^\n]*\s*$/.test(String((items()[items().length - 1]?.row as { text?: unknown } | undefined)?.text ?? '')) ? 40 : 0)
+  // One card at a time above the composer: two or more pinned there left no room for each one's buttons. The pager goes through them.
+  const askAt = signal(0)
+  const shownAsk = () => { const p = pending(); return p.length ? [p[Math.min(askAt(), p.length - 1)]] : [] }
+  effect(() => { if (pending().length <= 1) pagerH.set(0) })
+  // the pager AskCard draws at the right of its title row
+  const pager = () => (
+    <View testID="ask-pager" class="flex-row items-center">
+      {/* 48 by 48: Android's least touch target, more than iOS's 44 */}
+      <View role="button" testID="ask-previous" accessibilityLabel={str('askPrevious')} onPress={() => askAt.set(Math.max(0, shownAt() - 1))} class="w-12 h-12 items-center justify-center active:opacity-60" style={{ opacity: shownAt() > 0 ? 1 : 0.3 }}><Text class="text-foreground text-[22px]">‹</Text></View>
+      <Text testID="ask-count" accessibilityLabel={t('askOf')(shownAt() + 1, pending().length)} class="text-muted-foreground text-[15px] leading-5">{`${shownAt() + 1} / ${pending().length}`}</Text>
+      <View role="button" testID="ask-next" accessibilityLabel={str('askNext')} onPress={() => askAt.set(Math.min(pending().length - 1, shownAt() + 1))} class="w-12 h-12 items-center justify-center active:opacity-60" style={{ opacity: shownAt() < pending().length - 1 ? 1 : 0.3 }}><Text class="text-foreground text-[22px]">›</Text></View>
+    </View>
+  )
+  // With the pager in its title row, a title that wraps beside it can push the thread's last message under the top fade
+  // (iPhone SE, largest text, keyboard up: 18 points left; Android at 360 dp, 130 %: 6 dp short): then, and only then, the
+  // title keeps to one line. Judged on the wrapped title's height, so the one-line title does not turn itself back.
+  const oneLine = () => {
+    const kb = keyboardFrame().height
+    const head = heads()[shownAsk()[0]?.eventId ?? ''] ?? 0
+    if (kb <= 0 || pending().length < 2 || head <= 0) return false
+    const room = screenH() - kb - chromeBottom() - (composerHeight() + 20) - 8 - bottomPad()
+    const card = 8 + 4 + head + 8 + bodyH() + 8 + 4 + askFixed() + 16
+    return room - card < TOP_FADE + lastH() + tail() + 8
+  }
+  const shownAt = () => Math.min(askAt(), Math.max(0, pending().length - 1))
   const bottomPad = () => 8 + (keyboardFrame().height > 0 || props.tabbed ? 0 : insets().bottom)
   // The keyboard coming up, or a new row (a card measures taller than its estimate), keeps the end in view while the person is there.
   effect(() => { if (keyboardFrame().height > 0 && atBottom()) setTimeout(() => list?.scrollToEnd({ animated: true }), 80) })
@@ -190,7 +236,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
   return (
     <View class="flex-1 bg-background pb-[env(keyboard-inset-height)]" onLayout={({ bounds: b }) => screenH.set(b.size.height)}>
       <List ref={list} each={items()} keyExtractor={(i) => i.id} estimatedItemSize={64} maintainVisibleContentPosition={{ autoscrollToBottomThreshold: bottomH() + 60 }}  /* the end of the content sits under the floating composer: anywhere inside that padding is "at the bottom" */ style={{ flex: 1, marginBottom: -bottomH() }}
-        contentStyle={{ paddingHorizontal: 16, paddingTop: chromeBottom() + (platform.os === 'android' ? TOP_FADE : 8), paddingBottom: bottomH() + 40 }}  /* 40: a markdown row that ends with a list measures one line short (NSH 0.3.0, 2026-10-27); the padding keeps that line visible. The gap between rows is each row's own (ItemView). */
+        contentStyle={{ paddingHorizontal: 16, paddingTop: chromeBottom() + (platform.os === 'android' ? TOP_FADE : 8), paddingBottom: bottomH() + tail() }}  /* tail(): below. The gap between rows is each row's own (ItemView). */
         keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" scrollEventThrottle={50} testID="thread"
         refreshing={refreshing()} onRefresh={refresh}
         onScroll={(e) => {
@@ -207,7 +253,7 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
         }}
         onScrollDragStart={() => { touched = true }}
         header={<TopProbe page="ChatThread" headerBottom={chromeBottom} />}>
-        {(item, index) => <ItemView item={item} prev={() => items()[index() - 1]} index={() => items().length - 1 - index()} fresh={fresh} open={openActivities} toggle={toggleActivity} copy={copy} onMemory={props.onMemory} onOpenFile={props.onOpenFile} />}
+        {(item, index) => <ItemView item={item} prev={() => items()[index() - 1]} index={() => items().length - 1 - index()} onHeight={(h) => { if (index() === items().length - 1) lastH.set(h) }} fresh={fresh} open={openActivities} toggle={toggleActivity} copy={copy} onMemory={props.onMemory} onOpenFile={props.onOpenFile} />}
       </List>
       {/* The empty thread sits between the header and the composer and starts at the top, as a page does. Inside the
           list it followed the list's end and, on a short screen or with the keyboard up, slid under the header. */}
@@ -221,7 +267,8 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
       </If>
 
       {/* Top chrome: a scroll-edge fade, then three glass pieces (menu, identity, settings) and, while it works, the status pill. */}
-      <EdgeFade edge="top" height={chromeBottom() + TOP_FADE} />
+      {/* solid under the chrome itself, fading only below it: a row scrolled up under the status pill does not read through its text */}
+      <EdgeFade edge="top" height={chromeBottom() + TOP_FADE} fade={TOP_FADE} />
       <View onLayout={({ bounds: b }) => chromeH.set(b.size.height)} style={{ position: 'absolute', top: 0, left: 0, right: 0, pointerEvents: 'box-none' }}>
         {/* the bar alone (topH) places the empty thread; the bar with the live activity (chromeH) is where messages start */}
         <View onLayout={({ bounds: b }) => topH.set(b.size.height)} class="pb-2" style={{ pointerEvents: 'box-none' }}>
@@ -264,10 +311,10 @@ export function ChatScreen(props: { onMenu: () => void; onIdentity: () => void; 
           </View>
         )}</If>
         <If when={pending().length > 0}>
-          {/* at most half the screen; taller (several cards, a long question) scrolls inside */}
-          <Scroll testID="pinned-asks" style={{ maxHeight: Math.max(240, screenH() * 0.5), flexGrow: 0 }} contentClass="gap-2 pb-2" keyboardShouldPersistTaps="handled">
-            <Each of={pending()} key={(a) => a.eventId}>{(a) => <Appear when={fresh(`ask-${a().eventId}`)}><AskCard ask={a()} /></Appear>}</Each>
-          </Scroll>
+          {/* at most cardRoom(); what a card asks scrolls inside it, its buttons stay (asks.tsx) */}
+          <View testID="pinned-asks" class="gap-2 pb-2" style={{ maxHeight: cardRoom(), flexShrink: 1 }}>
+            <Each of={shownAsk()} key={(a) => a.eventId}>{(a) => <Appear when={fresh(`ask-${a().eventId}`)} style={{ flexShrink: 1 }}><AskCard ask={a()} onFixed={(h) => askFixed.set(h)} pager={() => (pending().length > 1 ? pager() : null)} onHead={(h) => { pagerH.set(h); if (!oneLine()) heads.set({ ...heads(), [a().eventId]: h }) }} oneLine={oneLine} onBody={(h) => bodyH.set(h)} /></Appear>}</Each>
+          </View>
         </If>
         <Glass testID="composer-field" class="flex-row items-end rounded-[22px] px-[5px]" style={{ minHeight: 44 }}>
           {/* no + until attachments work: a button that only says "coming soon" does nothing */}
@@ -306,7 +353,7 @@ function EmptyThread(props: { onStarter: (text: string) => void; onSayHi: () => 
 }
 
 /** One cell. Everything reads `props.item()` where it is used, because the cell is reused for other rows. */
-function ItemView(props: { item: () => Item; prev: () => Item | undefined; index: () => number; fresh: (id: string) => boolean; open: () => Set<string>; toggle: (id: string) => void; copy: (text: string) => void; onMemory?: (focus?: string) => void; onOpenFile?: (path: string) => void }) {
+function ItemView(props: { item: () => Item; prev: () => Item | undefined; index: () => number; onHeight: (h: number) => void; fresh: (id: string) => boolean; open: () => Set<string>; toggle: (id: string) => void; copy: (text: string) => void; onMemory?: (focus?: string) => void; onOpenFile?: (path: string) => void }) {
   const row = () => props.item().row
   const text = () => (row() as { text?: string } | undefined)?.text ?? ''
   const kindOf = (i: Item | undefined) => (!i ? '' : i.activity ? 'activity' : i.ack ? 'ack' : i.row?.kind ?? '')
@@ -335,7 +382,7 @@ function ItemView(props: { item: () => Item; prev: () => Item | undefined; index
     return 16
   }
   return (
-    <View style={{ marginTop: gap() }}>
+    <View style={{ marginTop: gap() }} onLayout={({ bounds: b }) => props.onHeight(b.size.height)}>
       <If when={divider()}><Text testID="time-divider" class="self-center text-muted-foreground text-[13px] leading-4 font-medium pt-[6px] pb-[12px]">{timeLabel(atOf(props.item())!, lang())}</Text></If>
       <Each of={cardOf()} key={(r) => r.id}>{(r) => <Appear when={props.fresh(r().id)}><CardView row={r} /></Appear>}</Each>
       <Each of={moduleOf()} key={(r) => r.id}>{(r) => <Appear when={props.fresh(r().id)}><ModuleView row={r} /></Appear>}</Each>

@@ -1,8 +1,10 @@
 name: Nightly
 
-# The slow tests (REGRESSION.md, "nightly"): the Android device tests on an API 35 emulator (scripts/android-test.sh:
-# JVM unit tests and every instrumented test, among them ChatKeyboardTest and ScreenshotsTest, the chat in light and
-# dark, keyboard down and up, font 100% and 130%), then every screenshot read by OCR (scripts/shots-check.sh) before it
+# The slow tests (REGRESSION.md, "nightly"): the iOS screenshot baseline (ScreenshotsTests on an iPhone 17 Pro and an
+# iPhone SE, scripts/ios-shots.sh) and the Android device tests on an API 35 emulator (scripts/android-test.sh:
+# JVM unit tests and every instrumented test, among them ChatKeyboardTest, ListFlashTest, NetworkRecoveryTest and ScreenshotsTest, the chat in light and
+# dark, keyboard down and up, font 100% and 130%, on the emulator's screen and at 360 dp; ListFlashTest is isolated: it runs and warns
+# when it fails, without failing the job, .dev/RELEASING.md "Isolated tests"), then every screenshot read by OCR (scripts/shots-check.sh) before it
 # is uploaded. Every night on main, on every push to the public branch ci (where a release candidate goes before main),
 # and by hand. The push to ci is what runs it on a candidate before this workflow is on main: GitHub dispatches a
 # workflow by hand only once it is on the default branch. .dev/RELEASING.md: a release needs this run green on the
@@ -46,10 +48,13 @@ jobs:
           ref: e197f3edca01ba4d1c70a6a752a5cad9a383cb0c
           path: tailpocket
           persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      # v7 reads go.mod's toolchain line (v5 took the go line: go1.27.1 for toolchain go1.27.4)
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: tailpocket/go.mod
           cache: false
+      - name: Go is the toolchain go.mod asks for
+        run: scripts/go-toolchain-check.sh ../tailpocket/go.mod
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -69,7 +74,7 @@ jobs:
           # TailPocket's Android build compiles against this; without it, it looks in ~/.nsh and fails
           export NSH_AAR="$NSH_HOME/embed/android/nsh.aar"
           (cd ../tailpocket && scripts/build-mobile.sh android)
-          (cd ../tailpocket/sdk/android && ./gradlew --no-daemon -q publish :tailpocket-nsh:assembleRelease)
+          scripts/gradle-retry.sh ../tailpocket/sdk/android --no-daemon -q publish :tailpocket-nsh:assembleRelease
           mkdir -p android/app/libs android/tailpocket-m2/io/jingtao
           cp ../tailpocket/sdk/android/tailpocket-nsh/build/outputs/aar/tailpocket-nsh-release.aar android/app/libs/tailpocket-nsh.aar
           cp -R ../tailpocket/build/android/m2/io/jingtao/tailpocket android/tailpocket-m2/io/jingtao/
@@ -77,7 +82,11 @@ jobs:
           npm ci --no-audit --no-fund
       - run: scripts/ci-android-up.sh
       - name: Device tests
-        run: scripts/android-test.sh
+        id: device
+        run: |
+          # room for a whole run: a crash late in it still has its first lines
+          "$ANDROID_HOME/platform-tools/adb" logcat -G 16M
+          scripts/android-test.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -85,23 +94,39 @@ jobs:
           path: boop/android/app/build/reports/androidTests
           if-no-files-found: ignore
           retention-days: 14
-      # The 8 captures of ScreenshotsTest (REGRESSION.md, "Screenshot baseline"): all of them, each decodable, nothing
+      # A failed run's device log: Boop's processes and their crash entries only (scripts/android-logcat.sh), read by the
+      # same rules as the screenshots first; uploaded only when nothing private shows, and the check names a category only.
+      # Only after the device tests themselves failed: when a step before them fails there is no emulator, and adb waits
+      # for one until the job's time is up.
+      - name: Boop's log, when the device tests fail
+        id: logcat
+        if: failure() && steps.device.outcome == 'failure'
+        run: |
+          scripts/android-logcat.sh "$RUNNER_TEMP/boop-logcat.txt"
+          scripts/shots-check.sh --text "$RUNNER_TEMP/boop-logcat.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure() && steps.logcat.outcome == 'success'
+        with:
+          name: android-nightly-logcat
+          path: ${{ runner.temp }}/boop-logcat.txt
+          retention-days: 14
+      # The 18 captures of ScreenshotsTest (8 on the emulator's screen, 8 at 360 dp, 2 of two cards at 360 dp) (REGRESSION.md, "Screenshot baseline"): all of them, each decodable, nothing
       # private in any (scripts/shots-check.sh). Only then are they uploaded; the check's log names a file and a category,
       # never the text it read.
-      - name: Screenshots, all 8, read by OCR before upload
+      - name: Screenshots, all 18, read by OCR before upload
         id: shots
         run: |
           rm -rf "$RUNNER_TEMP/shots"
           "$ANDROID_HOME/platform-tools/adb" pull /data/local/tmp/boop-shots "$RUNNER_TEMP/shots"
           sudo apt-get install -y -qq tesseract-ocr python3-pil fonts-dejavu-core >/dev/null
           scripts/shots-check.sh --self-test
-          expect=$(for m in light dark; do for f in 10 13; do printf 'android-chat-%s-font%s.png android-chat-%s-font%s-keyboard.png ' $m $f $m $f; done; done)
+          expect=$(for s in '' small-; do for m in light dark; do for f in 10 13; do printf 'android-chat-%s%s-font%s.png android-chat-%s%s-font%s-keyboard.png ' "$s" $m $f "$s" $m $f; done; done; done; echo android-chat-small-light-two-cards.png android-chat-small-dark-two-cards.png)
           scripts/shots-check.sh "$RUNNER_TEMP/shots" --expect "$expect"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.shots.outcome == 'success'
         with:
           name: android-nightly-screenshots
-          # the 8 files the check read and nothing else, by their exact paths (REGRESSION.md, "Screenshot baseline")
+          # the 16 files the check read and nothing else, by their exact paths (REGRESSION.md, "Screenshot baseline")
           path: |
             ${{ runner.temp }}/shots/android-chat-light-font10.png
             ${{ runner.temp }}/shots/android-chat-light-font10-keyboard.png
@@ -111,5 +136,105 @@ jobs:
             ${{ runner.temp }}/shots/android-chat-dark-font10-keyboard.png
             ${{ runner.temp }}/shots/android-chat-dark-font13.png
             ${{ runner.temp }}/shots/android-chat-dark-font13-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-small-light-font10.png
+            ${{ runner.temp }}/shots/android-chat-small-light-font10-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-small-light-font13.png
+            ${{ runner.temp }}/shots/android-chat-small-light-font13-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-small-dark-font10.png
+            ${{ runner.temp }}/shots/android-chat-small-dark-font10-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-small-dark-font13.png
+            ${{ runner.temp }}/shots/android-chat-small-dark-font13-keyboard.png
+            ${{ runner.temp }}/shots/android-chat-small-light-two-cards.png
+            ${{ runner.temp }}/shots/android-chat-small-dark-two-cards.png
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    name: iOS screenshots, default iPhone and iPhone SE
+    if: github.repository == 'jt-wang/boop'
+    # GitHub's standard macos-15 label is arm64, as testflight.yml; no Apple credentials: the app is built for the simulator
+    runs-on: macos-15
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: boop
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: boop
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: jt-wang/tailpocket
+          ref: e197f3edca01ba4d1c70a6a752a5cad9a383cb0c
+          path: tailpocket
+          persist-credentials: false
+      # v7 reads go.mod's toolchain line (v5 took the go line: go1.27.1 for toolchain go1.27.4)
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: tailpocket/go.mod
+          cache: false
+      - name: Go is the toolchain go.mod asks for
+        run: scripts/go-toolchain-check.sh ../tailpocket/go.mod
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: NSH 0.4.0 and TailPocket, as testflight.yml
+        run: |
+          python3 -B scripts/testflight-deps.py
+          npm ci --no-audit --no-fund
+      # the OCR check works on this runner before an hour of simulators, not after
+      - name: OCR check self-test
+        run: |
+          brew install --quiet tesseract >/dev/null
+          python3 -m pip install --quiet --break-system-packages pillow
+          scripts/shots-check.sh --self-test
+      - name: ScreenshotsTests on an iPhone 17 Pro and an iPhone SE (3rd generation), one at a time
+        run: |
+          default=$(xcrun simctl create boop-default "iPhone 17 Pro")
+          se=$(xcrun simctl create boop-se "iPhone SE (3rd generation)")
+          scripts/ios-shots.sh "$default" "$se" "$RUNNER_TEMP/ios-shots"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: ios-nightly-results
+          path: |
+            boop/ios/build/shots-*.log
+          if-no-files-found: ignore
+          retention-days: 14
+      # The 20 captures (8 on the iPhone 17 Pro, 8 on the iPhone SE, 2 of two cards on each): all of them, each decodable, nothing private
+      # in any (scripts/shots-check.sh), and only then uploaded, by their exact paths.
+      - name: Screenshots, all 20, read by OCR before upload
+        id: shots
+        run: |
+          expect=$(for s in '' small-; do for m in light dark; do for f in 100 130; do printf 'ios-chat-%s%s-font%s.png ios-chat-%s%s-font%s-keyboard.png ' "$s" $m $f "$s" $m $f; done; done; done; echo ios-chat-light-two-cards.png ios-chat-dark-two-cards.png ios-chat-small-light-two-cards.png ios-chat-small-dark-two-cards.png)
+          scripts/shots-check.sh "$RUNNER_TEMP/ios-shots" --expect "$expect"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.shots.outcome == 'success'
+        with:
+          name: ios-nightly-screenshots
+          path: |
+            ${{ runner.temp }}/ios-shots/ios-chat-light-font100.png
+            ${{ runner.temp }}/ios-shots/ios-chat-light-font100-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-light-font130.png
+            ${{ runner.temp }}/ios-shots/ios-chat-light-font130-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-dark-font100.png
+            ${{ runner.temp }}/ios-shots/ios-chat-dark-font100-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-dark-font130.png
+            ${{ runner.temp }}/ios-shots/ios-chat-dark-font130-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-light-font100.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-light-font100-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-light-font130.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-light-font130-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-dark-font100.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-dark-font100-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-dark-font130.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-dark-font130-keyboard.png
+            ${{ runner.temp }}/ios-shots/ios-chat-light-two-cards.png
+            ${{ runner.temp }}/ios-shots/ios-chat-dark-two-cards.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-light-two-cards.png
+            ${{ runner.temp }}/ios-shots/ios-chat-small-dark-two-cards.png
           if-no-files-found: error
           retention-days: 14

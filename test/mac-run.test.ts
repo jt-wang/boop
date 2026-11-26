@@ -7,8 +7,9 @@ import { spawn } from 'node:child_process'
 import { mkdtemp, mkdir, writeFile, copyFile, chmod, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const runSh = new URL('../mac/bot/run.sh', import.meta.url).pathname
+const runSh = fileURLToPath(new URL('../mac/bot/run.sh', import.meta.url))
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const alive = (pid: number) => { try { process.kill(pid, 0); return true } catch { return false } }
 

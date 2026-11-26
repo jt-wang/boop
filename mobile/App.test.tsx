@@ -504,18 +504,29 @@ test('an agent that wrote no reason in the person\'s language: what it wrote, un
   expect(app.shows('text:Выполнение команды')).toBe(true)
 })
 
-test('declining leaves a "Declined" notice; cards stack', async () => {
+// Pinned together, two cards left no room for each one's buttons on a small phone with the keyboard up (iPhone SE,
+// largest text, 2026-11-26): one shows at a time, and a pager goes to the other. Answering one leaves the other alone.
+test('declining leaves a "Declined" notice; two cards show one at a time, the pager reaches the other', async () => {
   const app = await chatApp({ [`POST ${ORIGIN}/approvals/e1`]: { body: { ok: true } }, [`POST ${ORIGIN}/approvals/e2`]: { body: { ok: true } } })
   await emptyReady(app)
   await app.host.send('asks', [
     { kind: 'approval', eventId: 'e1', sessionId: 'main', request: { toolName: 'bash', reason: 'first' }, at: 1 },
     { kind: 'approval', eventId: 'e2', sessionId: 'main', request: { toolName: 'write', reason: 'second' }, at: 2 },
   ])
+  await app.waitFor('id:ask-e1')
+  expect(app.shows('text:1 / 2')).toBe(true)
+  expect(app.shows('label:Request 1 of 2')).toBe(true) // what a screen reader says
+  expect(app.count('text:Allow once')).toBe(1)
+  expect(app.shows('id:ask-e2')).toBe(false)
+  await app.press('id:ask-next')
   await app.waitFor('id:ask-e2')
-  expect(app.count('text:Allow once')).toBe(2)
+  expect(app.shows('text:2 / 2')).toBe(true)
+  expect(app.shows('id:ask-e1')).toBe(false)
   await app.press('id:ask-e2 >> text:Decline')
   await app.waitFor('text:Declined')
-  expect(app.count('text:Allow once')).toBe(1)
+  expect(JSON.parse(String(app.requests().find((r) => r.url.endsWith('/approvals/e2'))!.body))).toEqual({ outcome: 'rejected' })
+  await app.waitFor('id:ask-count', { state: 'gone' })
+  expect(app.shows('id:pinned-asks >> id:ask-e1')).toBe(true)
 })
 
 test('a question card sends the chosen option and leaves an "Answered" notice', async () => {
@@ -528,6 +539,67 @@ test('a question card sends the chosen option and leaves an "Answered" notice', 
   await app.waitFor('text:Answered')
   const posted = app.requests().find((r) => r.url.endsWith('/questions/q1'))
   expect(JSON.parse(String(posted!.body)).answers).toEqual([{ id: 'k', selected: ['Coffee'] }])
+})
+
+// The pager shows one card at a time and remounts it: a choice and a typed answer made before paging away
+// are still there when the question comes back, and they are what Send answer sends.
+test('a question answered halfway keeps its choice and typed answer across paging, and sends them', async () => {
+  const app = await chatApp({ [`POST ${ORIGIN}/questions/q1`]: { body: { ok: true } } })
+  await emptyReady(app)
+  await app.host.send('asks', [
+    { kind: 'question', eventId: 'q1', sessionId: 'main', request: { questions: [
+      { id: 'k', prompt: 'Tea or coffee?', options: [{ label: 'Tea' }, { label: 'Coffee' }] },
+      { id: 'w', prompt: 'When?', options: [{ label: 'Now' }] },
+    ] }, at: 1 },
+    { kind: 'approval', eventId: 'e2', sessionId: 'main', request: { toolName: 'write', reason: 'second' }, at: 2 },
+  ])
+  await app.waitFor('text:Tea or coffee?')
+  await app.press('text:Coffee')
+  await app.type('id:ask-custom-w', 'after lunch')
+  await app.press('id:ask-next')
+  await app.waitFor('id:ask-e2')
+  await app.press('id:ask-previous')
+  await app.waitFor('id:ask-q1')
+  await app.press('text:Send answer')
+  await app.waitFor('text:Answered')
+  const posted = app.requests().find((r) => r.url.endsWith('/questions/q1'))
+  expect(JSON.parse(String(posted!.body)).answers).toEqual([{ id: 'k', selected: ['Coffee'] }, { id: 'w', selected: [], custom: 'after lunch' }])
+})
+
+// A draft is the question's as it was asked: a question that leaves the list and comes again under the same event,
+// or comes back with other parts, starts empty; nothing typed for the old one is sent with it.
+test('a question that leaves and comes again under the same event starts with no answer', async () => {
+  const app = await chatApp({ [`POST ${ORIGIN}/questions/q1`]: { body: { ok: true } } })
+  await emptyReady(app)
+  const q = { kind: 'question', eventId: 'q1', sessionId: 'main', request: { questions: [{ id: 'k', prompt: 'Tea or coffee?', options: [{ label: 'Tea' }] }] }, at: 1 }
+  await app.host.send('asks', [q])
+  await app.waitFor('id:ask-q1')
+  await app.type('id:ask-custom-k', 'old answer')
+  await app.host.send('asks', [])
+  await app.waitFor('id:ask-q1', { state: 'gone' })
+  await app.host.send('asks', [q])
+  await app.waitFor('id:ask-q1')
+  await app.press('text:Send answer')
+  await app.waitFor('text:Answered')
+  expect(JSON.parse(String(app.requests().find((r) => r.url.endsWith('/questions/q1'))!.body)).answers).toEqual([{ id: 'k', selected: [] }])
+})
+
+test('a question whose parts change while another request shows starts with no answer', async () => {
+  const app = await chatApp({ [`POST ${ORIGIN}/questions/q1`]: { body: { ok: true } } })
+  await emptyReady(app)
+  const q = (id: string) => ({ kind: 'question', eventId: 'q1', sessionId: 'main', request: { questions: [{ id, prompt: `Part ${id}?`, options: [{ label: 'Yes' }] }] }, at: 1 })
+  const e2 = { kind: 'approval', eventId: 'e2', sessionId: 'main', request: { toolName: 'write', reason: 'second' }, at: 2 }
+  await app.host.send('asks', [q('old'), e2])
+  await app.waitFor('id:ask-q1')
+  await app.type('id:ask-custom-old', 'old answer')
+  await app.press('id:ask-next')
+  await app.waitFor('id:ask-e2')
+  await app.host.send('asks', [q('new'), e2])
+  await app.press('id:ask-previous')
+  await app.waitFor('text:Part new?')
+  await app.press('text:Send answer')
+  await app.waitFor('text:Answered')
+  expect(JSON.parse(String(app.requests().find((r) => r.url.endsWith('/questions/q1'))!.body)).answers).toEqual([{ id: 'new', selected: [] }])
 })
 
 // QA 2026-10-30 (iOS, zh): after 跳过 the card left 已回答, as if a choice had been made.

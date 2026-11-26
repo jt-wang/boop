@@ -28,7 +28,10 @@ rules = [
   ("pairing-code", r"(?i)(pair(ing)?\s*code|\bcode\b|配对码|驗證碼|验证码)\W{0,4}\d{3}\s?\d{3}\b"),
   ("token", r"tok_[A-Za-z0-9]{8,}|(?<![A-Za-z0-9])(?i:sk)-\s?[A-Za-z0-9]{12,}|(?i:bearer)\s+[A-Za-z0-9._~+/=-]{16,}|(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{40,46}(?![A-Za-z0-9_-])"),
 ]
-hits = [name for name, rx in rules if re.search(rx, flat)]
+# a device log (--text) names the device itself, 127.0.0.1, where the stand-in bot and the test tools listen: that one
+# address only; every other private address still fails, and a screenshot has no reason to show any
+seen = {"private-ip": re.sub(r"(?<![\d.])127\.0\.0\.1(?![\d.])", " ", flat)} if sys.argv[1:] == ["text"] else {}
+hits = [name for name, rx in rules if re.search(rx, seen.get(name, flat))]
 terms = os.environ.get("BOOP_PRIVATE_TERMS")
 if terms:
   for line in open(terms, encoding="utf-8"):
@@ -36,7 +39,7 @@ if terms:
     if term and not term.startswith("#") and term.lower() in flat.lower():
       hits.append("private-term"); break
 print("\n".join(hits))
-'
+' "$@"
 }
 
 check() { # <folder> [expected names]
@@ -63,9 +66,11 @@ im = Image.open(f); assert im.format == "PNG"; im.load(); assert im.size[0] > 0'
   while IFS= read -r -d '' f; do
     n=$((n + 1))
     # screencap's PNGs are RGBA with an sRGB chunk this tesseract's Leptonica refuses: read an RGB copy
-    python3 -I -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).convert("RGB").save(sys.argv[2])' "$f" "$tmp/ocr.png" 2>/dev/null &&
-      tesseract "$tmp/ocr.png" "$tmp/ocr" >/dev/null 2>&1 || { echo "FAIL ${f#"$dir"/}: could not be read"; bad=1; continue; }
-    cats=$(categories < "$tmp/ocr.txt" | tr '\n' ' ')
+    # and read again at twice the size: at its own size tesseract split a monospaced email into words ("examp le. org",
+    # macOS 15's Menlo), on every machine; what either read shows counts
+    python3 -I -c 'import sys; from PIL import Image; i = Image.open(sys.argv[1]).convert("RGB"); i.save(sys.argv[2]); i.resize((i.width * 2, i.height * 2), Image.LANCZOS).save(sys.argv[3])' "$f" "$tmp/ocr.png" "$tmp/ocr2.png" 2>/dev/null &&
+      tesseract "$tmp/ocr.png" "$tmp/ocr" >/dev/null 2>&1 && tesseract "$tmp/ocr2.png" "$tmp/ocr2" >/dev/null 2>&1 || { echo "FAIL ${f#"$dir"/}: could not be read"; bad=1; continue; }
+    cats=$(cat "$tmp/ocr.txt" <(echo) "$tmp/ocr2.txt" | categories | tr '\n' ' ')
     [ -z "${cats// /}" ] || { echo "FAIL ${f#"$dir"/}: shows $cats"; bad=1; }
   done < <(find "$dir" -name '*.png' -print0)
   rm -rf "$tmp"
@@ -73,6 +78,14 @@ im = Image.open(f); assert im.format == "PNG"; im.load(); assert im.size[0] > 0'
   [ "$n" -gt 0 ] || { echo "FAIL: no screenshots in $dir"; bad=1; }
   return $bad
 }
+
+# A text file (a device log) by the same rules, before it leaves the run: fails on a hit, and names the category only.
+text_check() {
+  local cats; cats=$(categories text < "$1" | tr '\n' ' ')
+  [ -z "${cats// /}" ] || { echo "FAIL $(basename "$1"): shows $cats"; return 1; }
+  echo "checked $(basename "$1")"
+}
+if [ "${1:-}" = --text ]; then text_check "${2:?--text needs a file}"; exit; fi
 
 if [ "${1:-}" = --self-test ]; then
   t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
@@ -108,8 +121,24 @@ for name, (cat, text, secret) in cases.items():
 os.mkdir(f'{d}/clean')
 im = Image.new('RGB', (1800, 140), 'white'); ImageDraw.Draw(im).text((20, 40), 'Remind me to call the dentist', fill='black', font=font(44)); im.save(f'{d}/clean/shot.png')
 PY2
-  for c in email home-path private-ip pairing-link pairing-code token-tok token-sk token-bearer token-device; do
-    if check "$t/$c" > "$t/$c.log"; then echo "self-test FAIL: the check missed the $c screenshot"; exit 1; fi
+  # the image the public macOS runner drew for the email case (its Menlo), made-up text: the same image on every machine
+  mkdir "$t/email-menlo15"; cp "$(dirname "$0")/shots-check-email-menlo15.png" "$t/email-menlo15/shot.png"
+  echo email > "$t/email-menlo15.want"; printf '%s' 'jane.doe' '@' 'example.org' > "$t/email-menlo15.secret"
+  for c in email email-menlo15 home-path private-ip pairing-link pairing-code token-tok token-sk token-bearer token-device; do
+    if check "$t/$c" > "$t/$c.log"; then
+      echo "self-test FAIL: the check missed the $c screenshot"
+      # made-up text drawn by this test, never a capture: what this machine's OCR read, so the miss can be fixed
+      python3 -I -c 'import sys; from PIL import Image; Image.open(sys.argv[1]).convert("RGB").save(sys.argv[2])' "$t/$c/shot.png" "$t/read.png" &&
+        tesseract "$t/read.png" - 2>/dev/null | sed 's/^/  read: /'
+      # and how: this OCR, the font the test drew with, and the drawn image itself (made-up text only) to read elsewhere
+      tesseract --version 2>&1 | head -1 | sed 's/^/  ocr: /'
+      python3 -I -c 'from PIL import ImageFont
+for f in ("DejaVuSansMono.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", "/System/Library/Fonts/Menlo.ttc"):
+  try: print("  font:", ImageFont.truetype(f, 44).path); break
+  except OSError: pass'
+      printf '  image: '; base64 < "$t/$c/shot.png" | tr -d '\n'; echo
+      exit 1
+    fi
     grep -Eq "^FAIL shot.png: shows (.* )?$(cat "$t/$c.want")( |$)" "$t/$c.log" || { echo "self-test FAIL: $c not reported as $(cat "$t/$c.want")"; exit 1; }
     ! grep -qiF -- "$(cat "$t/$c.secret")" "$t/$c.log" || { echo "self-test FAIL: the $c report holds the text it read"; exit 1; }
   done
@@ -127,9 +156,26 @@ PY2
   for c in jpeg nested extra; do
     if check "$t/$c" "shot.png" >/dev/null; then echo "self-test FAIL: the $c folder passed"; exit 1; fi
   done
+  # a log line with a made-up email fails as email and does not print it; a clean one passes
+  printf '%s\n' "11-26 07:00:00.000  4242  4242 I Boop: signed in as $(printf '%s' 'jane.doe' '@' 'example.org')" > "$t/log.txt"
+  if text_check "$t/log.txt" > "$t/log.out"; then echo "self-test FAIL: the text check missed the email line"; exit 1; fi
+  grep -q '^FAIL log.txt: shows email' "$t/log.out" || { echo "self-test FAIL: the text check did not report email"; exit 1; }
+  ! grep -qF "$(printf '%s' 'jane.doe' '@' 'example.org')" "$t/log.out" || { echo "self-test FAIL: the text check printed what it read"; exit 1; }
+  echo '11-26 07:00:00.000  4242  4242 I Boop: the chat opened' > "$t/log.txt"
+  text_check "$t/log.txt" >/dev/null || { echo "self-test FAIL: the text check refused a clean log"; exit 1; }
+  # a real failed run's log as scripts/android-logcat.sh keeps it (an emulator, the stand-in bot, made-up pairing): it
+  # passes, 127.0.0.1 and all; the same log with one made-up email, or one other private address, in its middle fails
+  gunzip -c "$(dirname "$0")/shots-check-logcat.txt.gz" > "$t/run.txt"
+  text_check "$t/run.txt" >/dev/null || { echo "self-test FAIL: the text check refused a real run's log"; exit 1; }
+  half=$(( $(wc -l < "$t/run.txt") / 2 ))
+  for c in email:"$(printf '%s' 'jane.doe' '@' 'example.org')" private-ip:"$(printf '%s.' 192 168 1)20" private-ip:"$(printf '%s.' 127 0 0)2"; do
+    { head -n "$half" "$t/run.txt"; echo "11-26 17:40:00.000  3260  3301 I ReactNativeJS: reached ${c#*:}"; tail -n +$((half + 1)) "$t/run.txt"; } > "$t/run2.txt"
+    if text_check "$t/run2.txt" > "$t/run2.out"; then echo "self-test FAIL: the text check missed the ${c%%:*} in a real run's log"; exit 1; fi
+    grep -Eq "^FAIL run2.txt: shows (.* )?${c%%:*}( |$)" "$t/run2.out" || { echo "self-test FAIL: the ${c%%:*} in a real run's log not reported as ${c%%:*}"; exit 1; }
+  done
   echo "self-test ok"; exit 0
 fi
-[ $# -ge 1 ] && [ -d "$1" ] || { echo "usage: $0 <folder> [--expect \"a.png b.png\"] | --self-test" >&2; exit 2; }
+[ $# -ge 1 ] && [ -d "$1" ] || { echo "usage: $0 <folder> [--expect \"a.png b.png\"] | --text <file> | --self-test" >&2; exit 2; }
 dir="$1"; shift
 expect=""
 [ "${1:-}" = --expect ] && expect="${2:?--expect needs the list}"

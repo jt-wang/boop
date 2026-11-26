@@ -65,11 +65,13 @@ export function Glass(props: Press & { children?: JSX.Element; class?: string; s
   )
 }
 
-/** A blur that fades out, at the edge content scrolls under (iOS 26's scroll edge): no line, the content just softens. */
-export function EdgeFade(props: { edge: 'top' | 'bottom'; height: number }) {
+/** A blur that fades out, at the edge content scrolls under (iOS 26's scroll edge): no line, the content just softens.
+ *  With `fade`, only its last `fade` points fade; above them it is solid. */
+export function EdgeFade(props: { edge: 'top' | 'bottom'; height: number; fade?: number }) {
   const dir = props.edge === 'top' ? 'to bottom' : 'to top'
+  const solid = () => (props.fade === undefined ? 45 : Math.max(0, Math.round(((props.height - props.fade) / Math.max(props.height, 1)) * 100)))
   return (
-    <View class="bg-background/80" style={{ position: 'absolute', left: 0, right: 0, [props.edge]: 0, height: props.height, backdropFilter: 'blur(14px)', maskImage: `linear-gradient(${dir}, black 45%, transparent 100%)`, pointerEvents: 'none' }} />
+    <View class="bg-background/80" style={{ position: 'absolute', left: 0, right: 0, [props.edge]: 0, height: props.height, backdropFilter: 'blur(14px)', maskImage: `linear-gradient(${dir}, black ${solid()}%, transparent 100%)`, pointerEvents: 'none' }} />
   )
 }
 

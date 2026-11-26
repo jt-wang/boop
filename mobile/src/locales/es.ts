@@ -17,7 +17,7 @@ export const es: LocaleTables = {
     online: 'En línea', offline: 'Sin conexión', reconnecting: 'Reconectando…', working: 'Trabajando…', waitingYou: 'Esperándote',
     compose: 'Mensaje', send: 'Enviar', sayHi: 'Saluda',
     emptyThread: (n) => `Saluda a ${n || 'tu asistente'}. Se acuerda de ti, sigue trabajando con la app cerrada y te pregunta antes de hacer algo difícil de deshacer.`,
-    cardYes: 'Sí', cardNo: 'No', askApproval: 'Necesita tu aprobación', askQuestion: 'Tiene una pregunta', allowOnce: 'Permitir una vez', allowTask: 'Permitir en esta tarea', allowAlways: 'Permitir siempre', decline: 'Rechazar', answer: 'Enviar respuesta', skip: 'Omitir', custom: 'Otra cosa',
+    cardYes: 'Sí', cardNo: 'No', askApproval: 'Necesita tu aprobación', askQuestion: 'Tiene una pregunta', allowOnce: 'Permitir una vez', allowTask: 'Permitir en esta tarea', allowAlways: 'Permitir siempre', askPrevious: 'Solicitud anterior', askNext: 'Siguiente solicitud', askOf: (i: number, n: number) => `Solicitud ${i} de ${n}`, decline: 'Rechazar', answer: 'Enviar respuesta', skip: 'Omitir', custom: 'Otra cosa',
     autoApproved: (t) => `Permitido: ${t} (regla fija)`,
     menu: 'Menú', mainThread: 'Chat principal', sideChats: 'Otros chats', newSideChat: 'Nuevo chat', noSideChats: 'Todavía no hay otros chats. Abre uno para un proyecto que quieras tener aparte.',
     identity: 'Identidad', identityHint: 'Tres archivos de texto. El asistente los lee y tú puedes editarlos.', soul: 'Alma', user: 'Sobre ti', memory: 'Memoria', save: 'Guardar', saved: 'Guardado',

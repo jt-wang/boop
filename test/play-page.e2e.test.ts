@@ -3,14 +3,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 import { Ui } from '../src/ui.ts'
 import { createBotServer } from '../src/server.ts'
 import { MemoryDeviceStore } from '../src/devices.ts'
+import { NSH } from './fixtures/nsh.ts'
 
-const NSH = process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh')
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const skip = !existsSync(NSH) || !existsSync(CHROME) || !existsSync('app/index.html')
 

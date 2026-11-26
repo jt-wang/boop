@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { existsSync, mkdtempSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { WebSocket } from 'ws'
 import { openAiModerator, ReplyFilter, interfaceText, type Moderator } from '../src/moderation.ts'
@@ -12,6 +12,7 @@ import { createBotServer, type Settings } from '../src/server.ts'
 import { MemoryDeviceStore } from '../src/devices.ts'
 import { Compliance } from '../src/compliance.ts'
 import { Ui } from '../src/ui.ts'
+import { NSH } from './fixtures/nsh.ts'
 
 /** Flags any text containing BADWORD, like a real endpoint's `results[].flagged`. */
 const fakeMod = (calls: string[] = []): Moderator => ({ name: 'TestFilter', async check(t) { calls.push(t); return { flagged: /BADWORD/.test(t), categories: /BADWORD/.test(t) ? ['harassment'] : [] } } })
@@ -93,7 +94,6 @@ test('the thread a phone follows comes through the filter; GET /me names the fil
   } finally { await bot.close() }
 })
 
-const NSH = process.env.NSH_BIN ?? join(homedir(), '.local', 'bin', 'nsh')
 test('an interface the filter flags is not built; the assistant is told why', { skip: !existsSync(NSH) }, async () => {
   const ui = await Ui.open(mkdtempSync(join(tmpdir(), 'bot-mod-ui-')), { nsh: NSH, hosts: ['127.0.0.1'] })
   ui.moderate = async (t) => fakeMod().check(t)

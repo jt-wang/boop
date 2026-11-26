@@ -66,6 +66,8 @@ public final class MainActivity extends Activity {
         // computer; the app reads it as `host.params.hostUrl`. Empty: self-hosting only.
         String host = hostUrl();
         if (!host.isEmpty()) params.put("hostUrl", host);
+        // UI tests only (debug source set; the release one adds nothing): more cards on the demo
+        TestParams.add(getIntent(), params);
         app.setParams(params);
         app.loadAssetBundle("nsh");
     }

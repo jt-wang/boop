@@ -44,9 +44,13 @@ jobs:
       - run: npm test
         env:
           BOOP_REQUIRE_RELEASE_BASELINE: '1'
+          BOOP_REQUIRE_NSH: '1'
       - run: '"$NSH_BIN" check mobile'
       - run: '"$NSH_BIN" test mobile'
       - name: The screenshot check finds what it must
         run: |
           sudo apt-get install -y -qq tesseract-ocr python3-pil fonts-dejavu-core >/dev/null
           scripts/shots-check.sh --self-test
+          scripts/android-logcat.sh --self-test
+          scripts/gradle-retry.sh --self-test
+          scripts/android-test.sh --self-test

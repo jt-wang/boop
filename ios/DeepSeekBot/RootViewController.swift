@@ -41,6 +41,11 @@ final class RootViewController: UIViewController {
         if let link = initialLinkURL { params["linkUrl"] = link }
         if let tapped = initialNotificationURL { params["notificationUrl"] = tapped }
         if let host = Bundle.main.object(forInfoDictionaryKey: "DeepSeekBotHostURL") as? String, !host.isEmpty { params["hostUrl"] = host }
+        #if DEBUG
+        // UI tests only: more approval cards on the demo (`-BoopTestAsks <json>`, ScreenshotsTests). Not in a release build.
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-BoopTestAsks"), i + 1 < args.count { params["testAsks"] = args[i + 1] }
+        #endif
         if !params.isEmpty { app.params = params }
 
         guard let url = Bundle.main.url(forResource: "bundle", withExtension: "nshc", subdirectory: "nsh") else {

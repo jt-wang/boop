@@ -203,8 +203,10 @@ function App() {
 function DemoBar() {
   return (
     <View testID="demo-bar" class="flex-row flex-wrap items-center justify-center gap-x-2 px-4 py-2 bg-primary">
-      <Text class="text-primary-foreground text-[13px] leading-[18px] font-semibold">{str('sampleStatus')}</Text>
-      <Text class="text-primary-foreground text-[13px] leading-[18px] text-center">{str('sampleBar')}</Text>
+      {/* max-w-full: in a wrapping row a line of text is measured at its own length, so without it a long one on a narrow
+          screen or a large font runs past both sides instead of wrapping (360 dp at 130%) */}
+      <Text class="max-w-full text-primary-foreground text-[13px] leading-[18px] font-semibold text-center">{str('sampleStatus')}</Text>
+      <Text class="max-w-full text-primary-foreground text-[13px] leading-[18px] text-center">{str('sampleBar')}</Text>
     </View>
   )
 }

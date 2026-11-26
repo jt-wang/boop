@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.12
+
+- Chat: when several approvals or questions are waiting, the box above the message field shows one at a time, with a pager in its title row. With the keyboard up the box is kept small enough that the conversation keeps a third of the screen, and its buttons stay in reach. The last message no longer slips under the top of the screen; with the keyboard up and little room it can show only in part, and closing the keyboard shows it whole.
+- A question answered halfway keeps its choices and typed answer when you page to another request and come back; a draft is dropped once the question is no longer waiting or its parts change.
+- Android: on a narrow screen or with large text, the demo bar's line wraps instead of running past the screen.
+- Tests: on every night and every release candidate, screenshots on a default iPhone and an iPhone SE, and on Android at 360 dp, are checked for text cut off or hidden under the message field; Android device tests for Wi-Fi off, airplane mode and the computer restarting. A failed Android device run keeps Boop's own log, checked for private data like the screenshots.
+- Version 0.1.12: phone build 12, Mac build 10.
+
 ## v0.1.11
 
 - Security fixes. The bot's model proxy accepts only the key it made when it started. Removing a phone closes its open live connections, not only its future requests. Every route that reaches the AI model, including background tasks and the live connection, needs the person's consent first. `install.sh` checks each download against `SHA256SUMS` and keeps the current install until the new one has installed its dependencies. Dependencies with known vulnerabilities (undici, hono, the MCP SDK) are upgraded, and the Docker base image is pinned by digest.

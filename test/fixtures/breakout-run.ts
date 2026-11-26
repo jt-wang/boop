@@ -2,6 +2,8 @@
 // model; returns each probe's tool result. Used by test/containment.e2e.test.ts
 // and runnable by hand: node test/fixtures/breakout-run.ts [image]
 import { execFileSync } from 'node:child_process'
+import { realpathSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 import { startScriptedModel, type ScriptedCall } from './scripted-model.ts'
 import { BROWSER_SENTINEL, PROBES, SENTINEL } from './breakout-probes.ts'
 
@@ -72,7 +74,13 @@ export async function runBreakout(image: string, opts: { probes?: { id: string; 
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/** Whether this file was run as a script (node test/fixtures/breakout-run.ts), not imported: false when argv[1] is no file,
+ * such as `-` for a script read from standard input. */
+function ranAsScript() {
+  try { return Boolean(process.argv[1]) && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href } catch { return false }
+}
+
+if (ranAsScript()) {
   const run = await runBreakout(process.argv[2] ?? 'deepseek-bot:slim', { approveEscalation: process.argv.includes('--approve'), mountSrc: process.argv.includes('--src') ? `${process.cwd()}/src` : undefined })
   for (const [k, v] of Object.entries(run.results)) console.log(`== ${k}\n${v.slice(0, 400)}`)
   console.log('== approvals', JSON.stringify(run.approvals))

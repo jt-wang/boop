@@ -36,7 +36,7 @@ mkdir -p "$APP/libs"
 cp "$AAR" "$APP/libs/nsh.aar"
 
 GRADLE_TASK="assemble$(tr '[:lower:]' '[:upper:]' <<< "${VARIANT:0:1}")${VARIANT:1}"
-(cd "$ROOT/android" && ./gradlew --quiet "$GRADLE_TASK" -PhostUrl="${HOST%/}")
+"$ROOT/scripts/gradle-retry.sh" "$ROOT/android" --quiet "$GRADLE_TASK" -PhostUrl="${HOST%/}"
 OUT="$ROOT/android/build/boop.apk"
 mkdir -p "$ROOT/android/build"
 cp "$APP/build/outputs/apk/$VARIANT/app-$VARIANT.apk" "$OUT"

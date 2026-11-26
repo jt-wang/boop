@@ -66,10 +66,13 @@ jobs:
           ref: e197f3edca01ba4d1c70a6a752a5cad9a383cb0c
           path: tailpocket
           persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      # v7 reads go.mod's toolchain line (v5 took the go line: go1.27.1 for toolchain go1.27.4)
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: tailpocket/go.mod
           cache: false
+      - name: Go is the toolchain go.mod asks for
+        run: scripts/go-toolchain-check.sh ../tailpocket/go.mod
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'

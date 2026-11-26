@@ -17,7 +17,7 @@ export const zhHant: LocaleTables = {
     online: '線上', offline: '未連線', reconnecting: '重新連線中…', working: '工作中…', waitingYou: '等你回覆',
     compose: '傳訊息', send: '傳送', sayHi: '打個招呼',
     emptyThread: (n) => `跟${n ? ' ' + n : '助理'}打個招呼。它記得你，App 關了也繼續做事，難以復原的事會先問你。`,
-    cardYes: '好', cardNo: '不用', askApproval: '需要你同意', askQuestion: '有個問題', allowOnce: '允許一次', allowTask: '這個任務都允許', allowAlways: '永遠允許', decline: '拒絕', answer: '送出回答', skip: '略過', custom: '其他',
+    cardYes: '好', cardNo: '不用', askApproval: '需要你同意', askQuestion: '有個問題', allowOnce: '允許一次', allowTask: '這個任務都允許', allowAlways: '永遠允許', askPrevious: '上一個請求', askNext: '下一個請求', askOf: (i: number, n: number) => `第 ${i} 張，共 ${n} 張`, decline: '拒絕', answer: '送出回答', skip: '略過', custom: '其他',
     autoApproved: (t) => `已依規則允許${t}`,
     menu: '選單', mainThread: '主對話', sideChats: '其他對話', newSideChat: '新對話', noSideChats: '還沒有其他對話。想把某個專案分開聊時，就開一個新的。',
     identity: '身分', identityHint: '三個純文字檔。助理會讀它們，你也可以直接改。', soul: '個性', user: '關於你', memory: '記憶', save: '儲存', saved: '已儲存',

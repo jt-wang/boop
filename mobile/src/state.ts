@@ -181,8 +181,23 @@ export async function startSample() {
   const sample = new SampleBot(lang(), str('nameSuggestion'), (f) => apply(f as unknown as ThreadFrame))
   bot = sample; stopped = true; hostedBy.set(null); session.set(sample.s)
   me.set(sample.me()); connection.set('online'); mainOpened = true
-  asks.set(sample.asks())
+  const extra = testAsks()
+  asks.set([...extra.filter((a) => a.first), ...sample.asks(), ...extra.filter((a) => !a.first)])
   await follow(SAMPLE_THREAD)
+}
+
+/**
+ * More cards for the sample, from a UI test: `host.params.testAsks`, which only a debug build's shell passes (iOS
+ * `-BoopTestAsks` under #if DEBUG, Android's debug source set), so the two-card checks run on the demo without
+ * changing it; `first` puts one ahead of the demo's card. A release build's shell has no way to set it.
+ */
+function testAsks(): (Ask & { first?: boolean })[] {
+  let given: unknown
+  try { given = (host.params as { testAsks?: unknown } | undefined)?.testAsks } catch { return [] }
+  if (typeof given === 'string') { try { given = JSON.parse(given) } catch { return [] } }
+  if (!Array.isArray(given)) return []
+  return given.filter((a): a is { eventId: string; toolName: string; reason: string; first?: boolean } => typeof a?.eventId === 'string' && typeof a?.reason === 'string')
+    .map((a, i) => ({ kind: 'approval' as const, eventId: a.eventId, sessionId: SAMPLE_THREAD, request: { toolName: String(a.toolName ?? ''), reason: a.reason }, at: Date.now() + i, first: a.first === true }))
 }
 
 /** Sets `me` and keeps a copy for the next launch. */

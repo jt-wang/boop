@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtempSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium, devices, type Browser } from 'playwright'
@@ -15,18 +15,28 @@ import { chromium, devices, type Browser } from 'playwright'
 const run = process.env.DEEPSEEK_BOT_E2E_MODEL === '1'
 const shots = join(process.cwd(), 'test', 'screenshots')
 
+// The bot's home goes in every case: a start that fails or times out, and stop() after the test, also when the bot
+// has already exited (then there is no exit event left to wait for).
 async function startBot(): Promise<{ child: ChildProcess; pairUrl: string; origin: string; stop(): Promise<void> }> {
   const home = mkdtempSync(join(tmpdir(), 'bot-ui-'))
   const child = spawn(process.execPath, ['src/main.ts', '--home', home, '--host', '127.0.0.1', '--port', '0', '--model', 'magpie/group/auto-deepseek-flash', '--base-url', 'http://127.0.0.1:3425/v1', '--api-key-env', 'DEEPSEEK_BOT_MODEL_KEY'], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, DEEPSEEK_BOT_MODEL_KEY: 'local' } })
+  const exited = new Promise<void>((r) => child.once('close', () => r()))
+  const stop = async () => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM')
+    await exited
+    rmSync(home, { recursive: true, force: true })
+  }
   let out = ''
-  const pairUrl = await new Promise<string>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`bot printed no pairing url:\n${out}`)), 90_000)
-    child.stdout!.on('data', (d) => { out += d; const m = /(http:\/\/[^\s]+\/pair\?code=\d{6})/.exec(out); if (m) { clearTimeout(t); resolve(m[1]) } })
-    child.stderr!.on('data', (d) => { out += d })
-    child.on('exit', (c) => { clearTimeout(t); reject(new Error(`bot exited ${c}:\n${out}`)) })
-  })
-  const u = new URL(pairUrl); u.hostname = '127.0.0.1'
-  return { child, pairUrl: u.toString(), origin: u.origin, stop: () => new Promise((r) => { child.once('exit', () => r()); child.kill('SIGTERM') }) }
+  try {
+    const pairUrl = await new Promise<string>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`bot printed no pairing url:\n${out}`)), 90_000)
+      child.stdout!.on('data', (d) => { out += d; const m = /(http:\/\/[^\s]+\/pair\?code=\d{6})/.exec(out); if (m) { clearTimeout(t); resolve(m[1]) } })
+      child.stderr!.on('data', (d) => { out += d })
+      child.on('exit', (c) => { clearTimeout(t); reject(new Error(`bot exited ${c}:\n${out}`)) })
+    })
+    const u = new URL(pairUrl); u.hostname = '127.0.0.1'
+    return { child, pairUrl: u.toString(), origin: u.origin, stop }
+  } catch (e) { await stop(); throw e }
 }
 
 test('phone browser: pairing link → name the assistant → it speaks first → a real reply; the session survives a reload', { skip: !run, timeout: 300_000 }, async () => {

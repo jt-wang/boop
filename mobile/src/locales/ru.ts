@@ -14,7 +14,7 @@ export const ru: LocaleTables = {
     online: 'В сети', offline: 'Нет подключения', reconnecting: 'Подключаюсь снова…', working: 'Работает…', waitingYou: 'Ждёт вас',
     compose: 'Сообщение', send: 'Отправить', sayHi: 'Поздороваться',
     emptyThread: (n) => `${n || 'Ваш помощник'} на связи: помнит вас, работает, пока приложение закрыто, и спрашивает перед тем, что трудно отменить. Поздоровайтесь!`,
-    cardYes: 'Да', cardNo: 'Нет', askApproval: 'Нужно ваше согласие', askQuestion: 'Есть вопрос', allowOnce: 'Разрешить', allowTask: 'Для этой задачи', allowAlways: 'Всегда', decline: 'Отклонить', answer: 'Ответить', skip: 'Пропустить', custom: 'Другое',
+    cardYes: 'Да', cardNo: 'Нет', askApproval: 'Нужно ваше согласие', askQuestion: 'Есть вопрос', allowOnce: 'Разрешить', allowTask: 'Для этой задачи', allowAlways: 'Всегда', askPrevious: 'Предыдущий запрос', askNext: 'Следующий запрос', askOf: (i: number, n: number) => `Запрос ${i} из ${n}`, decline: 'Отклонить', answer: 'Ответить', skip: 'Пропустить', custom: 'Другое',
     autoApproved: (t) => `Разрешено по правилу: ${t}`,
     menu: 'Меню', mainThread: 'Главный чат', sideChats: 'Другие чаты', newSideChat: 'Новый чат', noSideChats: 'Других чатов пока нет. Начните отдельный для проекта, который хотите держать в стороне.',
     identity: 'Личность', identityHint: 'Три простых файла. Помощник их читает, а вы можете их править.', soul: 'Характер', user: 'О вас', memory: 'Память', save: 'Сохранить', saved: 'Сохранено',
